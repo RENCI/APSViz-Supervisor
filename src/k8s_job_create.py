@@ -181,7 +181,7 @@ class K8sJobCreate:
         # create and launch the job
         job_id = self.create_job(batch_v1, job)
 
-        # remove the job, get the run status of the job
+        # remove the job and get the final run status
         run_status = self.delete_job(batch_v1)
 
         # return the final status to the caller
