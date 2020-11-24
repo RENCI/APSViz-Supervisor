@@ -94,7 +94,7 @@ class K8sJobCreate:
         # keep checking until done or fail
         while not done:
             # wait a period of time for the next check
-            time.sleep(self.run_config['SLEEP'])
+            time.sleep(self.run_config['POLL_SLEEP'])
 
             # get the job run information
             ret = api_instance.list_namespaced_job(namespace=self.run_config['NAMESPACE'])
@@ -162,7 +162,15 @@ class K8sJobCreate:
         """
 
         # load the k8s configuration
-        config.load_kube_config()
+        try:
+            # first try to get the config iw this is running on the cluster
+            config.load_incluster_config()
+        except config.ConfigException:
+            try:
+                # else get the local config
+                config.load_kube_config(context=self.run_config['K8S_CONTEXT'])
+            except config.ConfigException:
+                raise Exception("Could not configure kubernetes python client")
 
         # create an API hook
         batch_v1 = client.BatchV1Api()
@@ -177,7 +185,7 @@ class K8sJobCreate:
         run_status = self.delete_job(batch_v1)
 
         # return the final status to the caller
-        return job_id, run_status,
+        return job_id, run_status
 
 
 if __name__ == '__main__':
