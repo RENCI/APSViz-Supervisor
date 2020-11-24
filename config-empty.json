@@ -6,5 +6,6 @@
   "IMAGE": "",
   "COMMAND_LINE": [],
   "MOUNT_PATH": "",
-  "SLEEP": 60
+  "POLL_SLEEP": 60,
+  "K8S_CONTEXT": ""
 }
