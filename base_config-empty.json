@@ -1,0 +1,8 @@
+{
+  "client": {
+  "CONTEXT": "",
+  "NAMESPACE": "",
+  "PVC_CLAIM": "",
+  "POLL_SLEEP": 60
+  }
+}
