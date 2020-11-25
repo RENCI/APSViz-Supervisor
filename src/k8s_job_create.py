@@ -85,8 +85,6 @@ class K8sJobCreate:
             body=job,
             namespace=job_config['client']['NAMESPACE'])
 
-        print(f"Job created.")
-
         # init the return storage
         job_id: str = ''
 
@@ -100,7 +98,7 @@ class K8sJobCreate:
         for job in jobs.items:
             # is this the one that was launched
             if job.metadata.labels['app'] == job_config['job_details']['JOB_NAME']:
-                print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
+                # print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # save job id
                 job_id = str(job.metadata.labels["controller-uid"])
@@ -135,8 +133,6 @@ class K8sJobCreate:
             body=client.V1DeleteOptions(
                 propagation_policy='Foreground',
                 grace_period_seconds=5))
-
-        print(f"Job deleted.")
 
         # return the final status of the job
         return str(api_response.status)
