@@ -82,8 +82,14 @@ class APSVizSupervisor:
         # TODO: put this in the correct place below in the while loop after testing
         runs: list = self.get_incomplete_runs()
 
+        # set counter that indicates nothing was done
+        no_activity_counter: int = 0
+
         # until the end of time
         while True:
+            # reset the activity flag
+            no_activity: bool = True
+
             # for each run returned from the database
             for run in runs:
                 # what type of process is this
@@ -93,6 +99,9 @@ class APSVizSupervisor:
 
                     # work the current state
                     if run['stage'] == JobStage.new:
+                        # set the activity flag
+                        no_activity = False
+
                         # TODO: this should be generated from a DB record
                         # create the job configuration for a new run
                         job_details = self.k8s_create_job_obj(JobStage.new, JobType.adcirc_supp)
@@ -108,6 +117,9 @@ class APSVizSupervisor:
 
                         print(f'Job created. Job ID: {job_run_id}')
                     elif run['stage'] == JobStage.adcirc_supp_running:
+                        # set the activity flag
+                        no_activity = False
+
                         # TODO: this should be generated from a DB record
                         # create the job configuration for a new run
                         job_details = self.saved_job_details
@@ -131,7 +143,7 @@ class APSVizSupervisor:
                             # save the state
                             state: str = "Pod is " + job_pod_status
 
-                             # new_stage = JobStage.error
+                            new_stage = JobStage.error
                         elif job_pod_status.startswith('Running'):
                             # save the state
                             state: str = "Pod is " + job_pod_status
@@ -144,8 +156,22 @@ class APSVizSupervisor:
                     # TODO: save the info back to the database
                     run['stage'] = new_stage
 
+            # was there any activity
+            if no_activity:
+                # increment the counter
+                no_activity_counter += 1
+            else:
+                no_activity_counter = 0
+
             # check for something to do after a period of time
-            time.sleep(30)
+            if no_activity_counter >= 10:
+                # wait longer for something to do
+                time.sleep(120)
+
+                # try once to see if there is something
+                no_activity_counter = 9
+            else:
+                time.sleep(5)
 
     def k8s_create_job_obj(self, job_stage: JobStage, job_type: JobType):
         """
