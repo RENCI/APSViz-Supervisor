@@ -1,8 +1,8 @@
 {
   "client": {
-  "CONTEXT": "blackbalsam",
-  "NAMESPACE": "eds",
-  "PVC_CLAIM": "eds-pvc",
+  "CONTEXT": "",
+  "NAMESPACE": "",
+  "PVC_CLAIM": "",
   "POLL_SLEEP": 60
   }
 }
