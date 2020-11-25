@@ -1,5 +1,7 @@
 import time
 import uuid
+import os
+from json import load
 from enum import Enum
 from src.k8s_job_create import K8sJobCreate
 from src.k8s_job_find import K8sJobFind
@@ -43,11 +45,33 @@ class APSVizSupervisor:
         """
         inits the class
         """
+        # load the run configuration params
+        self.k8s_config: dict = self.get_config()
+
         # create a joj creator object
         self.k8s_create = K8sJobCreate()
 
         # create a job status finder object
         self.k8s_find = K8sJobFind()
+
+    @staticmethod
+    def get_config() -> dict:
+        """
+        gets the run configuration
+
+        :return: Dict, baseline run params
+        """
+
+        # get the config file path/name
+        config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
+
+        # open the config file
+        with open(config_name, 'r') as json_file:
+            # load the config items into a dict
+            data: dict = load(json_file)
+
+        # return the config data
+        return data
 
     def run(self):
         """
@@ -71,7 +95,7 @@ class APSVizSupervisor:
                     if run['stage'] == JobStage.new:
                         # TODO: this should be generated from a DB record
                         # create the job configuration for a new run
-                        job_details = self.k8s_create_adcirc_supp_job_obj(JobStage.new)
+                        job_details = self.k8s_create_job_obj(JobStage.new, JobType.adcirc_supp)
 
                         # TODO: debug purposes only
                         self.saved_job_details = job_details
@@ -123,24 +147,25 @@ class APSVizSupervisor:
             # check for something to do after a period of time
             time.sleep(30)
 
-    def k8s_create_adcirc_supp_job_obj(self, state: JobStage):
+    def k8s_create_job_obj(self, job_stage: JobStage, job_type: JobType):
         """
         Creates the details for an adcirc-supp job from the database
 
         :return:
         """
         # TODO: most values to populate this object should come from the database or a configuration file
-        if state == JobStage.new:
+        if job_stage == JobStage.new:
             # create a guid
             uid: str = str(uuid.uuid4())
 
-            # add in the specific job details
-            config = {
-                'JOB_NAME': 'adcirc-supp-job-' + uid,
-                'VOLUME_NAME': 'adcirc-supp-volume-' + uid,
-                'IMAGE': Image.adcirc_supp.value,
-                'COMMAND_LINE': ["python", "execute_APSVIZ_pipeline.py", "--urljson", "data1.json"],
-                'MOUNT_PATH': '/data/adcirc_supp-' + uid}
+            # get the config
+            config = self.k8s_config[job_type.value]
+
+            # load the config with the ifo from the config file
+            config['JOB_NAME'] += uid
+            config['VOLUME_NAME'] += uid
+            config['IMAGE'] = Image.adcirc_supp.value
+            config['MOUNT_PATH'] += uid
         else:
             # return the saved copy for testing
             config = self.saved_job_details
