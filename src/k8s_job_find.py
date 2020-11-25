@@ -71,7 +71,7 @@ class K8sJobFind:
         for job in jobs.items:
             # is this the one that was launched
             if job.metadata.labels['job-name'] == job_config['job_details']['JOB_NAME']:
-                print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
+                # print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # save the job_id
                 job_id = str(job.metadata.labels["controller-uid"])
