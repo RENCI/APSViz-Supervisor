@@ -190,7 +190,7 @@ class K8sJobCreate:
 
 
 if __name__ == '__main__':
-    # create the job creation class
+    # create the job creation class. debug purposes only.
     job_handler = K8sJobCreate()
 
     # create a guid
@@ -201,7 +201,7 @@ if __name__ == '__main__':
         'JOB_NAME': 'test-job-' + uid,
         'VOLUME_NAME': 'test-volume-' + uid,
         'IMAGE': 'test image',
-        'COMMAND_LINE': [],
+        'COMMAND_LINE': ["python", "execute_APSVIZ_pipeline.py", '--urljson', 'data1.json'],
         'MOUNT_PATH': '/data/test_dir-' + uid}
 
     # execute the k8s job run
