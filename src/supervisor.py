@@ -141,12 +141,13 @@ class APSVizSupervisor:
                             # set the next stage
                             new_stage = JobStage.adcirc_supp_complete
                         # TODO: this could be a real error state or the server is just busy
-                        # TODO if a pod doesnt start within N minutes delete the job?
+
                         elif job_pod_status.startswith('Pending'):
                             # save the state
                             state: str = "Pod is " + job_pod_status
 
-                            new_stage = JobStage.error
+                            # TODO if a pod doesnt start within N minutes error the job?
+                            # new_stage = JobStage.error
                         elif job_pod_status.startswith('Running'):
                             # save the state
                             state: str = "Pod is " + job_pod_status
@@ -170,7 +171,7 @@ class APSVizSupervisor:
             # check for something to do after a period of time
             if no_activity_counter >= 10:
                 # wait longer for something to do
-                time.sleep(120)
+                time.sleep(5) # 120?
 
                 # try once to see if there is something
                 no_activity_counter = 9
