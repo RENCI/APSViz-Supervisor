@@ -4,5 +4,6 @@
     "VOLUME_NAME": "",
     "IMAGE": "",
     "COMMAND_LINE": [],
-    "MOUNT_PATH": ""}
+    "MOUNT_PATH": ""
+  }
 }
