@@ -15,7 +15,7 @@ class Image(str, Enum):
 
 class JobStage(int, Enum):
     """
-    Class that stores the job stages
+    Class that stores the job stage contants
     """
     new = 1
     adcirc_supp_running = 2
@@ -26,7 +26,7 @@ class JobStage(int, Enum):
 
 class JobType(str, Enum):
     """
-    Class that stores the job types
+    Class that stores the job type constants
     """
     adcirc_supp = 'adcirc-supp'
     other_1 = 'TBD'
@@ -38,7 +38,7 @@ class APSVizSupervisor:
 
     """
 
-    # TODO: debug purposes only. this saves job details of the run
+    # TODO: debug purposes only. this stores the job details of the run
     saved_job_details = None
 
     def __init__(self):
@@ -48,12 +48,13 @@ class APSVizSupervisor:
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
 
-        # create a joj creator object
+        # create a job creator object
         self.k8s_create = K8sJobCreate()
 
         # create a job status finder object
         self.k8s_find = K8sJobFind()
 
+    # TODO: make this a common function
     @staticmethod
     def get_config() -> dict:
         """
@@ -103,8 +104,10 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # TODO: this should be generated from a DB record
+                        command_line_params = ['--urljson', 'data1.json']
+
                         # create the job configuration for a new run
-                        job_details = self.k8s_create_job_obj(JobStage.new, JobType.adcirc_supp)
+                        job_details = self.k8s_create_job_obj(JobStage.new, JobType.adcirc_supp, command_line_params)
 
                         # TODO: debug purposes only
                         self.saved_job_details = job_details
@@ -163,6 +166,7 @@ class APSVizSupervisor:
             else:
                 no_activity_counter = 0
 
+            # TODO: put these counts in the config file
             # check for something to do after a period of time
             if no_activity_counter >= 10:
                 # wait longer for something to do
@@ -173,7 +177,7 @@ class APSVizSupervisor:
             else:
                 time.sleep(5)
 
-    def k8s_create_job_obj(self, job_stage: JobStage, job_type: JobType):
+    def k8s_create_job_obj(self, job_stage: JobStage, job_type: JobType, command_line_params: list):
         """
         Creates the details for an adcirc-supp job from the database
 
@@ -187,11 +191,12 @@ class APSVizSupervisor:
             # get the config
             config = self.k8s_config[job_type.value]
 
-            # load the config with the ifo from the config file
+            # load the config with the info from the config file
             config['JOB_NAME'] += uid
             config['VOLUME_NAME'] += uid
             config['IMAGE'] = Image.adcirc_supp.value
             config['MOUNT_PATH'] += uid
+            config['COMMAND_LINE'].extend(command_line_params)
         else:
             # return the saved copy for testing
             config = self.saved_job_details
@@ -205,4 +210,4 @@ class APSVizSupervisor:
         TODO: get the incomplete runs from the database
         :return: list of records to process
         """
-        return [{'type': 'adcirc-supp', 'stage': JobStage.new}]
+        return [{'type': 'adcirc-supp', 'stage': JobStage.new, 'command_line_params': ['--urljson', 'data1.json']}]
