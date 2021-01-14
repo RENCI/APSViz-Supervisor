@@ -3,9 +3,9 @@ import uuid
 import os
 from json import load
 from enum import Enum
-from src.k8s_job_create import K8sJobCreate
-from src.k8s_job_find import K8sJobFind
-
+from supervisor.src.job_create import JobCreate
+from supervisor.src.job_find import JobFind
+from postgres.src.pg_utils import PGUtils
 
 # define the docker worker container images
 class Image(str, Enum):
@@ -49,10 +49,13 @@ class APSVizSupervisor:
         self.k8s_config: dict = self.get_config()
 
         # create a job creator object
-        self.k8s_create = K8sJobCreate()
+        self.k8s_create = JobCreate()
 
         # create a job status finder object
-        self.k8s_find = K8sJobFind()
+        self.k8s_find = JobFind()
+
+        # create the postgres access object
+        self.pg_db = PGUtils()
 
     # TODO: make this a common function
     @staticmethod
@@ -205,10 +208,17 @@ class APSVizSupervisor:
         # return the job configuration
         return config
 
-    @staticmethod
-    def get_incomplete_runs() -> list:
+    def get_incomplete_runs(self) -> list:
         """
-        TODO: get the incomplete runs from the database
+        TODO: get the list of instances that need processing
         :return: list of records to process
         """
-        return [{'type': 'adcirc-supp', 'stage': JobStage.new, 'command_line_params': ['--urljson', 'data1.json']}]
+
+        # create the SQL. raw SQL calls using the django db model need an ID
+        sql = "SELECT public.get_config_list_json() AS data;"
+
+        # get the data
+        #ret_val = self.pg_db.exec_sql(sql)
+        ret_val = [{'type': 'adcirc-supp', 'stage': JobStage.new, 'command_line_params': ['--urljson', 'data1.json']}]
+
+        return ret_val

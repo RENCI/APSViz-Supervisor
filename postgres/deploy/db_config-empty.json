@@ -1,0 +1,9 @@
+{
+  "conection": {
+    "host": "",
+    "port": "",
+    "database": "",
+    "username": "",
+    "password": ""
+  }
+}

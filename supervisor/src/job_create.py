@@ -3,10 +3,10 @@ import os
 import uuid
 from json import load
 from kubernetes import client, config
-from src.k8s_job_find import K8sJobFind
+from supervisor.src.job_find import JobFind
 
 
-class K8sJobCreate:
+class JobCreate:
     """
     Class that uses the k8s API to create, run and delete a job
     """
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     print(f'Job {job_run_id} created.')
 
     # create the job finder object
-    k8s_find = K8sJobFind()
+    k8s_find = JobFind()
 
     # find the run
     job_run_id, job_status, job_pod_status = k8s_find.find_job_info(run_details)

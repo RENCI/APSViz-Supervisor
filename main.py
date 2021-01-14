@@ -1,4 +1,4 @@
-from src.supervisor import APSVizSupervisor
+from supervisor.src.supervisor import APSVizSupervisor
 
 # create the supervisor
 supervisor = APSVizSupervisor()

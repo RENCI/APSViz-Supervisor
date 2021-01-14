@@ -3,7 +3,7 @@ from json import load
 from kubernetes import client, config
 
 
-class K8sJobFind:
+class JobFind:
     """
     Class that uses the k8s API to find a job's details
     """
