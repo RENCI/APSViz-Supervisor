@@ -29,7 +29,8 @@ class JobCreate:
         # configure the volume mount for the container
         volume_mount = client.V1VolumeMount(
             name=job_config['job_details']['VOLUME_NAME'],
-            mount_path=job_config['job_details']['MOUNT_PATH'])
+            mount_path=job_config['job_details']['MOUNT_PATH'],
+            sub_path=job_config['job_details']['SUB_PATH'])
 
         # configure a persistent claim
         persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
@@ -191,7 +192,7 @@ class JobCreate:
 
 if __name__ == '__main__':
     # create the job creation class. debug purposes only.
-    job_handler = K8sJobCreate()
+    job_handler = JobCreate()
 
     # create a guid
     uid: str = str(uuid.uuid4())

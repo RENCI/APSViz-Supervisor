@@ -7,11 +7,6 @@ from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
 
-# define the docker worker container images
-class Image(str, Enum):
-    adcirc_supp = 'phillipsowen/adcirc_supp'
-    other_1 = "TBD"
-
 
 class JobStage(int, Enum):
     """
@@ -107,7 +102,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # TODO: this should be generated from a DB record
-                        command_line_params = ['--urljson', 'data1.json']
+                        command_line_params = ['--inputURL', 'http://tds.renci.org:8080/thredds/dodsC/2021/nam/2021010500/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/namforecast/fort.63.nc', '--outputDir']
 
                         # create the job configuration for a new run
                         job_details = self.k8s_create_job_obj(JobStage.new, JobType.adcirc_supp, command_line_params)
@@ -198,9 +193,9 @@ class APSVizSupervisor:
             # load the config with the info from the config file
             config['JOB_NAME'] += uid
             config['VOLUME_NAME'] += uid
-            config['IMAGE'] = Image.adcirc_supp.value
-            config['MOUNT_PATH'] += uid
+            config['SUB_PATH'] += uid
             config['COMMAND_LINE'].extend(command_line_params)
+            config['COMMAND_LINE'].extend([config['MOUNT_PATH'] + '/WSOO'])
         else:
             # return the saved copy for testing
             config = self.saved_job_details
@@ -213,12 +208,11 @@ class APSVizSupervisor:
         TODO: get the list of instances that need processing
         :return: list of records to process
         """
-
         # create the SQL. raw SQL calls using the django db model need an ID
         sql = "SELECT public.get_config_list_json() AS data;"
 
         # get the data
         #ret_val = self.pg_db.exec_sql(sql)
-        ret_val = [{'type': 'adcirc-supp', 'stage': JobStage.new, 'command_line_params': ['--urljson', 'data1.json']}]
+        ret_val = [{'type': 'adcirc-supp', 'stage': JobStage.new}]
 
         return ret_val
