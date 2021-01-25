@@ -8,14 +8,34 @@ from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
 
 
-class JobStage(int, Enum):
+class JobStatus(int, Enum):
     """
-    Class that stores the job stage contants
+    Class that stores the job status constants
     """
+    # new job status
     new = 1
-    adcirc_supp_running = 2
-    adcirc_supp_complete = 3
-    warning = 99
+
+    # file staging statuses
+    staging_running = 10
+    staging_complete = 20
+
+    # adcirc supp statuses
+    adcirc_supp_running = 30
+    adcirc_supp_complete = 40
+
+    # adcirc geo tiff statuses
+    adcirc2geotiff_running = 50
+    adcirc2geotiff_complete = 60
+
+    # geo tiff to mbtile statuses
+    geotiff2mbtiles_running = 70
+    geotiff2mbtiles_complete = 80
+
+    # final operations statuses
+    final_running = 90
+    final_complete = 100
+
+    warning = 999
     error = -1
 
 
@@ -23,7 +43,12 @@ class JobType(str, Enum):
     """
     Class that stores the job type constants
     """
-    adcirc_supp = 'adcirc-supp'
+    staging = 'staging',
+    adcirc_supp = 'adcirc-supp',
+    adcirc2geotiff = 'adcirc2geotiff',
+    geotiff2mbtiles = 'geotiff2mbtiles',
+    final = 'final',
+    error = 'error'
     other_1 = 'TBD'
 
 
@@ -33,8 +58,8 @@ class APSVizSupervisor:
 
     """
 
-    # TODO: debug purposes only. this stores the job details of the run
-    saved_job_details = None
+    # the list of pending runs. this stores all job details of the run
+    run_list = []
 
     def __init__(self):
         """
@@ -79,7 +104,7 @@ class APSVizSupervisor:
         """
         # get the incomplete runs from the database
         # TODO: put this in the correct place below in the while loop after testing
-        runs: list = self.get_incomplete_runs()
+        self.get_incomplete_runs()
 
         # set counter that indicates nothing was done
         no_activity_counter: int = 0
@@ -90,73 +115,158 @@ class APSVizSupervisor:
             no_activity: bool = True
 
             # for each run returned from the database
-            for run in runs:
-                # what type of process is this
-                if run['type'] == JobType.adcirc_supp:
-                    # save the current state of this job run
-                    new_stage: JobStage = run['stage']
+            for run in self.run_list:
+                # init the state
+                job_status: str = 'Init'
+                job_pod_status: str = 'Init'
 
+                # is this a staging job
+                if run['job-type'] == JobType.staging:
                     # work the current state
-                    if run['stage'] == JobStage.new:
+                    if run['status'] == JobStatus.new:
                         # set the activity flag
                         no_activity = False
 
-                        # TODO: this should be generated from a DB record
-                        command_line_params = ['--inputURL', 'http://tds.renci.org:8080/thredds/dodsC/2021/nam/2021010500/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/namforecast/fort.63.nc', '--outputDir']
+                        # TODO: this should be generated from a DB record?
+                        command_line_params = ['--inputURL', 'http://tds.renci.org:8080/thredds/fileServer/2021/nam/2021010500/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/namforecast/', '--outputDir']
 
                         # create the job configuration for a new run
-                        job_details = self.k8s_create_job_obj(JobStage.new, JobType.adcirc_supp, command_line_params)
-
-                        # TODO: debug purposes only
-                        self.saved_job_details = job_details
+                        self.k8s_create_job_obj(run, command_line_params)
 
                         # execute the k8s job run
-                        job_run_id = self.k8s_create.execute(job_details)
+                        self.k8s_create.execute(run)
 
-                        # move to the next stage
-                        new_stage = JobStage.adcirc_supp_running
+                        # set the current status
+                        run['status'] = JobStatus.staging_running
 
-                        print(f'Job created. Job ID: {job_run_id}')
-                    elif run['stage'] == JobStage.adcirc_supp_running:
+                        print(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                    elif run['status'] == JobStatus.staging_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
 
-                        # TODO: this should be generated from a DB record
-                        # create the job configuration for a new run
-                        job_details = self.saved_job_details
-
                         # find the job, get the status
-                        job_run_id, job_status, job_pod_status = self.k8s_find.find_job_info(job_details)
+                        job_status, job_pod_status = self.k8s_find.find_job_info(run)
 
                         # if the job status is not active (!=1) it is complete or dead. either way it gets removed
-                        if job_status != 1:
+                        if job_status != 1 and not job_pod_status.startswith('Failed'):
                             # remove the job and get the final run status
-                            job_status = self.k8s_create.delete_job(job_details)
+                            job_status = self.k8s_create.delete_job(run)
 
-                            # save the state
-                            state: str = 'deleted'
+                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
-                            # set the next stage
-                            new_stage = JobStage.adcirc_supp_complete
-                        # TODO: this could be a real error state or the server is just busy
+                            # set the next stage and stage status
+                            run['job-type'] = JobType.adcirc_supp
+                            run['status'] = JobStatus.new
 
-                        elif job_pod_status.startswith('Pending'):
-                            # save the state
-                            state: str = "Pod is " + job_pod_status
+                        elif job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
 
-                            # TODO if a pod doesnt start within N minutes error the job?
-                            # new_stage = JobStage.error
-                        elif job_pod_status.startswith('Running'):
-                            # save the state
-                            state: str = "Pod is " + job_pod_status
-                        else:
-                            # save the state
-                            state: str = 'is unknown'
+                            run['status'] = JobStatus.error
 
-                        print(f'Job state {state}. Job ID: {job_run_id}, job status: {job_status}, pod status: {job_pod_status}.')
+                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
-                    # TODO: save the info back to the database
-                    run['stage'] = new_stage
+                            run['job-type'] = JobType.error
+
+                # what type of process is this
+                elif run['job-type'] == JobType.adcirc_supp:
+                    # work the current state
+                    if run['status'] == JobStatus.new:
+                        # set the activity flag
+                        no_activity = False
+
+                        # TODO: this should be generated from a DB record?
+                        command_line_params = ['--inputURL', '/data/' + run['id'] + '/staging/input/fort.63.nc', '--outputDir']
+
+                        # create the job configuration for a new run
+                        self.k8s_create_job_obj(run, command_line_params)
+
+                        # execute the k8s job run
+                        self.k8s_create.execute(run)
+
+                        print(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+
+                        # move to the next stage
+                        run['status'] = JobStatus.adcirc_supp_running
+                    elif run['status'] == JobStatus.adcirc_supp_running and run['status'] != JobStatus.error:
+                        # set the activity flag
+                        no_activity = False
+
+                        # find the job, get the status
+                        job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                        # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                        if job_status != 1 and not job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
+                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
+                            # set the next stage and stage status
+                            run['job-type'] = JobType.final
+                            run['status'] = JobStatus.new
+
+                        # TODO: how should this be handled?
+                        elif job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
+                            run['status'] = JobStatus.error
+
+                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
+                            run['job-type'] = JobType.error
+
+                # is this a staging job
+                elif run['job-type'] == JobType.final:
+                    # work the current state
+                    if run['status'] == JobStatus.new:
+                        # set the activity flag
+                        no_activity = False
+
+                        # TODO: this should be generated from a DB record?
+                        command_line_params = ['--inputDir', '/data/' + run['id'], '--outputDir', '/data/final', '--tarMeta', run['id']]
+
+                        # create the job configuration for a new run
+                        self.k8s_create_job_obj(run, command_line_params, False)
+
+                        # execute the k8s job run
+                        self.k8s_create.execute(run)
+
+                        # set the current status
+                        run['status'] = JobStatus.final_running
+
+                        print(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                    elif run['status'] == JobStatus.final_running and run['status'] != JobStatus.error:
+                        # set the activity flag
+                        no_activity = False
+
+                        # find the job, get the status
+                        job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                        # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                        if job_status != 1 and not job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
+                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
+                            # set the next stage and stage status
+                            run['status'] = JobStatus.final_complete
+
+                        # TODO: how should this be handled?
+                        elif job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
+                            run['status'] = JobStatus.error
+
+                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
+                            run['job-type'] = JobType.error
 
             # was there any activity
             if no_activity:
@@ -169,39 +279,35 @@ class APSVizSupervisor:
             # check for something to do after a period of time
             if no_activity_counter >= 10:
                 # wait longer for something to do
-                time.sleep(5) # 120?
+                time.sleep(120) # 120?
 
                 # try once to see if there is something
                 no_activity_counter = 9
             else:
-                time.sleep(5)
+                time.sleep(30)
 
-    def k8s_create_job_obj(self, job_stage: JobStage, job_type: JobType, command_line_params: list):
+    def k8s_create_job_obj(self, run: dict, command_line_params: list, extend_output_path: bool = True):
         """
         Creates the details for an adcirc-supp job from the database
 
         :return:
         """
         # TODO: most values to populate this object should come from the database or a configuration file
-        if job_stage == JobStage.new:
-            # create a guid
-            uid: str = str(uuid.uuid4())
-
+        if run['status'] == JobStatus.new:
             # get the config
-            config = self.k8s_config[job_type.value]
+            config = self.k8s_config[run['job-type']]
 
             # load the config with the info from the config file
-            config['JOB_NAME'] += uid
-            config['VOLUME_NAME'] += uid
-            config['SUB_PATH'] += uid
+            config['JOB_NAME'] += run['id']
+            config['VOLUME_NAME'] += run['id']
             config['COMMAND_LINE'].extend(command_line_params)
-            config['COMMAND_LINE'].extend([config['MOUNT_PATH'] + '/WSOO'])
-        else:
-            # return the saved copy for testing
-            config = self.saved_job_details
 
-        # return the job configuration
-        return config
+            if extend_output_path:
+                config['SUB_PATH'] = '/' + run['id'] + config['SUB_PATH']
+                config['COMMAND_LINE'].extend([config['MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
+
+            # save these params onto the run info
+            run[run['job-type']] = {'run-config': config}
 
     def get_incomplete_runs(self) -> list:
         """
@@ -211,8 +317,13 @@ class APSVizSupervisor:
         # create the SQL. raw SQL calls using the django db model need an ID
         sql = "SELECT public.get_config_list_json() AS data;"
 
+        # create a new GUID
+        uid: str = str(uuid.uuid4())
+
         # get the data
         #ret_val = self.pg_db.exec_sql(sql)
-        ret_val = [{'type': 'adcirc-supp', 'stage': JobStage.new}]
 
-        return ret_val
+        # add this run to the list
+        self.run_list.append({'id': uid, 'job-type': JobType.staging, 'status': JobStatus.new})
+        #self.run_list.append({'id': uid, 'job-type': JobType.adcirc_supp, 'status': JobStatus.new})
+        #self.run_list.append({'id': 'fcac6383-5043-4996-a0ee-91436245d032', 'job-type': JobType.final, 'status': JobStatus.new})

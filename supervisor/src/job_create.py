@@ -3,7 +3,6 @@ import os
 import uuid
 from json import load
 from kubernetes import client, config
-from supervisor.src.job_find import JobFind
 
 
 class JobCreate:
@@ -19,7 +18,7 @@ class JobCreate:
         self.k8s_config: dict = self.get_config()
 
     @staticmethod
-    def create_job_object(job_config) -> client.V1Job:
+    def create_job_object(run, job_details) -> client.V1Job:
         """
         creates a k8s job description object
 
@@ -28,30 +27,31 @@ class JobCreate:
 
         # configure the volume mount for the container
         volume_mount = client.V1VolumeMount(
-            name=job_config['job_details']['VOLUME_NAME'],
-            mount_path=job_config['job_details']['MOUNT_PATH'],
-            sub_path=job_config['job_details']['SUB_PATH'])
+            name=run[run['job-type']]['run-config']['VOLUME_NAME'],
+            mount_path=run[run['job-type']]['run-config']['MOUNT_PATH'])
+
+        # , sub_path=run[run['job-type']]['run-config']['SUB_PATH']
 
         # configure a persistent claim
         persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
-            claim_name=f'{job_config["client"]["PVC_CLAIM"]}')
+            claim_name=f'{job_details["client"]["PVC_CLAIM"]}')
 
         # configure the volume claim
         volume = client.V1Volume(
-            name=job_config['job_details']['VOLUME_NAME'],
+            name=run[run['job-type']]['run-config']['VOLUME_NAME'],
             persistent_volume_claim=persistent_volume_claim)
 
         # configure the pod template container
         container = client.V1Container(
-            name=job_config['job_details']['JOB_NAME'],
-            image=job_config['job_details']['IMAGE'],
-            command=job_config['job_details']['COMMAND_LINE'],
+            name=run[run['job-type']]['run-config']['JOB_NAME'],
+            image=run[run['job-type']]['run-config']['IMAGE'],
+            command=run[run['job-type']]['run-config']['COMMAND_LINE'],
             volume_mounts=[volume_mount],
             image_pull_policy='IfNotPresent')
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
-            metadata=client.V1ObjectMeta(labels={"app": job_config['job_details']['JOB_NAME']}),
+            metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
             spec=client.V1PodSpec(restart_policy="Never", containers=[container], volumes=[volume]))
 
         # create the specification of job deployment
@@ -63,14 +63,15 @@ class JobCreate:
         job = client.V1Job(
             api_version="batch/v1",
             kind="Job",
-            metadata=client.V1ObjectMeta(name=job_config['job_details']['JOB_NAME']),
+            metadata=client.V1ObjectMeta(name=run[run['job-type']]['run-config']['JOB_NAME']),
             spec=spec)
 
-        # return the job object to the caller
-        return job
+        # save these params onto the run info
+        run[run['job-type']]['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
+
 
     @staticmethod
-    def create_job(job, job_config) -> str:
+    def create_job(run) -> str:
         """
         creates the k8s job
 
@@ -81,24 +82,28 @@ class JobCreate:
         # create the API hooks
         api_instance = client.BatchV1Api()
 
+        job_data = run[run['job-type']]['job-config']
+        job_details = job_data['job-details']['client']
+        run_details = run[run['job-type']]['run-config']
+
         # create the job
         api_instance.create_namespaced_job(
-            body=job,
-            namespace=job_config['client']['NAMESPACE'])
+            body=job_data['job'],
+            namespace=job_details['NAMESPACE'])
 
         # init the return storage
         job_id: str = ''
 
         # wait a period of time for the next check
-        time.sleep(job_config['client']['POLL_SLEEP'])
+        time.sleep(job_data['job-details']['client']['POLL_SLEEP'])
 
         # get the job run information
-        jobs = api_instance.list_namespaced_job(namespace=job_config['client']['NAMESPACE'])
+        jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
 
         # for each item returned
         for job in jobs.items:
             # is this the one that was launched
-            if job.metadata.labels['app'] == job_config['job_details']['JOB_NAME']:
+            if job.metadata.labels['app'] == run_details['JOB_NAME']:
                 # print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # save job id
@@ -110,7 +115,7 @@ class JobCreate:
         # return the job controller uid
         return job_id
 
-    def delete_job(self, job_details) -> str:
+    def delete_job(self, run) -> str:
         """
         deletes the k8s job
 
@@ -118,19 +123,17 @@ class JobCreate:
         :return:
         """
 
-        # load the baseline config params
-        job_config = self.k8s_config
-
-        # add the job configuration details
-        job_config['job_details'] = job_details
+        job_data = run[run['job-type']]['job-config']
+        job_details = job_data['job-details']['client']
+        run_details = run[run['job-type']]['run-config']
 
         # create an API hook
         api_instance = client.BatchV1Api()
 
         # remove the job
         api_response = api_instance.delete_namespaced_job(
-            name=job_config['job_details']['JOB_NAME'],
-            namespace=job_config['client']['NAMESPACE'],
+            name=run_details['JOB_NAME'],
+            namespace=job_details['NAMESPACE'],
             body=client.V1DeleteOptions(
                 propagation_policy='Foreground',
                 grace_period_seconds=5))
@@ -157,17 +160,15 @@ class JobCreate:
         # return the config data
         return data
 
-    def execute(self, job_details) -> str:
+    def execute(self, run) -> str:
         """
         Executes the k8s job run
+
         :return: the job ID
         """
 
         # load the baseline config params
-        job_config = self.k8s_config
-
-        # add the job configuration details
-        job_config['job_details'] = job_details
+        job_details = self.k8s_config
 
         # load the k8s configuration
         try:
@@ -176,18 +177,18 @@ class JobCreate:
         except config.ConfigException:
             try:
                 # else get the local config
-                config.load_kube_config(context=job_config['client']['CONTEXT'])
+                config.load_kube_config(context=job_details['client']['CONTEXT'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
 
         # create the job object
-        job = self.create_job_object(job_config)
+        self.create_job_object(run, job_details)
 
         # create and launch the job
-        job_id = self.create_job(job, job_config)
+        job_id = self.create_job(run)
 
-        # return the job id to the caller
-        return job_id
+        # save these params onto the run info
+        run[run['job-type']]['job-config']['job_id'] = job_id
 
 
 if __name__ == '__main__':
@@ -209,6 +210,8 @@ if __name__ == '__main__':
     job_run_id = job_handler.execute(run_details)
 
     print(f'Job {job_run_id} created.')
+
+    from job_find import JobFind
 
     # create the job finder object
     k8s_find = JobFind()

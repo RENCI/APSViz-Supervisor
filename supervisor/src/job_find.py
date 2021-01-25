@@ -34,12 +34,9 @@ class JobFind:
         # return the config data
         return data
 
-    def find_job_info(self, job_details) -> (str, int, str):
-        # load the baseline config params
-        job_config = self.k8s_config
-
-        # add the job configuration details
-        job_config['job_details'] = job_details
+    def find_job_info(self, run) -> (int, str):
+        # load the baseline cluster params
+        job_details = run[run['job-type']]['job-config']['job-details']
 
         # load the k8s configuration
         try:
@@ -48,7 +45,7 @@ class JobFind:
         except config.ConfigException:
             try:
                 # else get the local config
-                config.load_kube_config(context=job_config['client']['CONTEXT'])
+                config.load_kube_config(context=job_details['client']['CONTEXT'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
 
@@ -62,15 +59,15 @@ class JobFind:
         pod_status: str = ''
 
         # get the job run information
-        jobs = api_instance.list_namespaced_job(namespace=job_config['client']['NAMESPACE'])
+        jobs = api_instance.list_namespaced_job(namespace=job_details['client']['NAMESPACE'])
 
         # get the pod status
-        pods = core_api.list_namespaced_pod(namespace=job_config['client']['NAMESPACE'])
+        pods = core_api.list_namespaced_pod(namespace=job_details['client']['NAMESPACE'])
 
         # for each item returned
         for job in jobs.items:
             # is this the one that was launched
-            if job.metadata.labels['job-name'] == job_config['job_details']['JOB_NAME']:
+            if job.metadata.labels['job-name'] == run[run['job-type']]['run-config']['JOB_NAME']:
                 # print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # save the job_id
@@ -81,7 +78,7 @@ class JobFind:
 
                 # get the container status
                 for pod in pods.items:
-                    if pod.metadata.name.startswith(job_config["job_details"]["JOB_NAME"]):
+                    if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
                         pod_status = str(pod.status.phase)
 
                         # no need to continue
@@ -91,4 +88,4 @@ class JobFind:
                 break
 
         # return the job controller uid, job status and pod status
-        return job_id, job_status, pod_status
+        return job_status, pod_status
