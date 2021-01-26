@@ -249,9 +249,6 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            # remove the job and get the final run status
-                            job_status = self.k8s_create.delete_job(run)
-
                             print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             # set the next stage and stage status
