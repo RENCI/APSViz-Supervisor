@@ -30,8 +30,6 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['VOLUME_NAME'],
             mount_path=run[run['job-type']]['run-config']['MOUNT_PATH'])
 
-        # , sub_path=run[run['job-type']]['run-config']['SUB_PATH']
-
         # configure a persistent claim
         persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
             claim_name=f'{job_details["client"]["PVC_CLAIM"]}')
