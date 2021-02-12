@@ -1,9 +1,16 @@
 {
-  "APSViz": {
+  "": {
     "JOB_NAME": "",
-    "VOLUME_NAME": "",
+    "DATA_VOLUME_NAME": "",
+    "SSH_VOLUME_NAME": "",
     "IMAGE": "",
-    "COMMAND_LINE": [],
-    "MOUNT_PATH": ""
+    "COMMAND_LINE": [
+      "",
+      ""
+    ],
+    "DATA_MOUNT_PATH": "",
+    "SSH_MOUNT_PATH": "",
+    "SUB_PATH": "",
+    "ADDITIONAL_PATH": ""
   }
 }
