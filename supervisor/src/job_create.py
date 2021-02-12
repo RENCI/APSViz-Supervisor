@@ -25,32 +25,60 @@ class JobCreate:
         :return: client.V1Job, the job description object
         """
 
-        # configure the volume mount for the container
-        volume_mount = client.V1VolumeMount(
-            name=run[run['job-type']]['run-config']['VOLUME_NAME'],
-            mount_path=run[run['job-type']]['run-config']['MOUNT_PATH'])
+        # configure the data volume mount for the container
+        data_volume_mount = client.V1VolumeMount(
+            name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
+            mount_path=run[run['job-type']]['run-config']['DATA_MOUNT_PATH'])
 
-        # configure a persistent claim
+       # configure the ssh key volume mount for the container
+        ssh_volume_mount = client.V1VolumeMount(
+            name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
+            read_only=True,
+            mount_path=run[run['job-type']]['run-config']['SSH_MOUNT_PATH'])
+
+        # configure a persistent claim for the data
         persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
             claim_name=f'{job_details["client"]["PVC_CLAIM"]}')
 
-        # configure the volume claim
-        volume = client.V1Volume(
-            name=run[run['job-type']]['run-config']['VOLUME_NAME'],
+        # configure a secret claim for the secret keys
+        ssh_secret_claim = client.V1SecretVolumeSource(
+            secret_name=f'{job_details["client"]["SECRETS_CLAIM"]}',
+            default_mode=0o600)
+
+        # configure the data volume claim
+        data_volume = client.V1Volume(
+            name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
             persistent_volume_claim=persistent_volume_claim)
+
+        # configure the ssh secret claim
+        ssh_volume = client.V1Volume(
+            name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
+            secret=ssh_secret_claim)
+
+        db_username_env = client.V1EnvVar(
+            name='ASGS_DB_USERNAME',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='username')))
+
+        db_password_env = client.V1EnvVar(
+            name='ASGS_DB_PASSWORD',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='password')))
 
         # configure the pod template container
         container = client.V1Container(
             name=run[run['job-type']]['run-config']['JOB_NAME'],
             image=run[run['job-type']]['run-config']['IMAGE'],
             command=run[run['job-type']]['run-config']['COMMAND_LINE'],
-            volume_mounts=[volume_mount],
-            image_pull_policy='IfNotPresent')
+            volume_mounts=[data_volume_mount, ssh_volume_mount],
+            image_pull_policy='IfNotPresent',
+            env=[db_username_env, db_password_env]
+            )
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=[container], volumes=[volume]))
+            spec=client.V1PodSpec(restart_policy="Never", containers=[container], volumes=[data_volume, ssh_volume]))
 
         # create the specification of job deployment
         spec = client.V1JobSpec(
@@ -199,10 +227,10 @@ if __name__ == '__main__':
     # load the job configuration params
     run_details = {
         'JOB_NAME': 'test-job-' + uid,
-        'VOLUME_NAME': 'test-volume-' + uid,
+        'DATA_VOLUME_NAME': 'test-volume-' + uid,
         'IMAGE': 'test image',
         'COMMAND_LINE': ["python", "execute_APSVIZ_pipeline.py", '--urljson', 'data1.json'],
-        'MOUNT_PATH': '/data/test_dir-' + uid}
+        'DATA_MOUNT_PATH': '/data/test_dir-' + uid}
 
     # execute the k8s job run
     job_run_id = job_handler.execute(run_details)
