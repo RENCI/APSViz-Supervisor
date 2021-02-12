@@ -296,12 +296,13 @@ class APSVizSupervisor:
 
             # load the config with the info from the config file
             config['JOB_NAME'] += run['id']
-            config['VOLUME_NAME'] += run['id']
+            config['DATA_VOLUME_NAME'] += run['id']
+            config['SSH_VOLUME_NAME'] += run['id']
             config['COMMAND_LINE'].extend(command_line_params)
 
             if extend_output_path:
                 config['SUB_PATH'] = '/' + run['id'] + config['SUB_PATH']
-                config['COMMAND_LINE'].extend([config['MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
+                config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
 
             # save these params onto the run info
             run[run['job-type']] = {'run-config': config}
