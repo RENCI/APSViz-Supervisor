@@ -58,12 +58,12 @@ class JobCreate:
         db_username_env = client.V1EnvVar(
             name='ASGS_DB_USERNAME',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='username')))
+                name='eds-keys', key='asgs-username')))
 
         db_password_env = client.V1EnvVar(
             name='ASGS_DB_PASSWORD',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='password')))
+                name='eds-keys', key='asgs-password')))
 
         # configure the pod template container
         container = client.V1Container(
