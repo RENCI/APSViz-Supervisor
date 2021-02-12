@@ -195,17 +195,20 @@ class JobCreate:
 
         # load the baseline config params
         job_details = self.k8s_config
-
+        print(job_details)
         # load the k8s configuration
         try:
+            print('using in-cluster config')
             # first try to get the config if this is running on the cluster
             config.load_incluster_config()
         except config.ConfigException:
+            print('using kube config')
             try:
                 # else get the local config
                 config.load_kube_config(context=job_details['client']['CONTEXT'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
+
 
         # create the job object
         self.create_job_object(run, job_details)
