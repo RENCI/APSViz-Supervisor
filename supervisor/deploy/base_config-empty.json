@@ -1,8 +1,11 @@
 {
-  "client": {
-  "CONTEXT": "",
-  "NAMESPACE": "",
-  "PVC_CLAIM": "",
-  "POLL_SLEEP": 60
+    "client": {
+    "CONTEXT": "",
+    "NAMESPACE": "",
+    "PVC_CLAIM": "",
+    "SECRETS_CLAIM": "",
+    "SSH_ACCOUNT": "",
+    "SSH_SERVER": "",
+    "POLL_SLEEP": 2
   }
 }
