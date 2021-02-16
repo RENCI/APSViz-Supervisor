@@ -1,6 +1,6 @@
 {
     "client": {
-    "CONTEXT": "",
+    "CLUSTER": "",
     "NAMESPACE": "",
     "PVC_CLAIM": "",
     "SECRETS_CLAIM": "",

@@ -242,7 +242,7 @@ class JobCreate:
         except config.ConfigException:
             try:
                 # else get the local config
-                config.load_kube_config(context=job_details['client']['CONTEXT'])
+                config.load_kube_config(context=job_details['client']['CLUSTER'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
 
