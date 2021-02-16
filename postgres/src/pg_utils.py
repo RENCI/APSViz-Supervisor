@@ -1,49 +1,29 @@
 import sys
 import os
-from json import load
 import psycopg2
+
 
 class PGUtils:
     def __init__(self):
-        try:
-            config = self.get_config()
+        username = os.getenv('ASGS_DB_USERNAME')
+        password = os.environ.get('ASGS_DB_PASSWORD')
+        host = os.environ.get('ASGS_DB_HOST')
+        database = os.environ.get('ASGS_DB_DATABASE')
+        port = os.environ.get('ASGS_DB_PORT')
 
-            connection = config['connection']
+        conn_str = f"host={host} port={port} dbname={database} user={username} password={password}"
 
-            conn_str = f"host={connection['host']} port={connection['port']} dbname={connection['database']} user={connection['username']} password={connection['password']}"
+        self.conn = psycopg2.connect(conn_str)
 
-            self.conn = psycopg2.connect(conn_str)
-
-            self.cursor = self.conn.cursor()
-        except:
-            e = sys.exc_info()[0]
+        self.cursor = self.conn.cursor()
 
     def __del__(self):
         # close up the DB
         try:
             self.cursor.close()
             self.conn.close()
-        except:
+        except Exception as e:
             e = sys.exc_info()[0]
-
-    @staticmethod
-    def get_config() -> dict:
-        """
-        gets the connection configuration
-
-        :return: Dict, configuration params
-        """
-
-        # get the config file path/name
-        config_name = os.path.join(os.path.dirname(__file__), '..', 'db_config.json')
-
-        # open the config file
-        with open(config_name, 'r') as json_file:
-            # load the config items into a dict
-            data: dict = load(json_file)
-
-        # return the config data
-        return data
 
     ###########################################
     # executes a sql statement, returns the first row
