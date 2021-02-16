@@ -1,8 +1,10 @@
 import time
 import os
-import uuid
+import logging
+
 from json import load
 from kubernetes import client, config
+from common.logging import LoggingUtil
 
 
 class JobCreate:
@@ -17,8 +19,11 @@ class JobCreate:
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
 
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=logging.DEBUG, line_format='medium', log_file_path=os.path.dirname(__file__))
+
     @staticmethod
-    def create_job_object(run, job_details) -> client.V1Job:
+    def create_job_object(run, job_details):
         """
         creates a k8s job description object
 
@@ -30,7 +35,7 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
             mount_path=run[run['job-type']]['run-config']['DATA_MOUNT_PATH'])
 
-       # configure the ssh key volume mount for the container
+        # configure the ssh key volume mount for the container
         ssh_volume_mount = client.V1VolumeMount(
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             read_only=True,
@@ -55,15 +60,50 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             secret=ssh_secret_claim)
 
-        db_username_env = client.V1EnvVar(
+        asgs_db_username_env = client.V1EnvVar(
             name='ASGS_DB_USERNAME',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-username')))
 
-        db_password_env = client.V1EnvVar(
+        asgs_db_password_env = client.V1EnvVar(
             name='ASGS_DB_PASSWORD',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-password')))
+
+        asgs_db_host_env = client.V1EnvVar(
+            name='ASGS_DB_HOST',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='asgs-host')))
+
+        asgs_db_port_env = client.V1EnvVar(
+            name='ASGS_DB_PORT',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='asgs-port')))
+
+        asgs_db_database_env = client.V1EnvVar(
+            name='ASGS_DB_DATABASE',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='asgs-database')))
+
+        geo_username_env = client.V1EnvVar(
+            name='GEOSERVER_USER',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='geo-username')))
+
+        geo_password_env = client.V1EnvVar(
+            name='GEOSERVER_PASSWORD',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='geo-password')))
+
+        geo_host_env = client.V1EnvVar(
+            name='GEOSERVER_URL',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='geo-host')))
+
+        geo_workspace_env = client.V1EnvVar(
+            name='GEOSERVER_WORKSPACE',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='geo-workspace')))
 
         # configure the pod template container
         container = client.V1Container(
@@ -72,7 +112,8 @@ class JobCreate:
             command=run[run['job-type']]['run-config']['COMMAND_LINE'],
             volume_mounts=[data_volume_mount, ssh_volume_mount],
             image_pull_policy='IfNotPresent',
-            env=[db_username_env, db_password_env]
+            env=[asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
+                 geo_username_env, geo_password_env, geo_host_env, geo_workspace_env]
             )
 
         # create and configure a spec section for the container
@@ -95,14 +136,11 @@ class JobCreate:
         # save these params onto the run info
         run[run['job-type']]['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
 
-
-    @staticmethod
-    def create_job(run) -> str:
+    def create_job(self, run) -> str:
         """
         creates the k8s job
 
-        :param job: client.V1Job, the job description object
-        :param job_config: the configuration details
+        :param run: the run details
         :return: str the job id
         """
         # create the API hooks
@@ -130,7 +168,7 @@ class JobCreate:
         for job in jobs.items:
             # is this the one that was launched
             if job.metadata.labels['app'] == run_details['JOB_NAME']:
-                # print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
+                self.logger.debug(f"Found new job: {run_details['JOB_NAME']}, controller-uid: {job.metadata.labels['controller-uid']}, status: {job.status.active}")
 
                 # save job id
                 job_id = str(job.metadata.labels["controller-uid"])
@@ -141,11 +179,12 @@ class JobCreate:
         # return the job controller uid
         return job_id
 
-    def delete_job(self, run) -> str:
+    @staticmethod
+    def delete_job(run) -> str:
         """
         deletes the k8s job
 
-        :param job_details: the job configuration details
+        :param run: the run configuration details
         :return:
         """
 
@@ -186,7 +225,7 @@ class JobCreate:
         # return the config data
         return data
 
-    def execute(self, run) -> str:
+    def execute(self, run):
         """
         Executes the k8s job run
 
@@ -195,20 +234,17 @@ class JobCreate:
 
         # load the baseline config params
         job_details = self.k8s_config
-        print(job_details)
+
         # load the k8s configuration
         try:
-            print('using in-cluster config')
             # first try to get the config if this is running on the cluster
             config.load_incluster_config()
         except config.ConfigException:
-            print('using kube config')
             try:
                 # else get the local config
                 config.load_kube_config(context=job_details['client']['CONTEXT'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
-
 
         # create the job object
         self.create_job_object(run, job_details)
@@ -218,50 +254,3 @@ class JobCreate:
 
         # save these params onto the run info
         run[run['job-type']]['job-config']['job_id'] = job_id
-
-
-if __name__ == '__main__':
-    # create the job creation class. debug purposes only.
-    job_handler = JobCreate()
-
-    # create a guid
-    uid: str = str(uuid.uuid4())
-
-    # load the job configuration params
-    run_details = {
-        'JOB_NAME': 'test-job-' + uid,
-        'DATA_VOLUME_NAME': 'test-volume-' + uid,
-        'IMAGE': 'test image',
-        'COMMAND_LINE': ["python", "execute_APSVIZ_pipeline.py", '--urljson', 'data1.json'],
-        'DATA_MOUNT_PATH': '/data/test_dir-' + uid}
-
-    # execute the k8s job run
-    job_run_id = job_handler.execute(run_details)
-
-    print(f'Job {job_run_id} created.')
-
-    from job_find import JobFind
-
-    # create the job finder object
-    k8s_find = JobFind()
-
-    # find the run
-    job_run_id, job_status, job_pod_status = k8s_find.find_job_info(run_details)
-
-    # init the return value
-    ret_val: int = 0
-
-    # whats it look like
-    if job_status != 1:
-        # remove the job and get the final run status
-        job_status = job_handler.delete_job(run_details)
-        print(f'Job status {job_status}. Job ID: {job_run_id}, pod status: {job_pod_status}')
-        ret_val = 1
-    elif job_pod_status.startswith('pending'):
-        # remove the job and get the final run status
-        print(f'Job status {job_status}. Job ID: {job_run_id}, pod status: {job_pod_status}')
-        ret_val = 1
-    else:
-        print(f'Job run started. Job ID: {job_run_id}, job status: {job_status}, pod status: {job_pod_status}')
-
-    exit(ret_val)
