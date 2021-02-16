@@ -1,11 +1,14 @@
 import time
 import uuid
 import os
+import logging
 from json import load
 from enum import Enum
+
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
+from common.logging import LoggingUtil
 
 
 class JobStatus(int, Enum):
@@ -75,7 +78,10 @@ class APSVizSupervisor:
         self.k8s_find = JobFind()
 
         # create the postgres access object
-        self.pg_db = PGUtils()
+        # self.pg_db = PGUtils()
+
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=logging.DEBUG, line_format='medium', log_file_path=os.path.dirname(__file__))
 
     # TODO: make this a common function
     @staticmethod
@@ -117,8 +123,8 @@ class APSVizSupervisor:
             # for each run returned from the database
             for run in self.run_list:
                 # init the state
-                job_status: str = 'Init'
-                job_pod_status: str = 'Init'
+                # job_status: str = 'Init'
+                # job_pod_status: str = 'Init'
 
                 # is this a staging job
                 if run['job-type'] == JobType.staging:
@@ -139,7 +145,7 @@ class APSVizSupervisor:
                         # set the current status
                         run['status'] = JobStatus.staging_running
 
-                        print(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                        self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
                     elif run['status'] == JobStatus.staging_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
@@ -152,7 +158,7 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             # set the next stage and stage status
                             run['job-type'] = JobType.adcirc_supp
@@ -164,7 +170,7 @@ class APSVizSupervisor:
 
                             run['status'] = JobStatus.error
 
-                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             run['job-type'] = JobType.error
 
@@ -184,7 +190,7 @@ class APSVizSupervisor:
                         # execute the k8s job run
                         self.k8s_create.execute(run)
 
-                        print(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                        self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
 
                         # move to the next stage
                         run['status'] = JobStatus.adcirc_supp_running
@@ -200,7 +206,7 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             # set the next stage and stage status
                             run['job-type'] = JobType.final
@@ -213,7 +219,7 @@ class APSVizSupervisor:
 
                             run['status'] = JobStatus.error
 
-                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             run['job-type'] = JobType.error
 
@@ -236,7 +242,7 @@ class APSVizSupervisor:
                         # set the current status
                         run['status'] = JobStatus.final_running
 
-                        print(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                        self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
                     elif run['status'] == JobStatus.final_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
@@ -249,7 +255,7 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             # set the next stage and stage status
                             run['status'] = JobStatus.final_complete
@@ -261,7 +267,7 @@ class APSVizSupervisor:
 
                             run['status'] = JobStatus.error
 
-                            print(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                             run['job-type'] = JobType.error
 
@@ -276,7 +282,7 @@ class APSVizSupervisor:
             # check for something to do after a period of time
             if no_activity_counter >= 10:
                 # wait longer for something to do
-                time.sleep(120) # 120?
+                time.sleep(120)  # 120?
 
                 # try once to see if there is something
                 no_activity_counter = 9
@@ -307,21 +313,21 @@ class APSVizSupervisor:
             # save these params onto the run info
             run[run['job-type']] = {'run-config': config}
 
-    def get_incomplete_runs(self) -> list:
+    def get_incomplete_runs(self):
         """
         TODO: get the list of instances that need processing
         :return: list of records to process
         """
         # create the SQL. raw SQL calls using the django db model need an ID
-        sql = "SELECT public.get_config_list_json() AS data;"
+        # sql = "SELECT public.get_config_list_json() AS data;"
 
         # create a new GUID
         uid: str = str(uuid.uuid4())
 
         # get the data
-        #ret_val = self.pg_db.exec_sql(sql)
+        # ret_val = self.pg_db.exec_sql(sql)
 
         # add this run to the list
         self.run_list.append({'id': uid, 'job-type': JobType.staging, 'status': JobStatus.new})
-        #self.run_list.append({'id': uid, 'job-type': JobType.adcirc_supp, 'status': JobStatus.new})
-        #self.run_list.append({'id': 'fcac6383-5043-4996-a0ee-91436245d032', 'job-type': JobType.final, 'status': JobStatus.new})
+        # self.run_list.append({'id': uid, 'job-type': JobType.adcirc_supp, 'status': JobStatus.new})
+        # self.run_list.append({'id': 'fcac6383-5043-4996-a0ee-91436245d032', 'job-type': JobType.final, 'status': JobStatus.new})
