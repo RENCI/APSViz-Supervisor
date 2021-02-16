@@ -1,6 +1,9 @@
 import os
+import logging
+
 from json import load
 from kubernetes import client, config
+from common.logging import LoggingUtil
 
 
 class JobFind:
@@ -14,6 +17,9 @@ class JobFind:
         """
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
+
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=logging.DEBUG, line_format='medium', log_file_path=os.path.dirname(__file__))
 
     @staticmethod
     def get_config() -> dict:
@@ -37,6 +43,7 @@ class JobFind:
     def find_job_info(self, run) -> (int, str):
         # load the baseline cluster params
         job_details = run[run['job-type']]['job-config']['job-details']
+        job_name = run[run['job-type']]['run-config']['JOB_NAME']
 
         # load the k8s configuration
         try:
@@ -54,7 +61,6 @@ class JobFind:
         core_api = client.CoreV1Api()
 
         # init the status storage
-        job_id: str = ''
         job_status: int = 0
         pod_status: str = ''
 
@@ -67,11 +73,8 @@ class JobFind:
         # for each item returned
         for job in jobs.items:
             # is this the one that was launched
-            if job.metadata.labels['job-name'] == run[run['job-type']]['run-config']['JOB_NAME']:
-                # print(f'Found job: {job_config["job_details"]["JOB_NAME"]}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
-
-                # save the job_id
-                job_id = str(job.metadata.labels["controller-uid"])
+            if job.metadata.labels['job-name'] == job_name:
+                self.logger.debug(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # get the job status
                 job_status = job.status.active
