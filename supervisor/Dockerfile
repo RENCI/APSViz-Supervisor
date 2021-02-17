@@ -15,6 +15,12 @@ RUN apt-get update
 #RUN apt-get install -yq \
 #    nano
 
+# create log details
+RUN mkdir /data
+RUN mkdir /data/log
+ENV LOG_LEVEL 10
+ENV LOG_DIR /data/log
+
 # make a directory for the repo
 RUN mkdir /repo
 
@@ -30,11 +36,6 @@ WORKDIR /repo/APSVIZ-k8s
 # add in the real config files
 ADD ./supervisor_config.json /repo/APSVIZ-k8s/supervisor
 ADD ./base_config.json /repo/APSVIZ-k8s/supervisor
-
-# create a log details
-RUN mkdir /data/log
-ENV LOG_LEVEL 10
-ENV LOG_DIR /data/log
 
 # install requirements
 RUN pip install -r requirements.txt
