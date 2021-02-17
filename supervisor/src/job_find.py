@@ -18,11 +18,12 @@ class JobFind:
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
 
-        # get the log level from the environment
+        # get the log level and directory from the environment
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
+        log_dir: int = int(os.getenv('LOG_DIR', os.path.dirname(__file__)))
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=os.path.dirname(__file__))
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=log_dir)
 
     @staticmethod
     def get_config() -> dict:

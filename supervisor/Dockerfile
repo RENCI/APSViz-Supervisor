@@ -31,8 +31,10 @@ WORKDIR /repo/APSVIZ-k8s
 ADD ./supervisor_config.json /repo/APSVIZ-k8s/supervisor
 ADD ./base_config.json /repo/APSVIZ-k8s/supervisor
 
-# create a log level environment param
+# create a log details
+RUN mkdir /data/log
 ENV LOG_LEVEL 10
+ENV LOG_DIR /data/log
 
 # install requirements
 RUN pip install -r requirements.txt
