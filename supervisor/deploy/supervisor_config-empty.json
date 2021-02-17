@@ -1,5 +1,8 @@
 {
-  "": {
+  "POLL_SHORT_SLEEP": 30,
+  "POLL_LONG_SLEEP": 240,
+
+  "staging": {
     "JOB_NAME": "",
     "DATA_VOLUME_NAME": "",
     "SSH_VOLUME_NAME": "",
