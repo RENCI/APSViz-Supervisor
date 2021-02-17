@@ -1,11 +1,8 @@
 {
-    "client": {
-    "CLUSTER": "",
-    "NAMESPACE": "",
-    "PVC_CLAIM": "",
-    "SECRETS_CLAIM": "",
-    "SSH_ACCOUNT": "",
-    "SSH_SERVER": "",
-    "POLL_SLEEP": 2
-  }
+    "CLUSTER": "blackbalsam",
+    "NAMESPACE": "eds",
+    "PVC_CLAIM": "eds-pvc",
+    "SECRETS_CLAIM": "eds-keys",
+    "CREATE_SLEEP": 2
+
 }
