@@ -23,6 +23,10 @@ class JobCreate:
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
         log_dir: str = os.getenv('LOG_DIR', os.path.dirname(__file__))
 
+        # create the dir if it does not exist
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
+
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_dir)
 
