@@ -19,8 +19,11 @@ class JobCreate:
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
 
+        # get the log level from the environment
+        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
+
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=logging.DEBUG, line_format='medium', log_file_path=os.path.dirname(__file__))
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=os.path.dirname(__file__))
 
     @staticmethod
     def create_job_object(run, job_details):
@@ -43,11 +46,11 @@ class JobCreate:
 
         # configure a persistent claim for the data
         persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
-            claim_name=f'{job_details["client"]["PVC_CLAIM"]}')
+            claim_name=f'{job_details["PVC_CLAIM"]}')
 
         # configure a secret claim for the secret keys
         ssh_secret_claim = client.V1SecretVolumeSource(
-            secret_name=f'{job_details["client"]["SECRETS_CLAIM"]}',
+            secret_name=f'{job_details["SECRETS_CLAIM"]}',
             default_mode=0o600)
 
         # configure the data volume claim
@@ -59,6 +62,16 @@ class JobCreate:
         ssh_volume = client.V1Volume(
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             secret=ssh_secret_claim)
+
+        ssh_username_env = client.V1EnvVar(
+            name='SSH_USERNAME',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='ssh-username')))
+
+        ssh_host_env = client.V1EnvVar(
+            name='SSH_HOST',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='ssh-host')))
 
         asgs_db_username_env = client.V1EnvVar(
             name='ASGS_DB_USERNAME',
@@ -112,7 +125,7 @@ class JobCreate:
             command=run[run['job-type']]['run-config']['COMMAND_LINE'],
             volume_mounts=[data_volume_mount, ssh_volume_mount],
             image_pull_policy='IfNotPresent',
-            env=[asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
+            env=[ssh_username_env, ssh_host_env, asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
                  geo_username_env, geo_password_env, geo_host_env, geo_workspace_env]
             )
 
@@ -147,7 +160,7 @@ class JobCreate:
         api_instance = client.BatchV1Api()
 
         job_data = run[run['job-type']]['job-config']
-        job_details = job_data['job-details']['client']
+        job_details = job_data['job-details']
         run_details = run[run['job-type']]['run-config']
 
         # create the job
@@ -159,7 +172,7 @@ class JobCreate:
         job_id: str = ''
 
         # wait a period of time for the next check
-        time.sleep(job_data['job-details']['client']['POLL_SLEEP'])
+        time.sleep(job_data['job-details']['CREATE_SLEEP'])
 
         # get the job run information
         jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
@@ -189,7 +202,7 @@ class JobCreate:
         """
 
         job_data = run[run['job-type']]['job-config']
-        job_details = job_data['job-details']['client']
+        job_details = job_data['job-details']
         run_details = run[run['job-type']]['run-config']
 
         # create an API hook
@@ -242,7 +255,7 @@ class JobCreate:
         except config.ConfigException:
             try:
                 # else get the local config
-                config.load_kube_config(context=job_details['client']['CLUSTER'])
+                config.load_kube_config(context=job_details['CLUSTER'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
 

@@ -18,8 +18,11 @@ class JobFind:
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
 
+        # get the log level from the environment
+        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
+
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=logging.DEBUG, line_format='medium', log_file_path=os.path.dirname(__file__))
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=os.path.dirname(__file__))
 
     @staticmethod
     def get_config() -> dict:
@@ -52,7 +55,7 @@ class JobFind:
         except config.ConfigException:
             try:
                 # else get the local config
-                config.load_kube_config(context=job_details['client']['CLUSTER'])
+                config.load_kube_config(context=job_details['CLUSTER'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
 
@@ -65,16 +68,16 @@ class JobFind:
         pod_status: str = ''
 
         # get the job run information
-        jobs = api_instance.list_namespaced_job(namespace=job_details['client']['NAMESPACE'])
+        jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
 
         # get the pod status
-        pods = core_api.list_namespaced_pod(namespace=job_details['client']['NAMESPACE'])
+        pods = core_api.list_namespaced_pod(namespace=job_details['NAMESPACE'])
 
         # for each item returned
         for job in jobs.items:
             # is this the one that was launched
             if job.metadata.labels['job-name'] == job_name:
-                self.logger.debug(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
+                self.logger.info(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # get the job status
                 job_status = job.status.active

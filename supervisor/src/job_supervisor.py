@@ -7,7 +7,7 @@ from enum import Enum
 
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
-from postgres.src.pg_utils import PGUtils
+# from postgres.src.pg_utils import PGUtils
 from common.logging import LoggingUtil
 
 
@@ -34,10 +34,11 @@ class JobStatus(int, Enum):
     geotiff2mbtiles_running = 70
     geotiff2mbtiles_complete = 80
 
-    # final operations statuses
-    final_running = 90
-    final_complete = 100
+    # final staging operations statuses
+    final_staging_running = 90
+    final_staging_complete = 100
 
+    # overall status indicators
     warning = 999
     error = -1
 
@@ -50,9 +51,10 @@ class JobType(str, Enum):
     adcirc_supp = 'adcirc-supp',
     adcirc2geotiff = 'adcirc2geotiff',
     geotiff2mbtiles = 'geotiff2mbtiles',
-    final = 'final',
+    final_staging = 'final_staging',
     error = 'error'
     other_1 = 'TBD'
+    complete = 'complete'
 
 
 class APSVizSupervisor:
@@ -80,8 +82,11 @@ class APSVizSupervisor:
         # create the postgres access object
         # self.pg_db = PGUtils()
 
+        # get the log level from the environment
+        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
+
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=logging.DEBUG, line_format='medium', log_file_path=os.path.dirname(__file__))
+        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=os.path.dirname(__file__))
 
     # TODO: make this a common function
     @staticmethod
@@ -92,7 +97,7 @@ class APSVizSupervisor:
         :return: Dict, baseline run params
         """
 
-        # get the config file path/name
+        # get the supervisor config file path/name
         config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
 
         # open the config file
@@ -126,8 +131,11 @@ class APSVizSupervisor:
                 # job_status: str = 'Init'
                 # job_pod_status: str = 'Init'
 
+                # skip this job if it is complete
+                if run['job-type'] == JobType.complete:
+                    continue
                 # is this a staging job
-                if run['job-type'] == JobType.staging:
+                elif run['job-type'] == JobType.staging:
                     # work the current state
                     if run['status'] == JobStatus.new:
                         # set the activity flag
@@ -158,7 +166,7 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
 
                             # set the next stage and stage status
                             run['job-type'] = JobType.adcirc_supp
@@ -168,11 +176,11 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            # set error conditions
                             run['status'] = JobStatus.error
-
-                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-
                             run['job-type'] = JobType.error
+
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
                 # what type of process is this
                 elif run['job-type'] == JobType.adcirc_supp:
@@ -190,10 +198,10 @@ class APSVizSupervisor:
                         # execute the k8s job run
                         self.k8s_create.execute(run)
 
-                        self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-
                         # move to the next stage
                         run['status'] = JobStatus.adcirc_supp_running
+
+                        self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
                     elif run['status'] == JobStatus.adcirc_supp_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
@@ -206,10 +214,10 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
 
                             # set the next stage and stage status
-                            run['job-type'] = JobType.final
+                            run['job-type'] = JobType.final_staging
                             run['status'] = JobStatus.new
 
                         # TODO: how should this be handled?
@@ -217,14 +225,14 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            # set error conditions
                             run['status'] = JobStatus.error
-
-                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-
                             run['job-type'] = JobType.error
 
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
                 # is this a staging job
-                elif run['job-type'] == JobType.final:
+                elif run['job-type'] == JobType.final_staging:
                     # work the current state
                     if run['status'] == JobStatus.new:
                         # set the activity flag
@@ -240,10 +248,10 @@ class APSVizSupervisor:
                         self.k8s_create.execute(run)
 
                         # set the current status
-                        run['status'] = JobStatus.final_running
+                        run['status'] = JobStatus.final_staging_running
 
                         self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-                    elif run['status'] == JobStatus.final_running and run['status'] != JobStatus.error:
+                    elif run['status'] == JobStatus.final_staging_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
 
@@ -255,21 +263,24 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
-                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                            self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
 
                             # set the next stage and stage status
-                            run['status'] = JobStatus.final_complete
+                            run['status'] = JobStatus.final_staging_complete
+
+                            # set the type to complete
+                            run['job_type'] = JobType.complete
 
                         # TODO: how should this be handled?
                         elif job_pod_status.startswith('Failed'):
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            # set error conditions
                             run['status'] = JobStatus.error
-
-                            self.logger.info(f"Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-
                             run['job-type'] = JobType.error
+
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
             # was there any activity
             if no_activity:
@@ -278,16 +289,21 @@ class APSVizSupervisor:
             else:
                 no_activity_counter = 0
 
-            # TODO: put these counts in the config file
             # check for something to do after a period of time
             if no_activity_counter >= 10:
-                # wait longer for something to do
-                time.sleep(120)  # 120?
+                # set the sleep timeout
+                sleep_timeout = config = self.k8s_config['POLL_LONG_SLEEP']
 
-                # try once to see if there is something
+                # try again at this poll rate
                 no_activity_counter = 9
             else:
-                time.sleep(30)
+                # set the sleep timeout
+                sleep_timeout = self.k8s_config['POLL_SHORT_SLEEP']
+
+            self.logger.debug(f"All active run checks complete. Sleeping for {sleep_timeout/60} minutes.")
+
+            # wait longer for something to do
+            time.sleep(sleep_timeout)
 
     def k8s_create_job_obj(self, run: dict, command_line_params: list, extend_output_path: bool = True):
         """
