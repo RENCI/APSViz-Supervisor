@@ -27,8 +27,12 @@ RUN git clone https://github.com/RENCI/APSVIZ-k8s.git
 # go to the repo dir
 WORKDIR /repo/APSVIZ-k8s
 
+# add in the real config files
 ADD ./supervisor_config.json /repo/APSVIZ-k8s/supervisor
 ADD ./base_config.json /repo/APSVIZ-k8s/supervisor
+
+# create a log level environment param
+ENV LOG_LEVEL 10
 
 # install requirements
 RUN pip install -r requirements.txt
