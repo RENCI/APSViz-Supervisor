@@ -16,10 +16,8 @@ RUN apt-get update
 #    nano
 
 # create log details
-RUN mkdir /data
-RUN mkdir /data/log
 ENV LOG_LEVEL 10
-ENV LOG_DIR /data/log
+ENV LOG_DIR /data/logs
 
 # make a directory for the repo
 RUN mkdir /repo
