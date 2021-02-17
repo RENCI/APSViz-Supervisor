@@ -15,9 +15,7 @@ RUN apt-get update
 #RUN apt-get install -yq \
 #    nano
 
-# create log details
 ENV LOG_LEVEL 10
-ENV LOG_DIR /data/logs
 
 # make a directory for the repo
 RUN mkdir /repo

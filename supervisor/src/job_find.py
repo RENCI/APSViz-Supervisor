@@ -20,14 +20,14 @@ class JobFind:
 
         # get the log level and directory from the environment
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_dir: str = os.getenv('LOG_DIR', os.path.dirname(__file__))
+        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
 
         # create the dir if it does not exist
-        if not os.path.exists(log_dir):
-            os.mkdir(log_dir)
+        if not os.path.exists(log_path):
+            os.mkdir(log_path)
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=log_dir)
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=log_path)
 
     @staticmethod
     def get_config() -> dict:
