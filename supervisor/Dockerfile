@@ -15,7 +15,8 @@ RUN apt-get update
 #RUN apt-get install -yq \
 #    nano
 
-ENV LOG_LEVEL 10
+# create log level env param (debug=10, info=20)
+ENV LOG_LEVEL 20
 
 # make a directory for the repo
 RUN mkdir /repo
