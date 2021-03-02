@@ -22,21 +22,21 @@ class JobStatus(int, Enum):
     staging_running = 10
     staging_complete = 20
 
-    # adcirc supp statuses
-    adcirc_supp_running = 30
-    adcirc_supp_complete = 40
+    # obs_mod supp statuses
+    obs_mod_running = 30
+    obs_mod_complete = 40
 
-    # adcirc geo tiff statuses
-    adcirc2geotiff_running = 50
-    adcirc2geotiff_complete = 60
+    # obs_mod geo tiff statuses
+    run_geo_tiff_running = 50
+    run_geo_tiff_complete = 60
 
     # geo tiff to mbtile statuses
-    geotiff2mbtiles_running = 70
-    geotiff2mbtiles_complete = 80
+    compute_mbtiles_running = 70
+    compute_mbtiles_complete = 80
 
     # load geoserver statuses
-    loadgeoserver_running = 90
-    loadgeoserver_complete = 100
+    load_geo_server_running = 90
+    load_geo_server_complete = 100
 
     # final staging operations statuses
     final_staging_running = 110
@@ -52,10 +52,10 @@ class JobType(str, Enum):
     Class that stores the job type constants
     """
     staging = 'staging',
-    adcirc_supp = 'adcirc-supp',
-    adcirc2geotiff = 'adcirc2geotiff',
-    geotiff2mbtiles = 'geotiff2mbtiles',
-    load_geoserver = 'load-geoserver',
+    obs_mod = 'obs-mod',
+    run_geo_tiff = 'run-geo-tiff',
+    compute_mbtiles = 'compute-mbtiles',
+    load_geo_server = 'load-geo-server',
     final_staging = 'final-staging',
     error = 'error'
     other_1 = 'TBD'
@@ -142,6 +142,8 @@ class APSVizSupervisor:
                 # job_status: str = 'Init'
                 # job_pod_status: str = 'Init'
 
+                config = self.k8s_config[run['job-type']]
+
                 # skip this job if it is complete
                 if run['job-type'] == JobType.complete:
                     continue
@@ -156,7 +158,7 @@ class APSVizSupervisor:
                         command_line_params = ['--inputURL', 'http://tds.renci.org:8080/thredds/fileServer/2021/nam/2021010500/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/namforecast/', '--outputDir']
 
                         # create the job configuration for a new run
-                        self.k8s_create_job_obj(run, command_line_params)
+                        self.k8s_create_job_obj(run, command_line_params, True)
 
                         # execute the k8s job run
                         self.k8s_create.execute(run)
@@ -180,28 +182,28 @@ class APSVizSupervisor:
                             self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
 
                             # set the next stage and stage status
-                            run['job-type'] = JobType.adcirc_supp
+                            run['job-type'] = JobType.obs_mod
                             run['status'] = JobStatus.new
 
                         elif job_pod_status.startswith('Failed'):
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
                             # set error conditions
                             run['job-type'] = JobType.error
                             run['status'] = JobStatus.error
 
-                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-
-                # what type of process is this
-                elif run['job-type'] == JobType.adcirc_supp:
+                # is this a obs_mod job
+                elif run['job-type'] == JobType.obs_mod:
                     # work the current state
                     if run['status'] == JobStatus.new:
                         # set the activity flag
                         no_activity = False
 
-                        # TODO: this should be generated from a DB record?
-                        command_line_params = ['--inputURL', '/data/' + str(run['id']) + '/staging/input/fort.63.nc', '--outputDir']
+                        # create the additional command line parameters
+                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + config['SUB_PATH'] + config['ADDITIONAL_PATH'], '--inputURL', config['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params)
@@ -210,10 +212,10 @@ class APSVizSupervisor:
                         self.k8s_create.execute(run)
 
                         # move to the next stage
-                        run['status'] = JobStatus.adcirc_supp_running
+                        run['status'] = JobStatus.obs_mod_running
 
                         self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-                    elif run['status'] == JobStatus.adcirc_supp_running and run['status'] != JobStatus.error:
+                    elif run['status'] == JobStatus.obs_mod_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
 
@@ -228,7 +230,7 @@ class APSVizSupervisor:
                             self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
 
                             # set the next stage and stage status
-                            run['job-type'] = JobType.load_geoserver
+                            run['job-type'] = JobType.load_geo_server
                             run['status'] = JobStatus.new
 
                         # TODO: how should this be handled?
@@ -236,14 +238,63 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
                             # set error conditions
                             run['job-type'] = JobType.error
                             run['status'] = JobStatus.error
 
+                # is this a geo tiff job array
+                elif run['job-type'] == JobType.run_geo_tiff:
+                    # work the current state
+                    if run['status'] == JobStatus.new:
+                        # set the activity flag
+                        no_activity = False
+
+                        # create the additional command line parameters
+                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/tiff', '--inputFile']
+
+                        # create the job configuration for a new run
+                        self.k8s_create_job_obj(run, command_line_params)
+
+                        # execute the k8s job run
+                        self.k8s_create.execute(run)
+
+                        # move to the next stage
+                        run['status'] = JobStatus.run_geo_tiff_running
+
+                        self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                    elif run['status'] == JobStatus.run_geo_tiff_running and run['status'] != JobStatus.error:
+                        # set the activity flag
+                        no_activity = False
+
+                        # find the job, get the status
+                        job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                        # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                        if job_status != 1 and not job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
+                            self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+
+                            # set the next stage and stage status
+                            run['job-type'] = JobType.compute_mbtiles
+                            run['status'] = JobStatus.new
+
+                        # TODO: how should this be handled?
+                        elif job_pod_status.startswith('Failed'):
+                            # remove the job and get the final run status
+                            job_status = self.k8s_create.delete_job(run)
+
                             self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
-                # is this a staging job
-                elif run['job-type'] == JobType.load_geoserver:
+                            # set error conditions
+                            run['status'] = JobStatus.error
+                            run['job-type'] = JobType.error
+
+                # is this a geo server load job
+                elif run['job-type'] == JobType.load_geo_server:
                     # work the current state
                     if run['status'] == JobStatus.new:
                         # set the activity flag
@@ -253,16 +304,16 @@ class APSVizSupervisor:
                         command_line_params = ['--instanceId', str(run['id'])]
 
                         # create the job configuration for a new run
-                        self.k8s_create_job_obj(run, command_line_params, False)
+                        self.k8s_create_job_obj(run, command_line_params)
 
                         # execute the k8s job run
                         self.k8s_create.execute(run)
 
                         # set the current status
-                        run['status'] = JobStatus.loadgeoserver_running
+                        run['status'] = JobStatus.load_geo_server_running
 
                         self.logger.info(f"Job created. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-                    elif run['status'] == JobStatus.loadgeoserver_running and run['status'] != JobStatus.error:
+                    elif run['status'] == JobStatus.load_geo_server_running and run['status'] != JobStatus.error:
                         # set the activity flag
                         no_activity = False
 
@@ -285,11 +336,12 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
                             # set error conditions
                             run['job-type'] = JobType.error
                             run['status'] = JobStatus.error
 
-                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
                 # is this a final staging job
                 elif run['job-type'] == JobType.final_staging:
                     # work the current state
@@ -333,11 +385,11 @@ class APSVizSupervisor:
                             # remove the job and get the final run status
                             job_status = self.k8s_create.delete_job(run)
 
+                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+
                             # set error conditions
                             run['job-type'] = JobType.error
                             run['status'] = JobStatus.error
-
-                            self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
 
             # was there any activity
             if no_activity:
@@ -362,9 +414,9 @@ class APSVizSupervisor:
             # wait longer for something to do
             time.sleep(sleep_timeout)
 
-    def k8s_create_job_obj(self, run: dict, command_line_params: list, extend_output_path: bool = True):
+    def k8s_create_job_obj(self, run: dict, command_line_params: list, extend_output_path: bool = False):
         """
-        Creates the details for an adcirc-supp job from the database
+        Creates the details for an obs_mod-supp job from the database
 
         :return:
         """
@@ -401,5 +453,6 @@ class APSVizSupervisor:
         # ret_val = self.pg_db.exec_sql(sql)
 
         # add this run to the list
-        self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new})
-        # self.run_list.append({'id': uid, 'job-type': JobType.adcirc_supp, 'status': JobStatus.new})
+        # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new})
+        # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new})
+        self.run_list.append({'id': 2620, 'job-type': JobType.run_geo_tiff, 'status': JobStatus.new})

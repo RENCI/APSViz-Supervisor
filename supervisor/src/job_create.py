@@ -128,26 +128,58 @@ class JobCreate:
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='geo-workspace')))
 
-        # configure the pod template container
-        container = client.V1Container(
-            name=run[run['job-type']]['run-config']['JOB_NAME'],
-            image=run[run['job-type']]['run-config']['IMAGE'],
-            command=run[run['job-type']]['run-config']['COMMAND_LINE'],
-            volume_mounts=[data_volume_mount, ssh_volume_mount],
-            image_pull_policy='IfNotPresent',
-            env=[ssh_username_env, ssh_host_env, asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
-                 geo_username_env, geo_password_env, geo_host_env, geo_workspace_env]
-            )
+        # init a list for all the containers in this job
+        containers: list = []
+
+        # add on the
+        for idx, item in enumerate(run[run['job-type']]['run-config']['COMMAND_MATRIX']):
+            # get the base command line
+            new_cmd_list: list = run[run['job-type']]['run-config']['COMMAND_LINE'].copy()
+
+            # split the item into its parts
+            args = item.split(' ')
+
+            # add the command mtrix value
+            new_cmd_list.extend(args)
+
+            # set the default number of CPUs
+            cpus: str = '1'
+
+            # if this was an array find the number of CPUs needed
+            if len(args) > 1:
+                for arg in args:
+                    if arg.startswith('--cpu'):
+                        cpus = arg.split('=')[1]
+                        break
+
+            # configure the pod template container
+            container = client.V1Container(
+                name=run[run['job-type']]['run-config']['JOB_NAME'] + str(idx),
+                image=run[run['job-type']]['run-config']['IMAGE'],
+                command=new_cmd_list,
+                volume_mounts=[data_volume_mount, ssh_volume_mount],
+                image_pull_policy='IfNotPresent',
+                env=[ssh_username_env, ssh_host_env, asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
+                     geo_username_env, geo_password_env, geo_host_env, geo_workspace_env],
+                resources={'limits': {'cpu': cpus}, 'requests': {'cpu': cpus}}
+                )
+
+            # add the container to the list
+            containers.append(container)
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=[container], volumes=[data_volume, ssh_volume]))
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume])
+        )
 
         # create the specification of job deployment
         spec = client.V1JobSpec(
             template=template,
-            backoff_limit=1)
+            backoff_limit=1,
+            ttl_seconds_after_finished=120,
+            parallelism=len(run[run['job-type']]['run-config']['COMMAND_MATRIX'])
+            )
 
         # instantiate the job object
         job = client.V1Job(
