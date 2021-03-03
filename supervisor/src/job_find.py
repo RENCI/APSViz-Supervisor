@@ -82,7 +82,7 @@ class JobFind:
         for job in jobs.items:
             # is this the one that was launched
             if job.metadata.labels['job-name'] == job_name:
-                self.logger.info(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
+                self.logger.debug(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # get the job status
                 job_status = job.status.active
@@ -92,8 +92,9 @@ class JobFind:
                     if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
                         pod_status = str(pod.status.phase)
 
-                        # no need to continue
-                        break
+                        if pod_status.startswith("Failed"):
+                            # no need to continue
+                            break
 
                 # no need to continue
                 break
