@@ -136,20 +136,17 @@ class JobCreate:
             # get the base command line
             new_cmd_list: list = run[run['job-type']]['run-config']['COMMAND_LINE'].copy()
 
-            # split the item into its parts
-            args = item.split(' ')
-
-            # add the command mtrix value
-            new_cmd_list.extend(args)
+            # add the command matrix value
+            new_cmd_list.extend(item)
 
             # set the default number of CPUs
             cpus: str = '1'
 
-            # if this was an array find the number of CPUs needed
-            if len(args) > 1:
-                for arg in args:
+            # find the number of CPUs needed if it is there
+            if len(item) > 1:
+                for idx, arg in enumerate(item):
                     if arg.startswith('--cpu'):
-                        cpus = arg.split('=')[1]
+                        cpus = str(item[idx+1])
                         break
 
             # configure the pod template container
