@@ -1,10 +1,8 @@
 import time
-import uuid
 import os
 import logging
 from json import load
 from enum import Enum
-
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
