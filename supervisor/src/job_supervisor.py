@@ -136,21 +136,21 @@ class APSVizSupervisor:
 
             # for each run returned from the database
             for run in self.run_list:
-                # skip this job if it is complete or in error
+                # skip this job if it is complete
                 if run['job-type'] == JobType.complete:
-                    run['status_prov'] += ', Run complete'
+                    run['status_prov'] += ', Run Complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    self.run_list.remove(run)
                     continue
+                # or an error
                 elif run['job-type'] == JobType.error:
                     run['status_prov'] += ', Error detected'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
                     run['job-type'] = JobType.complete
                     continue
 
-                # if this is a new job get the run config
-                if run['status'] == JobStatus.new:
-                    # get the run config for this item
-                    config = self.k8s_config[run['job-type']]
+                # get the run config for this job type
+                config = self.k8s_config[run['job-type']]
 
                 # is this a staging job
                 if run['job-type'] == JobType.staging:
