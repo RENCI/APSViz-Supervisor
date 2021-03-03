@@ -1,34 +1,63 @@
 import sys
 import os
 import psycopg2
+import logging
+from common.logging import LoggingUtil
 
 
 class PGUtils:
     def __init__(self):
+        # get configuration params from the pods secrets
         username = os.getenv('ASGS_DB_USERNAME')
         password = os.environ.get('ASGS_DB_PASSWORD')
         host = os.environ.get('ASGS_DB_HOST')
         database = os.environ.get('ASGS_DB_DATABASE')
         port = os.environ.get('ASGS_DB_PORT')
 
+        # create a connection string
         conn_str = f"host={host} port={port} dbname={database} user={username} password={password}"
 
+        # connect to the DB
         self.conn = psycopg2.connect(conn_str)
 
+        # insure records are updated immediately
+        self.conn.autocommit = True
+
+        # create the connection cursor
         self.cursor = self.conn.cursor()
 
+        # get the log level and directory from the environment.
+        # level comes from the container dockerfile, path comes from the k8s secrets
+        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
+        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
+
+        # create the dir if it does not exist
+        if not os.path.exists(log_path):
+            os.mkdir(log_path)
+
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSVIZ.pg_utils", level=log_level, line_format='medium', log_file_path=log_path)
+
     def __del__(self):
-        # close up the DB
+        """
+        close up the DB
+
+        :return:
+        """
         try:
             self.cursor.close()
             self.conn.close()
         except Exception as e:
-            e = sys.exc_info()[0]
+            self.logger.error(f'Error detected. {e}')
+            sys.exc_info()[0]
 
-    ###########################################
-    # executes a sql statement, returns the first row
-    ###########################################
     def exec_sql(self, sql_stmt):
+        """
+        executes a sql statement
+
+        :param sql_stmt:
+        :return:
+        """
         try:
             # execute the sql
             self.cursor.execute(sql_stmt)
@@ -36,13 +65,43 @@ class PGUtils:
             # get the returned value
             ret_val = self.cursor.fetchone()
 
+            # trap the return
             if ret_val is None or ret_val[0] is None:
+                # specify a return code on an empty result
                 ret_val = -1
             else:
+                # get the one and only record of json
                 ret_val = ret_val[0]
 
+            # return to the caller
             return ret_val
-        except:
-            e = sys.exc_info()[0]
+        except Exception as e:
+            self.logger.error(f'Error detected. {e}')
+            sys.exc_info()[0]
             return
 
+    def get_new_runs(self):
+        """
+        gets the DB records for new runs
+
+        :return: a json record of newly requested runs
+        """
+        # create the sql
+        sql: str = 'SELECT public.get_supervisor_config_items_json()'
+
+        # get the data
+        return self.exec_sql(sql)
+
+    def update_job_status(self, instance_id, value):
+        """
+        updates the job status
+
+        :param instance_id:
+        :param value:
+        :return: nothing
+        """
+        # create the sql
+        sql = f"SELECT public.set_config_item({instance_id}, 'supervisor_job_status', '{value}')"
+
+        # run the SQL
+        self.exec_sql(sql)
