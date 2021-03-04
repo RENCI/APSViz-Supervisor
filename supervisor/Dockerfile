@@ -38,4 +38,4 @@ ADD ./base_config.json /repo/APSVIZ-k8s/supervisor
 RUN pip install -r requirements.txt
 
 # start the service entry point
-ENTRYPOINT ["bash"]
+ENTRYPOINT ["python", "main.py"]
