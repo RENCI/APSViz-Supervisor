@@ -6,7 +6,6 @@ from json import load
 from kubernetes import client, config
 from common.logging import LoggingUtil
 
-
 class JobCreate:
     """
     Class that uses the k8s API to create, run and delete a job
@@ -144,23 +143,27 @@ class JobCreate:
 
             # find the number of CPUs needed if it is there
             if len(item) > 1:
-                for idx, arg in enumerate(item):
+                for i, arg in enumerate(item):
                     if arg.startswith('--cpu'):
-                        cpus = str(item[idx+1])
+                        cpus = str(item[i+1])
                         break
+
+            # get the baseline set of container resources
+            resources = {'limits': {'cpu': cpus}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}}
 
             # configure the pod template container
             container = client.V1Container(
-                name=run[run['job-type']]['run-config']['JOB_NAME'] + str(idx),
+                name=run[run['job-type']]['run-config']['JOB_NAME'] + '-' + str(idx),
                 image=run[run['job-type']]['run-config']['IMAGE'],
                 command=new_cmd_list,
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
                 image_pull_policy='IfNotPresent',
                 env=[ssh_username_env, ssh_host_env, asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
                      geo_username_env, geo_password_env, geo_host_env, geo_workspace_env],
-                resources={'limits': {'cpu': cpus}, 'requests': {'cpu': cpus}}
+                resources=resources
                 )
 
+            # if idx == 2 or run[run['job-type']]['run-config']['JOB_NAME'].startswith('staging'):
             # add the container to the list
             containers.append(container)
 
@@ -174,8 +177,7 @@ class JobCreate:
         spec = client.V1JobSpec(
             template=template,
             backoff_limit=1,
-            ttl_seconds_after_finished=120,
-            parallelism=len(run[run['job-type']]['run-config']['COMMAND_MATRIX'])
+            ttl_seconds_after_finished=120
             )
 
         # instantiate the job object
