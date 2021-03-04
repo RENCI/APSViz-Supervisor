@@ -92,9 +92,9 @@ class JobFind:
                     if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
                         pod_status = str(pod.status.phase)
 
-                        if pod_status.startswith("Failed"):
-                            # no need to continue
-                            break
+                        # if pod_status.startswith("Failed"):
+                        #     # no need to continue
+                        #     break
 
                 # no need to continue
                 break
