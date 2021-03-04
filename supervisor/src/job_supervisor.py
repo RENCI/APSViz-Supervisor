@@ -132,14 +132,14 @@ class APSVizSupervisor:
         endless loop finding task requests and create k8s jobs to complete them
         :return:
         """
+        # get the incomplete runs from the database
+        self.get_incomplete_runs()
 
         # set counter that indicates nothing was done
         no_activity_counter: int = 0
 
         # until the end of time
         while True:
-            # get the incomplete runs from the database
-            self.get_incomplete_runs()
 
             # reset the activity flag
             no_activity: bool = True
@@ -365,7 +365,7 @@ class APSVizSupervisor:
                             self.logger.info(f"Job complete. Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
 
                             # set the next stage and stage status
-                            run['job-type'] = JobType.compute_mbtiles_2
+                            run['job-type'] = JobType.load_geo_server
                             run['status'] = JobStatus.new
                             run['status_prov'] += ', Compute mbtiles part 1 complete'
                             self.pg_db.update_job_status(run['id'], run['status_prov'])
@@ -660,20 +660,28 @@ class APSVizSupervisor:
         :return: list of records to process
         """
         # get the new runs
-        runs = self.pg_db.get_new_runs()
+        # runs = self.pg_db.get_new_runs()
+        #
+        # # did we find anything to do
+        # if runs != -1:
+        #     # add this run to the list
+        #     for run in runs:
+        #         # create the new run
+        #         self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
+        #
+        #         # update the run status in the DB
+        #         self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
 
-        # did we find anything to do
-        if runs != -1:
-            # add this run to the list
-            for run in runs:
-                # create the new run
-                self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
+        """
+        SELECT public.set_config_item(2620, 'supervisor_job_status', 'new');
 
-                # update the run status in the DB
-                self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
+        SELECT id, key, value, instance_id
+	    FROM public."ASGS_Mon_config_item" where key='supervisor_job_status';
+	    
+	    """
 
         # debugging only
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.run_geo_tiff, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
-        # self.run_list.append({'id': 2620, 'job-type': JobType.compute_mbtiles_1, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
+        self.run_list.append({'id': 2620, 'job-type': JobType.compute_mbtiles_1, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
