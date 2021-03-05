@@ -132,14 +132,13 @@ class APSVizSupervisor:
         endless loop finding task requests and create k8s jobs to complete them
         :return:
         """
-        # get the incomplete runs from the database
-        self.get_incomplete_runs()
-
         # set counter that indicates nothing was done
         no_activity_counter: int = 0
 
         # until the end of time
         while True:
+            # get the incomplete runs from the database
+            self.get_incomplete_runs()
 
             # reset the activity flag
             no_activity: bool = True
@@ -159,10 +158,6 @@ class APSVizSupervisor:
                     run['job-type'] = JobType.complete
                     continue
 
-                if run['status'] == JobStatus.new:
-                    # get the run config for this job type
-                    config = self.k8s_config[run['job-type']].copy()
-
                 # is this a staging job
                 if run['job-type'] == JobType.staging:
                     # work the current state
@@ -170,8 +165,8 @@ class APSVizSupervisor:
                         # set the activity flag
                         no_activity = False
 
-                        # TODO: this should be generated from a DB record?
-                        command_line_params = ['--inputURL', 'http://tds.renci.org:8080/thredds/fileServer/2021/nam/2021010500/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/namforecast/', '--outputDir']
+                        # get the data by the download url
+                        command_line_params = ['--inputURL', run['downloadurl'], '--outputDir']
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params, True)
@@ -223,7 +218,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # create the additional command line parameters
-                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + config['SUB_PATH'] + config['ADDITIONAL_PATH'], '--inputURL', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input/fort.63.nc']
+                        command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'], '--inputURL', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input/fort.63.nc']
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params)
@@ -276,7 +271,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # create the additional command line parameters
-                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + config['SUB_PATH'], '--inputFile']
+                        command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params)
@@ -336,7 +331,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # create the additional command line parameters
-                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + config['SUB_PATH'], '--inputFile']
+                        command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params)
@@ -384,10 +379,10 @@ class APSVizSupervisor:
                 # is this a mbtiles part 1 job array
                 elif run['job-type'] == JobType.compute_mbtiles_2:
                     """
-                    ["swan_HS_max.63.tif", "--zl_start", "0", "--zl_end", "9", "--cpu", "1"],
-                    ["swan_HS_max.63.tif", "--zl_start", "10", "--zl_end", "10", "--cpu", "2"],
-                    ["swan_HS_max.63.tif", "--zl_start", "11", "--zl_end", "11", "--cpu", "4"],
-                    ["swan_HS_max.63.tif", "--zl_start", "12", "--zl_end", "12", "--cpu", "8"],
+                    ["swan_HS_max.63.tif", "--zlstart", "0", "--zlstop", "9", "--cpu", "1"],
+                    ["swan_HS_max.63.tif", "--zlstart", "10", "--zlstop", "10", "--cpu", "2"],
+                    ["swan_HS_max.63.tif", "--zlstart", "11", "--zlstop", "11", "--cpu", "4"],
+                    ["swan_HS_max.63.tif", "--zlstart", "12", "--zlstop", "12", "--cpu", "8"],
                     """
 
                     # work the current state
@@ -396,7 +391,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # create the additional command line parameters
-                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + config['SUB_PATH'], '--inputFile']
+                        command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params)
@@ -444,10 +439,10 @@ class APSVizSupervisor:
                 # is this a mbtiles part 1 job array
                 elif run['job-type'] == JobType.compute_mbtiles_3:
                     """
-                    ["maxwvel.63.tif", "--zl_start", "0", "--zl_end", "9", "--cpu", "1"],
-                    ["maxwvel.63.tif", "--zl_start", "10", "--zl_end", "10", "--cpu", "2"],
-                    ["maxwvel.63.tif", "--zl_start", "11", "--zl_end", "11", "--cpu", "4"],
-                    ["maxwvel.63.tif", "--zl_start", "12", "--zl_end", "12", "--cpu", "8"]
+                    ["maxwvel.63.tif", "--zlstart", "0", "--zlstop", "9", "--cpu", "1"],
+                    ["maxwvel.63.tif", "--zlstart", "10", "--zlstop", "10", "--cpu", "2"],
+                    ["maxwvel.63.tif", "--zlstart", "11", "--zlstop", "11", "--cpu", "4"],
+                    ["maxwvel.63.tif", "--zlstart", "12", "--zlstop", "12", "--cpu", "8"]
                     """
 
                     # work the current state
@@ -456,7 +451,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # create the additional command line parameters
-                        command_line_params = ['--outputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']) + config['SUB_PATH'], '--inputFile']
+                        command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params)
@@ -562,7 +557,7 @@ class APSVizSupervisor:
                         no_activity = False
 
                         # TODO: this should be generated from a DB record?
-                        command_line_params = ['--inputDir', config['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--outputDir', config['DATA_MOUNT_PATH'] + config['SUB_PATH'], '--tarMeta', str(run['id'])]
+                        command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'], '--tarMeta', str(run['id'])]
 
                         # create the job configuration for a new run
                         self.k8s_create_job_obj(run, command_line_params, False)
@@ -651,7 +646,7 @@ class APSVizSupervisor:
                 config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
                 config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
 
-            # save these params onto the run info
+            # save these params in the run info
             run[run['job-type']] = {'run-config': config}
 
     def get_incomplete_runs(self):
@@ -660,28 +655,28 @@ class APSVizSupervisor:
         :return: list of records to process
         """
         # get the new runs
-        # runs = self.pg_db.get_new_runs()
-        #
-        # # did we find anything to do
-        # if runs != -1:
-        #     # add this run to the list
-        #     for run in runs:
-        #         # create the new run
-        #         self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
-        #
-        #         # update the run status in the DB
-        #         self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
+        runs = self.pg_db.get_new_runs()
+
+        # did we find anything to do
+        if runs != -1:
+            # add this run to the list
+            for run in runs:
+                # create the new run
+                self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['downloadurl']})
+
+                # update the run status in the DB
+                self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
 
         """
-        SELECT public.set_config_item(2620, 'supervisor_job_status', 'new');
-
-        SELECT id, key, value, instance_id
-	    FROM public."ASGS_Mon_config_item" where key='supervisor_job_status';
-	    
-	    """
+            SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
+            SELECT public.set_config_item(2620, 'supervisor_job_status', 'new');
+            SELECT public.get_config_items_json(2620);
+            SELECT public.get_supervisor_config_items_json();
+            SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where key='supervisor_job_status';   
+        """
 
         # debugging only
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.run_geo_tiff, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
-        self.run_list.append({'id': 2620, 'job-type': JobType.compute_mbtiles_1, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
+        # self.run_list.append({'id': 2620, 'job-type': JobType.compute_mbtiles_1, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
