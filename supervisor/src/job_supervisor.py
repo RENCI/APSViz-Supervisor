@@ -233,7 +233,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Staging complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -286,8 +286,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Obs/Mod complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -339,8 +338,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Geo tiff complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -399,8 +397,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Compute mbtiles part 1 complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -459,8 +456,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Compute mbtiles part 2 complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -519,8 +515,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Compute mbtiles part 3 complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -538,7 +533,7 @@ class APSVizSupervisor:
                 # set the activity flag
                 no_activity = False
 
-                # TODO: this should be generated from a DB record?
+                # create the additional command line parameters
                 command_line_params = ['--instanceId', str(run['id'])]
 
                 # create the job configuration for a new run
@@ -572,8 +567,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Load geo server complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -591,7 +585,7 @@ class APSVizSupervisor:
                 # set the activity flag
                 no_activity = False
 
-                # TODO: this should be generated from a DB record?
+                # create the additional command line parameters
                 command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--outputDir',
                                        self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'], '--tarMeta', str(run['id'])]
 
@@ -626,8 +620,7 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.final_staging_complete
                     run['status_prov'] += ', Final staging complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # TODO: how should this be handled?
+                # was there a failure
                 elif job_pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
@@ -645,7 +638,7 @@ class APSVizSupervisor:
 
         :return:
         """
-        # TODO: most values to populate this object should come from the database or a configuration file
+        # create a new configuration if tis is a new run
         if run['status'] == JobStatus.new:
             # get the config
             config = self.k8s_config[run['job-type']]
