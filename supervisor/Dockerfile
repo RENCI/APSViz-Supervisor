@@ -12,8 +12,7 @@ LABEL maintainer="powen@renci.org"
 
 # install basic tools
 RUN apt-get update
-#RUN apt-get install -yq \
-#    nano
+RUN apt-get install -yq nano
 
 # create log level env param (debug=10, info=20)
 ENV LOG_LEVEL 20
