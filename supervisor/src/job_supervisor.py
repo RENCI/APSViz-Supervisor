@@ -665,7 +665,7 @@ class APSVizSupervisor:
         runs = self.pg_db.get_new_runs()
 
         # did we find anything to do
-        if runs != -1:
+        if runs != -1 and runs is not None:
             # add this run to the list
             for run in runs:
                 # create the new run
