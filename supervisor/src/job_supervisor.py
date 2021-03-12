@@ -147,7 +147,7 @@ class APSVizSupervisor:
             for run in self.run_list:
                 # skip this job if it is complete
                 if run['job-type'] == JobType.complete:
-                    run['status_prov'] += ', Run Complete'
+                    run['status_prov'] += ', Run complete.'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
                     self.run_list.remove(run)
                     continue
