@@ -253,7 +253,8 @@ class APSVizSupervisor:
 
                 # create the additional command line parameters
                 command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-                                       '--inputURL', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input/fort.63.nc']
+                                       '--inputURL', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input/fort.63.nc',
+                                       '--grid', run['gridname']]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
@@ -668,11 +669,13 @@ class APSVizSupervisor:
         if runs != -1 and runs is not None:
             # add this run to the list
             for run in runs:
-                # create the new run
-                self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['downloadurl']})
+                # continue only if we have everything needed for a run
+                if 'downloadurl' in run['data'] and 'adcirc.gridname' in run['data']:
+                    # create the new run
+                    self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['data']['downloadurl'], 'gridname': run['data']['adcirc.gridname']})
 
-                # update the run status in the DB
-                self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
+                    # update the run status in the DB
+                    self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
 
         # debugging only
         """
