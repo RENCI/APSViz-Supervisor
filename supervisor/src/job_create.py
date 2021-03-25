@@ -20,7 +20,7 @@ class JobCreate:
 
         # get the log level and directory from the environment
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
+        log_path: str = os.getenv('LOG_PATH', os.path.join(os.path.dirname(__file__), 'logs'))
 
         # create the dir if it does not exist
         if not os.path.exists(log_path):
@@ -159,7 +159,7 @@ class JobCreate:
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
                 image_pull_policy='IfNotPresent',
                 env=[ssh_username_env, ssh_host_env, asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
-                     geo_username_env, geo_password_env, geo_host_env, geo_workspace_env],
+                     geo_username_env, geo_password_env, geo_host_env, geo_workspace_env, log_dir_env],
                 resources=resources
                 )
 
