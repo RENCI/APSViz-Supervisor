@@ -98,7 +98,7 @@ class APSVizSupervisor:
         # get the log level and directory from the environment.
         # level comes from the container dockerfile, path comes from the k8s secrets
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
+        log_path: str = os.getenv('LOG_PATH', os.path.join(os.path.dirname(__file__), 'logs'))
 
         # create the dir if it does not exist
         if not os.path.exists(log_path):
@@ -251,10 +251,13 @@ class APSVizSupervisor:
                 # set the activity flag
                 no_activity = False
 
+                # the download URL given is for a file server. obs/mod needs the dodsC access type
+                access_type = run['downloadurl'] + '/fort.63.nc'
+                access_type = access_type.replace('fileServer', 'dodsC')
+
                 # create the additional command line parameters
                 command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-                                       '--inputURL', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input/fort.63.nc',
-                                       '--grid', run['gridname']]
+                                       '--inputURL', access_type, '--grid', run['gridname']]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
