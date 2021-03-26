@@ -663,8 +663,12 @@ class APSVizSupervisor:
     def get_incomplete_runs(self):
         """
         get the list of instances that need processing
+
         :return: list of records to process
         """
+        # storage for runs that are invalid
+        invalid_runs: list = []
+
         # get the new runs
         runs = self.pg_db.get_new_runs()
 
@@ -679,6 +683,12 @@ class APSVizSupervisor:
 
                     # update the run status in the DB
                     self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
+                else:
+                    invalid_runs.append(run['instance_id'])
+
+            # output some info for the users
+            if len(invalid_runs) > 0:
+                self.logger.info(f"Run ID(s) {invalid_runs} lack the required run properties. Launch aborted.")
 
         # debugging only
         """
