@@ -7,6 +7,19 @@ from common.logging import LoggingUtil
 
 class PGUtils:
     def __init__(self):
+        # get the log level and directory from the environment.
+        # level comes from the container dockerfile, path comes from the k8s secrets
+        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
+        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
+
+        # create the dir if it does not exist
+        if not os.path.exists(log_path):
+            os.mkdir(log_path)
+
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSVIZ.pg_utils", level=log_level, line_format='medium', log_file_path=log_path)
+        return
+
         # get configuration params from the pods secrets
         username = os.getenv('ASGS_DB_USERNAME')
         password = os.environ.get('ASGS_DB_PASSWORD')
@@ -26,18 +39,6 @@ class PGUtils:
         # create the connection cursor
         self.cursor = self.conn.cursor()
 
-        # get the log level and directory from the environment.
-        # level comes from the container dockerfile, path comes from the k8s secrets
-        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
-
-        # create the dir if it does not exist
-        if not os.path.exists(log_path):
-            os.mkdir(log_path)
-
-        # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.pg_utils", level=log_level, line_format='medium', log_file_path=log_path)
-
     def __del__(self):
         """
         close up the DB
@@ -45,10 +46,13 @@ class PGUtils:
         :return:
         """
         try:
-            self.cursor.close()
-            self.conn.close()
+            if self.cursor is not None:
+                self.cursor.close()
+
+            if self.conn is not None:
+                self.conn.close()
         except Exception as e:
-            self.logger.error(f'Error detected. {e}')
+            self.logger.error(f'Error detected closing cursor or connection. {e}')
             sys.exc_info()[0]
 
     def exec_sql(self, sql_stmt):
@@ -76,7 +80,7 @@ class PGUtils:
             # return to the caller
             return ret_val
         except Exception as e:
-            self.logger.error(f'Error detected. {e}')
+            self.logger.error(f'Error detected executing SQL. {e}')
             sys.exc_info()[0]
             return
 
