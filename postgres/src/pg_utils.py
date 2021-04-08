@@ -18,7 +18,6 @@ class PGUtils:
 
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.pg_utils", level=log_level, line_format='medium', log_file_path=log_path)
-        return
 
         # get configuration params from the pods secrets
         username = os.getenv('ASGS_DB_USERNAME')
