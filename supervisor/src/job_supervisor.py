@@ -701,7 +701,11 @@ class APSVizSupervisor:
             SELECT public.set_config_item(2620, 'supervisor_job_status', 'new');
             SELECT public.get_config_items_json(2620);
             SELECT public.get_supervisor_config_items_json();
-            SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where key in ('supervisor_job_status', 'downloadurl', 'gridname');   
+            SELECT id, key, value, instance_id 
+                FROM public."ASGS_Mon_config_item"
+                where key in ('supervisor_job_status', 'downloadurl', 'adcirc.gridname')
+                and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
+                order by 4 desc, 2;   
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
