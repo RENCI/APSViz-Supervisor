@@ -67,7 +67,7 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             secret=ssh_secret_claim)
 
-        log_dir_env = client.V1EnvVar(
+        log_dir = client.V1EnvVar(
             name='LOG_PATH',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='log-path')))
@@ -77,52 +77,62 @@ class JobCreate:
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='ssh-username')))
 
-        ssh_host_env = client.V1EnvVar(
+        ssh_host = client.V1EnvVar(
             name='SSH_HOST',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='ssh-host')))
 
-        asgs_db_username_env = client.V1EnvVar(
+        asgs_db_username = client.V1EnvVar(
             name='ASGS_DB_USERNAME',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-username')))
 
-        asgs_db_password_env = client.V1EnvVar(
+        asgs_db_password = client.V1EnvVar(
             name='ASGS_DB_PASSWORD',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-password')))
 
-        asgs_db_host_env = client.V1EnvVar(
+        asgs_db_host = client.V1EnvVar(
             name='ASGS_DB_HOST',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-host')))
 
-        asgs_db_port_env = client.V1EnvVar(
+        asgs_db_port = client.V1EnvVar(
             name='ASGS_DB_PORT',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-port')))
 
-        asgs_db_database_env = client.V1EnvVar(
+        asgs_db_database = client.V1EnvVar(
             name='ASGS_DB_DATABASE',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='asgs-database')))
 
-        geo_username_env = client.V1EnvVar(
+        geo_username = client.V1EnvVar(
             name='GEOSERVER_USER',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='geo-username')))
 
-        geo_password_env = client.V1EnvVar(
+        geo_password = client.V1EnvVar(
             name='GEOSERVER_PASSWORD',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='geo-password')))
 
-        geo_host_env = client.V1EnvVar(
+        geo_url = client.V1EnvVar(
             name='GEOSERVER_URL',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='geo-url')))
+
+        geo_host = client.V1EnvVar(
+            name='GEOSERVER_HOST',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='geo-host')))
 
-        geo_workspace_env = client.V1EnvVar(
+        geo_proj_path = client.V1EnvVar(
+            name='GEOSERVER_PROJ_PATH',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='geo-proj-path')))
+
+        geo_workspace = client.V1EnvVar(
             name='GEOSERVER_WORKSPACE',
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='geo-workspace')))
@@ -157,10 +167,10 @@ class JobCreate:
                 image=run[run['job-type']]['run-config']['IMAGE'],
                 command=new_cmd_list,
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
-                image_pull_policy='IfNotPresent',
-                env=[ssh_username_env, ssh_host_env, asgs_db_username_env, asgs_db_password_env, asgs_db_host_env, asgs_db_port_env, asgs_db_database_env,
-                     geo_username_env, geo_password_env, geo_host_env, geo_workspace_env, log_dir_env],
-                resources=resources
+                image_pull_policy='Always',
+                env=[log_dir, ssh_username_env, ssh_host, asgs_db_username, asgs_db_password, asgs_db_host, asgs_db_port, asgs_db_database,
+                     geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace],
+                resources=resources,
                 )
 
             # if idx == 2 or run[run['job-type']]['run-config']['JOB_NAME'].startswith('staging'):
@@ -170,7 +180,7 @@ class JobCreate:
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume])
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume])  # , node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
         )
 
         # create the specification of job deployment
