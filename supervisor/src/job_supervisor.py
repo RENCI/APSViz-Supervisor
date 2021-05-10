@@ -184,7 +184,7 @@ class APSVizSupervisor:
                 # set the sleep timeout
                 sleep_timeout = self.k8s_config['POLL_SHORT_SLEEP']
 
-            self.logger.debug(f"All active run checks complete. Sleeping for {sleep_timeout/60} minutes.")
+            self.logger.debug(f"All active run checks complete. Sleeping for {sleep_timeout / 60} minutes.")
 
             # wait longer for something to do
             time.sleep(sleep_timeout)
@@ -261,8 +261,17 @@ class APSVizSupervisor:
                 access_type = access_type.replace('fileServer', 'dodsC')
 
                 # create the additional command line parameters
-                command_line_params = ['--instanceId', str(run['id']), '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-                                       '--inputURL', access_type, '--grid', run['gridname']]
+                command_line_params = ['--instanceId', str(run['id']),
+                                       '--inputURL', access_type, '--grid', run['gridname'],
+                                       '--outputDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) +
+                                       self.k8s_config[run['job-type']]['SUB_PATH'] +
+                                       self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
+                                       '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/' +
+                                       'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']
+                                       ]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
@@ -314,7 +323,11 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']  # '--instanceId', str(run['id']),
+                command_line_params = ['--outputDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) +
+                                       self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--inputFile']
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
@@ -370,7 +383,15 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']  # '--instanceId', str(run['id']),
+                command_line_params = ['--outputDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--finalDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/' +
+                                       'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--inputFile'
+                                       ]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
@@ -426,7 +447,13 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']  # '--instanceId', str(run['id']),
+                command_line_params = ['--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/' +
+                                       'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--inputFile'
+                                       ]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
@@ -482,7 +509,13 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'], '--inputFile']  # '--instanceId', str(run['id']),
+                command_line_params = ['--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/' +
+                                       'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--inputFile'
+                                       ]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params)
@@ -586,8 +619,15 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--outputDir',
-                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'], '--tarMeta', str(run['id'])]  # '--instanceId', str(run['id']),
+                command_line_params = ['--inputDir',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) +
+                                       self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--outputDir',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] +
+                                       self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--tarMeta',
+                                       str(run['id'])]
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params, False)
@@ -630,6 +670,8 @@ class APSVizSupervisor:
                     # set error conditions
                     run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
+
+        # return to the caller
         return no_activity
 
     def k8s_create_job_obj(self, run: dict, command_line_params: list, extend_output_path: bool = False):
@@ -680,7 +722,8 @@ class APSVizSupervisor:
                 # continue only if we have everything needed for a run
                 if 'downloadurl' in run['data'] and 'adcirc.gridname' in run['data']:
                     # create the new run
-                    self.run_list.append({'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['data']['downloadurl'], 'gridname': run['data']['adcirc.gridname']})
+                    self.run_list.append(
+                        {'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['data']['downloadurl'], 'gridname': run['data']['adcirc.gridname']})
 
                     # update the run status in the DB
                     self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
