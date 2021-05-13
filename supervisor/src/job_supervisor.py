@@ -719,22 +719,30 @@ class APSVizSupervisor:
         if runs != -1 and runs is not None:
             # add this run to the list
             for run in runs:
+                # did we get everything to make a run
+                if 'instance_id' in run and 'uid' in run:
+                    # create the new run id
+                    run_id = f"{run['instance_id']}_{run['uid']}"
+                else:
+                    invalid_runs.append(f"{run['instance_id']}")
+                    self.logger.error('Invalid or missing run instance and url information.')
+                    continue
+
                 # continue only if we have everything needed for a run
                 if 'downloadurl' in run['data'] and 'adcirc.gridname' in run['data']:
                     # create the new run
-                    self.run_list.append(
-                        {'id': run['instance_id'], 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['data']['downloadurl'], 'gridname': run['data']['adcirc.gridname']})
+                    self.run_list.append({'id': run_id, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['data']['downloadurl'], 'gridname': run['data']['adcirc.gridname']})
 
                     # update the run status in the DB
-                    self.pg_db.update_job_status(run['instance_id'], 'New, Run accepted')
+                    self.pg_db.update_job_status(run_id, 'New, Run accepted')
                 else:
                     # update the run status in the DB
-                    self.pg_db.update_job_status(run['instance_id'], 'Error - Lacks the required run properties.')
-                    invalid_runs.append(run['instance_id'])
+                    self.pg_db.update_job_status(run_id, 'Error - Lacks the required run properties.')
+                    invalid_runs.append(f"{run_id}")
 
             # output some info for the users
             if len(invalid_runs) > 0:
-                self.logger.info(f"Run ID(s) {invalid_runs} lack the required run properties. Launch aborted.")
+                self.logger.info(f"Run ID(s) {invalid_runs} lack the required run properties. Launches aborted.")
 
         # debugging only
         """
@@ -742,10 +750,14 @@ class APSVizSupervisor:
             SELECT public.set_config_item(2620, 'supervisor_job_status', 'new');
             SELECT public.get_config_items_json(2620);
             SELECT public.get_supervisor_config_items_json();
-            SELECT id, key, value, instance_id 
+            UPDATE public."ASGS_Mon_config_item" SET value='do no run' WHERE key='supervisor_job_status' AND instance_id=0;
+            
+            select * from public."ASGS_Mon_config_item" where instance_id=2620 and uid='2021050600-namforecast' and key in ('downloadurl','adcirc.gridname','supervisor_job_status');
+
+            SELECT id, instance_id, uid, key, value
                 FROM public."ASGS_Mon_config_item"
                 where key in ('supervisor_job_status', 'downloadurl', 'adcirc.gridname')
-                and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
+                and instance_id in (select distinct id from public."ASGS_Mon_instance" order by id desc)
                 order by 4 desc, 2;   
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})

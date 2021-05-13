@@ -95,7 +95,7 @@ class PGUtils:
         # get the data
         return self.exec_sql(sql)
 
-    def update_job_status(self, instance_id, value):
+    def update_job_status(self, run_id, value):
         """
         updates the job status
 
@@ -103,8 +103,11 @@ class PGUtils:
         :param value:
         :return: nothing
         """
+        # split the run id. run id is in the form <instance id>_<url>
+        run = run_id.split('_')
+
         # create the sql
-        sql = f"SELECT public.set_config_item({instance_id}, 'supervisor_job_status', '{value}')"
+        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}', 'supervisor_job_status', '{value}')"
 
         # run the SQL
         self.exec_sql(sql)
