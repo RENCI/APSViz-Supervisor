@@ -104,10 +104,10 @@ class PGUtils:
         :return: nothing
         """
         # split the run id. run id is in the form <instance id>_<url>
-        run = run_id.split('_')
+        run = run_id.split('-')
 
         # create the sql
-        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}', 'supervisor_job_status', '{value}')"
+        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}-{run[2]}', 'supervisor_job_status', '{value}')"
 
         # run the SQL
         self.exec_sql(sql)

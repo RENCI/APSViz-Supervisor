@@ -722,7 +722,7 @@ class APSVizSupervisor:
                 # did we get everything to make a run
                 if 'instance_id' in run and 'uid' in run:
                     # create the new run id
-                    run_id = f"{run['instance_id']}_{run['uid']}"
+                    run_id = f"{run['instance_id']}-{run['uid']}"
                 else:
                     invalid_runs.append(f"{run['instance_id']}")
                     self.logger.error('Invalid or missing run instance and url information.')
@@ -758,7 +758,7 @@ class APSVizSupervisor:
                 FROM public."ASGS_Mon_config_item"
                 where key in ('supervisor_job_status', 'downloadurl', 'adcirc.gridname')
                 and instance_id in (select distinct id from public."ASGS_Mon_instance" order by id desc)
-                order by 4 desc, 2;   
+                order by 2 desc, 4;   
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
