@@ -79,7 +79,7 @@ class PGUtils:
             # return to the caller
             return ret_val
         except Exception as e:
-            self.logger.error(f'Error detected executing SQL. {e}')
+            self.logger.error(f'Error detected executing SQL: {sql_stmt}. {e}')
             sys.exc_info()[0]
             return
 
