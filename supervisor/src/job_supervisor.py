@@ -708,10 +708,6 @@ class APSVizSupervisor:
         # storage for runs that are invalid
         invalid_runs: list = []
 
-        # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': 'http://tds.renci.org:8080/thredds/fileServer/2021/nam/2021010500/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/namforecast', 'gridname': 'hsofs'})
-        #
-        # return
-
         # get the new runs
         runs = self.pg_db.get_new_runs()
 
@@ -746,11 +742,16 @@ class APSVizSupervisor:
             
             SELECT public.get_config_items_json(2620);
             SELECT public.get_supervisor_config_items_json();
-            UPDATE public."ASGS_Mon_config_item" SET value='do no run' WHERE key='supervisor_job_status' AND instance_id=0;
             
-            select * from public."ASGS_Mon_config_item" where instance_id=2620 and uid='2021050600-namforecast' and key in ('downloadurl','adcirc.gridname','supervisor_job_status');
+            UPDATE public."ASGS_Mon_config_item" SET value='do not run' WHERE key='supervisor_job_status' AND instance_id=0;
+            
+            select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status');
 
- 
+            select id, key, value, instance_id 
+                FROM public."ASGS_Mon_config_item"
+                where key in ('supervisor_job_status', 'downloadurl', 'adcirc.gridname')
+                and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
+                order by 4 desc, 2;   
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
