@@ -686,9 +686,9 @@ class APSVizSupervisor:
             config = self.get_config()[run['job-type']]
 
             # load the config with the info from the config file
-            config['JOB_NAME'] += str(run['id'])
-            config['DATA_VOLUME_NAME'] += str(run['id'])
-            config['SSH_VOLUME_NAME'] += str(run['id'])
+            config['JOB_NAME'] += str(run['id']).lower()
+            config['DATA_VOLUME_NAME'] += str(run['id']).lower()
+            config['SSH_VOLUME_NAME'] += str(run['id']).lower()
             config['COMMAND_LINE'].extend(command_line_params)
 
             # tack on any additional paths if requested
@@ -738,7 +738,7 @@ class APSVizSupervisor:
         """
             SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
             
-            SELECT public.set_config_item(2871, '2021051918-namforecast', 'supervisor_job_status', 'new');	
+            SELECT public.set_config_item(2903, '46-nhcConsensus', 'supervisor_job_status', 'new');	
             
             SELECT public.get_config_items_json(2620);
             SELECT public.get_supervisor_config_items_json();
@@ -747,11 +747,12 @@ class APSVizSupervisor:
             
             select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status');
 
-            select id, key, value, instance_id 
+            select id, key, value, instance_id, uid
                 FROM public."ASGS_Mon_config_item"
                 where key in ('supervisor_job_status', 'downloadurl', 'adcirc.gridname')
                 and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
-                order by 4 desc, 2;   
+				--and uid='2021052506-namforecast'
+                order by 2, 1 desc, 5;   
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
