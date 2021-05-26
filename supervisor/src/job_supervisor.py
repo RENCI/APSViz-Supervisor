@@ -163,8 +163,25 @@ class APSVizSupervisor:
                     run['job-type'] = JobType.complete
                     continue
 
-                # handle the run
-                no_activity = self.handle_run(no_activity, run)
+                try:
+                    # handle the run
+                    no_activity = self.handle_run(run)
+                except Exception as e:
+                    # report the excection
+                    self.logger.error(f"Exception detected, killing job: Run details {run}, Exception details: {e}")
+
+                    # delete the k8s job if it exists
+                    self.k8s_create.delete_job(run)
+
+                    # prepare the DB status
+                    run['status_prov'] += ', Exception detected'
+
+                    # update the status in the DB
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                    # set the run to complete
+                    run['job-type'] = JobType.complete
+                    continue
 
             # was there any activity
             if no_activity:
@@ -189,11 +206,10 @@ class APSVizSupervisor:
             # wait longer for something to do
             time.sleep(sleep_timeout)
 
-    def handle_run(self, no_activity, run):
+    def handle_run(self, run):
         """
         handles the run processing
 
-        :param no_activity:
         :param run:
         :return:
         """
