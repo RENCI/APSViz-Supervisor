@@ -158,6 +158,8 @@ class APSVizSupervisor:
                     continue
                 # or an error
                 elif run['job-type'] == JobType.error:
+                    # report the exception
+                    self.logger.error(f"Error detected: Run details {run}.")
                     run['status_prov'] += ', Error detected'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
                     run['job-type'] = JobType.complete
@@ -167,19 +169,15 @@ class APSVizSupervisor:
                     # handle the run
                     no_activity = self.handle_run(run)
                 except Exception as e:
-                    # report the excection
-                    self.logger.error(f"Exception detected, killing job: Run details {run}, Exception details: {e}")
+                    # report the exception
+                    self.logger.error(f"Exception detected, killing job: Run details {run}, Exception details: {e}.")
 
                     # delete the k8s job if it exists
                     self.k8s_create.delete_job(run)
 
                     # prepare the DB status
                     run['status_prov'] += ', Exception detected'
-
-                    # update the status in the DB
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                    # set the run to complete
                     run['job-type'] = JobType.complete
                     continue
 
