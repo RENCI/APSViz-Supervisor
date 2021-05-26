@@ -211,6 +211,9 @@ class APSVizSupervisor:
         :param run:
         :return:
         """
+        # init the activity flag
+        no_activity: bool = False
+
         # is this a staging job
         if run['job-type'] == JobType.staging:
             # work the current state
@@ -387,10 +390,6 @@ class APSVizSupervisor:
 
         # is this a mbtiles zoom 0-9 job array
         elif run['job-type'] == JobType.compute_mbtiles_0_9:
-            """
-            ["maxele.63.tif", "--zlstart", "0", "--zlstop", "9", "--cpu", "4"],
-            """
-
             # work the current state
             if run['status'] == JobStatus.new:
                 # set the activity flag
@@ -451,10 +450,6 @@ class APSVizSupervisor:
 
         # is this a mbtiles part 1 job array
         elif run['job-type'] == JobType.compute_mbtiles_10:
-            """
-            ["swan_HS_max.63.tif", "--zlstart", "10", "--zlstop", "10", "--cpu", "2"],
-            """
-
             # work the current state
             if run['status'] == JobStatus.new:
                 # set the activity flag
@@ -513,10 +508,6 @@ class APSVizSupervisor:
 
         # is this a mbtiles part 1 job array
         elif run['job-type'] == JobType.compute_mbtiles_11:
-            """
-            ["maxwvel.63.tif", "--zlstart", "11", "--zlstop", "11", "--cpu", "4"],
-            """
-
             # work the current state
             if run['status'] == JobStatus.new:
                 # set the activity flag
@@ -761,12 +752,12 @@ class APSVizSupervisor:
             
             select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status');
 
-            select id, key, value, instance_id, uid
+            select id, instance_id, uid, key, value
                 FROM public."ASGS_Mon_config_item"
-                where key in ('supervisor_job_status', 'downloadurl', 'adcirc.gridname')
+                where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl'
                 and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
-				--and uid='2021052506-namforecast'
-                order by 2, 1 desc, 5;   
+                --and uid='2021052506-namforecast'
+                order by 2 desc, 1 desc, 4, 5;   
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
