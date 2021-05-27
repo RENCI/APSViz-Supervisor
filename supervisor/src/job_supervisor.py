@@ -248,7 +248,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.obs_mod
@@ -314,7 +314,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.run_geo_tiff
@@ -370,7 +370,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.compute_mbtiles_0_9
@@ -430,7 +430,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.load_geo_server
@@ -488,7 +488,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.load_geo_server
@@ -546,7 +546,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.load_geo_server
@@ -598,7 +598,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the type to complete
                     run['job-type'] = JobType.final_staging
@@ -658,7 +658,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Job delete status: {job_status}")
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
                     run['job-type'] = JobType.complete
