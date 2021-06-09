@@ -344,6 +344,10 @@ class APSVizSupervisor:
                                        self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                        str(run['id']) +
                                        self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--finalDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/' +
+                                       'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
                                        '--inputFile']
 
                 # create the job configuration for a new run
