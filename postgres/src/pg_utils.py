@@ -1,4 +1,3 @@
-import sys
 import os
 import psycopg2
 import logging
@@ -52,7 +51,6 @@ class PGUtils:
                 self.conn.close()
         except Exception as e:
             self.logger.error(f'Error detected closing cursor or connection. {e}')
-            sys.exc_info()[0]
 
     def exec_sql(self, sql_stmt):
         """
@@ -80,8 +78,6 @@ class PGUtils:
             return ret_val
         except Exception as e:
             self.logger.error(f'Error detected executing SQL: {sql_stmt}. {e}')
-            sys.exc_info()[0]
-            return
 
     def get_new_runs(self):
         """
@@ -99,7 +95,7 @@ class PGUtils:
         """
         updates the job status
 
-        :param instance_id:
+        :param run_id:
         :param value:
         :return: nothing
         """
