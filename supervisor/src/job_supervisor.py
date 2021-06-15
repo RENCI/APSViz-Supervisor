@@ -1,6 +1,7 @@
 import time
 import os
 import logging
+import slack
 from json import load
 from enum import Enum
 from supervisor.src.job_create import JobCreate
@@ -112,6 +113,10 @@ class APSVizSupervisor:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=log_path)
 
+        # instantiate slack connectivity
+        self.slack_client = slack.WebClient(token=os.getenv('SLACK_ACCESS_TOKEN'))
+        self.slack_channel = os.getenv('SLACK_CHANNEL')
+
     # TODO: make this a common function
     @staticmethod
     def get_config() -> dict:
@@ -154,6 +159,8 @@ class APSVizSupervisor:
                 if run['job-type'] == JobType.complete:
                     run['status_prov'] += ', Run complete.'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    self.send_slack_msg(f"Run ID {run['id']} complete. Run provenance: {run['status_prov']}")
+
                     self.run_list.remove(run)
                     continue
                 # or an error
@@ -183,6 +190,9 @@ class APSVizSupervisor:
 
             # was there any activity
             if no_activity:
+                # clear out the run list
+                self.run_list.clear()
+
                 # increment the counter
                 no_activity_counter += 1
             else:
@@ -261,6 +271,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -327,6 +338,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -387,6 +399,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['status'] = JobStatus.error
@@ -447,6 +460,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['status'] = JobStatus.error
@@ -505,6 +519,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['status'] = JobStatus.error
@@ -563,6 +578,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['status'] = JobStatus.error
@@ -615,6 +631,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -675,6 +692,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(f"Run ID {run['id']} failed in {run['job-type']}")
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -708,6 +726,15 @@ class APSVizSupervisor:
             # save these params in the run info
             run[run['job-type']] = {'run-config': config}
 
+    def send_slack_msg(self, msg):
+        """
+        sends a msg to the slack channel
+
+        :param msg:
+        :return:
+        """
+        self.slack_client.chat_postMessage(channel=self.slack_channel, text=f"APSViz Supervisor: {msg}")
+
     def get_incomplete_runs(self):
         """
         get the list of instances that need processing
@@ -734,6 +761,9 @@ class APSVizSupervisor:
 
                     # update the run status in the DB
                     self.pg_db.update_job_status(run_id, 'New, Run accepted')
+
+                    # notify slack
+                    self.send_slack_msg(f"Run ID {run_id} accepted.")
                 else:
                     # update the run status in the DB
                     self.pg_db.update_job_status(run_id, 'Error - Lacks the required run properties.')
@@ -742,6 +772,7 @@ class APSVizSupervisor:
             # output some info for the users
             if len(invalid_runs) > 0:
                 self.logger.info(f"Run ID(s) {invalid_runs} lack the required run properties. Launches aborted.")
+                self.send_slack_msg(f"Run ID(s) {invalid_runs} lack the required run properties.")
 
         # debugging only
         """

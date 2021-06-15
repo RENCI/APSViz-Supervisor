@@ -137,6 +137,16 @@ class JobCreate:
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='geo-workspace')))
 
+        slack_client = client.V1EnvVar(
+            name='SLACK_ACCESS_TOKEN',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='slack-access-token')))
+
+        slack_channel = client.V1EnvVar(
+            name='SLACK_CHANNEL',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='slack-channel')))
+
         # init a list for all the containers in this job
         containers: list = []
 
@@ -169,7 +179,7 @@ class JobCreate:
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
                 image_pull_policy='Always',
                 env=[log_dir, ssh_username_env, ssh_host, asgs_db_username, asgs_db_password, asgs_db_host, asgs_db_port, asgs_db_database,
-                     geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace],
+                     geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace, slack_client, slack_channel],
                 resources=resources,
                 )
 
