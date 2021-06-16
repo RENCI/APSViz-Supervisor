@@ -159,7 +159,7 @@ class APSVizSupervisor:
                 if run['job-type'] == JobType.complete:
                     run['status_prov'] += ', Run complete.'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-                    self.send_slack_msg(run['id'], f"complete. Run provenance: {run['status_prov']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"complete. Run provenance: {run['status_prov']}.", run['instance_name'])
 
                     self.run_list.remove(run)
                     continue
@@ -169,8 +169,10 @@ class APSVizSupervisor:
                     self.logger.error(f"Error detected: Run details {run}.")
                     run['status_prov'] += ', Error detected'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-                    run['job-type'] = JobType.complete
-                    continue
+
+                    # set the type to clean up
+                    run['job-type'] = JobType.final_staging
+                    run['status'] = JobStatus.new
 
                 try:
                     # handle the run
@@ -271,7 +273,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -338,7 +340,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -399,11 +401,11 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
-                    run['status'] = JobStatus.error
                     run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
 
         # is this a mbtiles zoom 0-9 job array
         elif run['job-type'] == JobType.compute_mbtiles_0_9:
@@ -460,11 +462,11 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
-                    run['status'] = JobStatus.error
                     run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
 
         # is this a mbtiles part 1 job array
         elif run['job-type'] == JobType.compute_mbtiles_10:
@@ -519,11 +521,11 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
-                    run['status'] = JobStatus.error
                     run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
 
         # is this a mbtiles part 1 job array
         elif run['job-type'] == JobType.compute_mbtiles_11:
@@ -578,11 +580,11 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
-                    run['status'] = JobStatus.error
                     run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
 
         # is this a geo server load job
         elif run['job-type'] == JobType.load_geo_server:
@@ -631,7 +633,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
 
                     # set error conditions
                     run['job-type'] = JobType.error
@@ -692,11 +694,11 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}. Warning: Intermediate files may not have been removed.", run['instance_name'])
 
                     # set error conditions
-                    run['job-type'] = JobType.error
-                    run['status'] = JobStatus.error
+                    run['job-type'] = JobType.complete
+                    run['status'] = JobStatus.final_staging_complete
 
         # return to the caller
         return no_activity
@@ -752,11 +754,8 @@ class APSVizSupervisor:
         """
         get the list of instances that need processing
 
-        :return: list of records to process
+        :return: nothing
         """
-        # storage for runs that are invalid
-        invalid_runs: list = []
-
         # get the new runs
         runs = self.pg_db.get_new_runs()
 
@@ -776,7 +775,7 @@ class APSVizSupervisor:
                     self.pg_db.update_job_status(run_id, 'New, Run accepted')
 
                     # notify slack
-                    self.send_slack_msg(run_id, "accepted.", run['run_data']['instancename'] )
+                    self.send_slack_msg(run_id, "accepted.", run['run_data']['instancename'])
                 else:
                     # update the run status in the DB
                     self.pg_db.update_job_status(run_id, 'Error - Lacks the required run properties.')
@@ -794,7 +793,7 @@ class APSVizSupervisor:
         """
             SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
             
-            SELECT public.set_config_item(2903, '46-nhcConsensus', 'supervisor_job_status', 'new');	
+            SELECT public.set_config_item(0, 'x', 'supervisor_job_status', 'new');	
             
             SELECT public.get_config_items_json(2620);
             SELECT public.get_supervisor_config_items_json();
