@@ -159,7 +159,14 @@ class APSVizSupervisor:
                 if run['job-type'] == JobType.complete:
                     run['status_prov'] += ', Run complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
-                    self.send_slack_msg(run['id'], f"complete. Run provenance: {run['status_prov']}.", run['instance_name'])
+
+                    # add a comment on overall pass/fail
+                    if run['status_prov'].find('Error') == -1:
+                        overall_status = 'successfully'
+                    else:
+                        overall_status = 'unsuccessfully'
+
+                    self.send_slack_msg(run['id'], f"completed *{overall_status}*.\nRun provenance: {run['status_prov']}.", run['instance_name'])
 
                     self.run_list.remove(run)
                     continue
