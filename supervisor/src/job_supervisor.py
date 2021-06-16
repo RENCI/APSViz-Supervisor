@@ -192,9 +192,6 @@ class APSVizSupervisor:
 
             # was there any activity
             if no_activity:
-                # clear out the run list
-                self.run_list.clear()
-
                 # increment the counter
                 no_activity_counter += 1
             else:
@@ -800,11 +797,11 @@ class APSVizSupervisor:
             
             UPDATE public."ASGS_Mon_config_item" SET value='do not run' WHERE key='supervisor_job_status' AND instance_id=0;
             
-            select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status');
+            select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status', 'instancename');
 
             select id, instance_id, uid, key, value
                 FROM public."ASGS_Mon_config_item"
-                where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl'
+                where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
                 and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
                 --and uid='2021052506-namforecast'
                 order by 2 desc, 1 desc, 4, 5;   
