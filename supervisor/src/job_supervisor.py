@@ -157,7 +157,7 @@ class APSVizSupervisor:
             for run in self.run_list:
                 # skip this job if it is complete
                 if run['job-type'] == JobType.complete:
-                    run['status_prov'] += ', Run complete.'
+                    run['status_prov'] += ', Run complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
                     self.send_slack_msg(run['id'], f"complete. Run provenance: {run['status_prov']}.", run['instance_name'])
 
@@ -166,7 +166,7 @@ class APSVizSupervisor:
                 # or an error
                 elif run['job-type'] == JobType.error:
                     # report the exception
-                    self.logger.error(f"Error detected: Run details {run}.")
+                    self.logger.error(f"Error detected: Cleaning up intermediate files.")
                     run['status_prov'] += ', Error detected'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
 
