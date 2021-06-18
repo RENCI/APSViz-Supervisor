@@ -162,11 +162,12 @@ class APSVizSupervisor:
 
                     # add a comment on overall pass/fail
                     if run['status_prov'].find('Error') == -1:
-                        overall_status = 'successfully'
+                        msg = f'*completed successfully*.'
                     else:
-                        overall_status = 'unsuccessfully'
+                        msg = f"*completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
 
-                    self.send_slack_msg(run['id'], f"completed *{overall_status}*.\nRun provenance: {run['status_prov']}.", run['instance_name'])
+                    # send the message
+                    self.send_slack_msg(run['id'], msg, run['instance_name'])
 
                     self.run_list.remove(run)
                     continue
