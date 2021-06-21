@@ -153,49 +153,71 @@ class APSVizSupervisor:
             # reset the activity flag
             no_activity: bool = True
 
-            # for each run returned from the database
-            for run in self.run_list:
-                # skip this job if it is complete
-                if run['job-type'] == JobType.complete:
-                    run['status_prov'] += ', Run complete'
-                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+            try:
+                # for each run returned from the database
+                for run in self.run_list:
+                    # skip this job if it is complete
+                    if run['job-type'] == JobType.complete:
+                        run['status_prov'] += ', Run complete'
+                        self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                    # add a comment on overall pass/fail
-                    if run['status_prov'].find('Error') == -1:
-                        msg = f'*completed successfully*.'
-                    else:
-                        msg = f"*completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
+                        # add a comment on overall pass/fail
+                        if run['status_prov'].find('Error') == -1:
+                            msg = f'*completed successfully*.'
+                        else:
+                            msg = f"*completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
 
-                    # send the message
-                    self.send_slack_msg(run['id'], msg, run['instance_name'])
+                        # send the message
+                        self.send_slack_msg(run['id'], msg, run['instance_name'])
 
-                    continue
-                # or an error
-                elif run['job-type'] == JobType.error:
-                    # report the exception
-                    self.logger.error(f"Error detected: Cleaning up intermediate files.")
-                    run['status_prov'] += ', Error detected'
-                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                        # remove the run
+                        self.run_list.remove(run)
 
-                    # set the type to clean up
-                    run['job-type'] = JobType.final_staging
-                    run['status'] = JobStatus.new
+                        continue
+                    # or an error
+                    elif run['job-type'] == JobType.error:
+                        # report the exception
+                        self.logger.error(f"Error detected: Cleaning up intermediate files.")
+                        run['status_prov'] += ', Error detected'
+                        self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                try:
-                    # handle the run
-                    no_activity = self.handle_run(run)
-                except Exception as e:
-                    # report the exception
-                    self.logger.error(f"Exception detected, killing job: Run details {run}, Exception details: {e}.")
+                        # set the type to clean up
+                        run['job-type'] = JobType.final_staging
+                        run['status'] = JobStatus.new
 
-                    # delete the k8s job if it exists
-                    self.k8s_create.delete_job(run)
+                    try:
+                        # handle the run
+                        no_activity = self.handle_run(run)
+                    except Exception as e:
+                        # report the exception
+                        self.logger.error(f"Inner exception detected, killing job: id: {run['id']}, job-type: {run['job-type']}, status: run['status_prov'], downloadurl: run['downloadurl'], gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
 
-                    # prepare the DB status
-                    run['status_prov'] += ', Exception detected'
-                    self.pg_db.update_job_status(run['id'], run['status_prov'])
-                    run['job-type'] = JobType.complete
-                    continue
+                        # delete the k8s job if it exists
+                        self.k8s_create.delete_job(run)
+
+                        # prepare the DB status
+                        run['status_prov'] += ', Inner Exception detected'
+                        self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                        # set error conditions
+                        run['job-type'] = JobType.error
+                        run['status'] = JobStatus.error
+                        continue
+
+            except Exception as e_main:
+                # report the exception
+                # report the exception
+                self.logger.error(f"Outer exception detected - id: {run['id']}, job-type: {run['job-type']}, status: run['status_prov'], downloadurl: run['downloadurl'], gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
+
+                # prepare the DB status
+                run['status_prov'] += ', Outer Exception detected'
+                self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                # set error conditions
+                run['job-type'] = JobType.error
+                run['status'] = JobStatus.error
+
+                continue
 
             # was there any activity
             if no_activity:
