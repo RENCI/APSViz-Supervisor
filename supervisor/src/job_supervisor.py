@@ -169,7 +169,6 @@ class APSVizSupervisor:
                     # send the message
                     self.send_slack_msg(run['id'], msg, run['instance_name'])
 
-                    self.run_list.remove(run)
                     continue
                 # or an error
                 elif run['job-type'] == JobType.error:
