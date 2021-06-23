@@ -153,9 +153,10 @@ class APSVizSupervisor:
             # reset the activity flag
             no_activity: bool = True
 
-            try:
-                # for each run returned from the database
-                for run in self.run_list:
+            # for each run returned from the database
+            for run in self.run_list:
+                # catch cleanup exceptions
+                try:
                     # skip this job if it is complete
                     if run['job-type'] == JobType.complete:
                         run['status_prov'] += ', Run complete'
@@ -173,11 +174,12 @@ class APSVizSupervisor:
                         # remove the run
                         self.run_list.remove(run)
 
+                        # continue processing
                         continue
                     # or an error
                     elif run['job-type'] == JobType.error:
                         # report the exception
-                        self.logger.error(f"Error detected: Cleaning up intermediate files.")
+                        self.logger.error(f"Error detected: About to clean up of intermediate files. Run id: {run['id']}")
                         run['status_prov'] += ', Error detected'
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
@@ -185,39 +187,41 @@ class APSVizSupervisor:
                         run['job-type'] = JobType.final_staging
                         run['status'] = JobStatus.new
 
-                    try:
-                        # handle the run
-                        no_activity = self.handle_run(run)
-                    except Exception as e:
-                        # report the exception
-                        self.logger.error(f"Inner exception detected, killing job: id: {run['id']}, job-type: {run['job-type']}, status: run['status_prov'], downloadurl: run['downloadurl'], gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
-
-                        # delete the k8s job if it exists
-                        self.k8s_create.delete_job(run)
-
-                        # prepare the DB status
-                        run['status_prov'] += ', Inner Exception detected'
-                        self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                        # set error conditions
-                        run['job-type'] = JobType.error
-                        run['status'] = JobStatus.error
+                        # continue processing
                         continue
 
-            except Exception as e_main:
-                # report the exception
-                # report the exception
-                self.logger.error(f"Outer exception detected - id: {run['id']}, job-type: {run['job-type']}, status: run['status_prov'], downloadurl: run['downloadurl'], gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
+                except Exception as e_main:
+                    # report the exception
+                    self.logger.error(f"Cleanup exception detected, id: {run['id']}, \
+                                        job-type: {run['job-type']}, status: {run['status_prov']}, downloadurl: {run['downloadurl']},\
+                                        gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e_main}")
 
-                # prepare the DB status
-                run['status_prov'] += ', Outer Exception detected'
-                self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    # continue processing runs
+                    continue
 
-                # set error conditions
-                run['job-type'] = JobType.error
-                run['status'] = JobStatus.error
+                # catch handling the run exceptions
+                try:
+                    # handle the run
+                    no_activity = self.handle_run(run)
+                except Exception as e:
+                    # report the exception
+                    self.logger.error(f"Run handler exception detected, id: {run['id']}, \
+                                        job-type: {run['job-type']}, status: {run['status_prov']}, downloadurl: {run['downloadurl']}, \
+                                        gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
 
-                continue
+                    # delete the k8s job if it exists
+                    self.k8s_create.delete_job(run)
+
+                    # prepare the DB status
+                    run['status_prov'] += ', Run handler error detected'
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                    # set error conditions
+                    run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
+
+                    # continue processing runs
+                    continue
 
             # was there any activity
             if no_activity:
@@ -260,7 +264,7 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # get the data by the download url
-                command_line_params = ['--inputURL', run['downloadurl'], '--outputDir']  # '--instanceId', str(run['id']),
+                command_line_params = ['--inputURL', run['downloadurl'], '--outputDir']
 
                 # create the job configuration for a new run
                 self.k8s_create_job_obj(run, command_line_params, True)
@@ -720,7 +724,7 @@ class APSVizSupervisor:
                     job_status = self.k8s_create.delete_job(run)
 
                     self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}. Warning: Intermediate files may not have been removed.", run['instance_name'])
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}. *Warning: Intermediate files may not have been removed.*", run['instance_name'])
 
                     # set error conditions
                     run['job-type'] = JobType.complete
@@ -819,8 +823,6 @@ class APSVizSupervisor:
         """
             SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
             
-            SELECT public.set_config_item(0, 'x', 'supervisor_job_status', 'new');	
-            
             SELECT public.get_config_items_json(2620);
             SELECT public.get_supervisor_config_items_json();
             
@@ -834,6 +836,8 @@ class APSVizSupervisor:
                 and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
                 --and uid='2021052506-namforecast'
                 order by 2 desc, 1 desc, 4, 5;   
+            
+            --SELECT public.set_config_item(0, 'x', 'supervisor_job_status', 'new');	
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
