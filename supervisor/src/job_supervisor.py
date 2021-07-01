@@ -830,13 +830,22 @@ class APSVizSupervisor:
             
             select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status', 'instancename');
 
-            select id, instance_id, uid, key, value
+            select pg_terminate_backend(pid) from pg_stat_activity where datname='adcirc_obs';
+
+            select distinct id, instance_id, uid, key, value
                 FROM public."ASGS_Mon_config_item"
                 where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
                 and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
                 --and uid='2021052506-namforecast'
                 order by 2 desc, 1 desc, 4, 5;   
             
+            select distinct
+                'SELECT public.set_config_item(' || instance_id || ', ''' || uid || ''', ''supervisor_job_status'', ''new'');' as cmd
+                FROM public."ASGS_Mon_config_item"
+                where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
+                and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
+                and value='New, Run accepted, Staging running, Staging complete, Obs/Mod running, Obs/Mod complete, Geo tiff running';
+              
             --SELECT public.set_config_item(0, 'x', 'supervisor_job_status', 'new');	
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
