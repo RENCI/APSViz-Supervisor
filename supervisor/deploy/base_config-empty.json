@@ -4,5 +4,4 @@
     "PVC_CLAIM": "eds-pvc",
     "SECRETS_CLAIM": "eds-keys",
     "CREATE_SLEEP": 2
-
 }
