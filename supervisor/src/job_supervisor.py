@@ -325,7 +325,7 @@ class APSVizSupervisor:
                 command_line_params = [run['downloadurl']]
 
                 # create the job configuration for a new run
-                self.k8s_create_job_obj(run, command_line_params, True)
+                self.k8s_create_job_obj(run, command_line_params, False)
 
                 # execute the k8s job run
                 self.k8s_create.execute(run)
