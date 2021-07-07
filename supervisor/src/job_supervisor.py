@@ -53,6 +53,10 @@ class JobStatus(int, Enum):
     final_staging_running = 160
     final_staging_complete = 170
 
+    # run hazus statuses
+    hazus_running = 180
+    hazus_complete = 190
+
     # overall status indicators
     warning = 9999
     error = -1
@@ -63,6 +67,7 @@ class JobType(str, Enum):
     Class that stores the job type constants
     """
     staging = 'staging',
+    hazus = 'hazus',
     obs_mod = 'obs-mod',
     run_geo_tiff = 'run-geo-tiff',
     compute_mbtiles_0_9 = 'compute-mbtiles-0-9',
@@ -293,9 +298,62 @@ class APSVizSupervisor:
                     self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final status: {job_status}")
 
                     # set the next stage and stage status
-                    run['job-type'] = JobType.obs_mod
+                    run['job-type'] = JobType.hazus
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Staging complete'
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                # was there a failure
+                elif job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
+
+                    # set error conditions
+                    run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
+
+        # is this a staging job
+        if run['job-type'] == JobType.hazus:
+            # work the current state
+            if run['status'] == JobStatus.new:
+                # set the activity flag
+                no_activity = False
+
+                # get the data by the download url
+                command_line_params = [run['downloadurl']]
+
+                # create the job configuration for a new run
+                self.k8s_create_job_obj(run, command_line_params, True)
+
+                # execute the k8s job run
+                self.k8s_create.execute(run)
+
+                # set the current status
+                run['status'] = JobStatus.hazus_running
+                run['status_prov'] += ', HAZUS running'
+                self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif run['status'] == JobStatus.hazus_running and run['status'] != JobStatus.error:
+                # set the activity flag
+                no_activity = False
+
+                # find the job, get the status
+                job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                if job_status is None and not job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final status: {job_status}")
+
+                    # set the next stage and stage status
+                    run['job-type'] = JobType.obs_mod
+                    run['status'] = JobStatus.new
+                    run['status_prov'] += ', HAZUS complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
                 # was there a failure
                 elif job_pod_status.startswith('Failed'):
