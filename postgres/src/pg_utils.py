@@ -86,7 +86,7 @@ class PGUtils:
         :return: a json record of newly requested runs
         """
         # create the sql
-        sql: str = 'SELECT public.get_supervisor_config_items_json()'
+        sql: str = 'SELECT public.get_supervisor_config_items_json_x()'
 
         # get the data
         return self.exec_sql(sql)
@@ -99,6 +99,7 @@ class PGUtils:
         :param value:
         :return: nothing
         """
+
         # split the run id. run id is in the form <instance id>_<url>
         run = run_id.split('-')
 

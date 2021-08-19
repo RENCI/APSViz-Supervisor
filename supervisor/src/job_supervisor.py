@@ -57,6 +57,10 @@ class JobStatus(int, Enum):
     hazus_running = 180
     hazus_complete = 190
 
+    # run hazus singleton statuses
+    hazus_singleton_running = 200
+    hazus_singleton_complete = 210
+
     # overall status indicators
     warning = 9999
     error = -1
@@ -68,6 +72,7 @@ class JobType(str, Enum):
     """
     staging = 'staging',
     hazus = 'hazus',
+    hazus_singleton = 'hazus-singleton',
     obs_mod = 'obs-mod',
     run_geo_tiff = 'run-geo-tiff',
     compute_mbtiles_0_9 = 'compute-mbtiles-0-9',
@@ -314,8 +319,8 @@ class APSVizSupervisor:
                     run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
 
-        # is this a staging job
-        if run['job-type'] == JobType.hazus:
+        # is this a hazus job
+        elif run['job-type'] == JobType.hazus:
             # work the current state
             if run['status'] == JobStatus.new:
                 # set the activity flag
@@ -366,6 +371,60 @@ class APSVizSupervisor:
                     # set error conditions
                     run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
+
+        # is this a hazus job
+        elif run['job-type'] == JobType.hazus_singleton:
+            # work the current state
+            if run['status'] == JobStatus.new:
+                # set the activity flag
+                no_activity = False
+
+                # get the data by the download url
+                command_line_params = [run['downloadurl']]
+
+                # create the job configuration for a new run
+                self.k8s_create_job_obj(run, command_line_params, False)
+
+                # execute the k8s job run
+                self.k8s_create.execute(run)
+
+                # set the current status
+                run['status'] = JobStatus.hazus_singleton_running
+                run['status_prov'] += ', HAZUS singleton running'
+                self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif run['status'] == JobStatus.hazus_singleton_running and run['status'] != JobStatus.error:
+                # set the activity flag
+                no_activity = False
+
+                # find the job, get the status
+                job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                if job_status is None and not job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final status: {job_status}")
+
+                    # set the next stage and stage status
+                    run['job-type'] = JobType.complete
+                    run['status'] = JobStatus.hazus_singleton_complete
+                    run['status_prov'] += ', HAZUS singleton complete'
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                # was there a failure
+                elif job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
+
+                    # set error conditions
+                    run['job-type'] = JobType.complete
+                    run['status'] = JobStatus.error
+                    run['status_prov'] += ', Error detected'
 
         # is this a obs_mod job
         elif run['job-type'] == JobType.obs_mod:
@@ -854,13 +913,20 @@ class APSVizSupervisor:
                 # get the run id
                 run_id = run['run_id']
 
+                if run['run_data']['supervisor_job_status'].startswith('new'):
+                    job_prov = 'New'
+                    job_type = JobType.staging
+                elif run['run_data']['supervisor_job_status'].startswith('hazus'):
+                    job_prov = 'New HAZUS-SINGLETON'
+                    job_type = JobType.hazus_singleton
+
                 # continue only if we have everything needed for a run
                 if 'downloadurl' in run['run_data'] and 'adcirc.gridname' in run['run_data'] and 'instancename' in run['run_data']:
                     # create the new run
-                    self.run_list.append({'id': run_id, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                    self.run_list.append({'id': run_id, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f"{job_prov}, Run accepted", 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                     # update the run status in the DB
-                    self.pg_db.update_job_status(run_id, 'New, Run accepted')
+                    self.pg_db.update_job_status(run_id, f"{job_prov}, Run accepted")
 
                     # notify slack
                     self.send_slack_msg(run_id, "accepted.", run['run_data']['instancename'])
@@ -904,7 +970,7 @@ class APSVizSupervisor:
                 and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
                 and value='New, Run accepted, Staging running, Staging complete, Obs/Mod running, Obs/Mod complete, Geo tiff running';
               
-            --SELECT public.set_config_item(0, 'x', 'supervisor_job_status', 'new');	
+            --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
         """
         # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
         # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
