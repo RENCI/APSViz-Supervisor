@@ -172,11 +172,17 @@ class APSVizSupervisor:
                         run['status_prov'] += ', Run complete'
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
+                        # get the type of run
+                        if run['status_prov'].tolower().contains('hazus'):
+                            run_type = 'HAZUS-SINGLETON'
+                        else:
+                            run_type = 'APS'
+
                         # add a comment on overall pass/fail
                         if run['status_prov'].find('Error') == -1:
-                            msg = f'*completed successfully*.'
+                            msg = f'*{run_type} run completed successfully*.'
                         else:
-                            msg = f"*completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
+                            msg = f"*{run_type} run completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
 
                         # send the message
                         self.send_slack_msg(run['id'], msg, run['instance_name'])
@@ -913,23 +919,24 @@ class APSVizSupervisor:
                 # get the run id
                 run_id = run['run_id']
 
-                if run['run_data']['supervisor_job_status'].startswith('new'):
-                    job_prov = 'New'
-                    job_type = JobType.staging
-                elif run['run_data']['supervisor_job_status'].startswith('hazus'):
+                # check the run types to get the correct run params
+                if run['run_data']['supervisor_job_status'].startswith('hazus'):
                     job_prov = 'New HAZUS-SINGLETON'
                     job_type = JobType.hazus_singleton
+                else:
+                    job_prov = 'New APS'
+                    job_type = JobType.staging
 
                 # continue only if we have everything needed for a run
                 if 'downloadurl' in run['run_data'] and 'adcirc.gridname' in run['run_data'] and 'instancename' in run['run_data']:
                     # create the new run
-                    self.run_list.append({'id': run_id, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f"{job_prov}, Run accepted", 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                    self.run_list.append({'id': run_id, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                     # update the run status in the DB
-                    self.pg_db.update_job_status(run_id, f"{job_prov}, Run accepted")
+                    self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
 
                     # notify slack
-                    self.send_slack_msg(run_id, "accepted.", run['run_data']['instancename'])
+                    self.send_slack_msg(run_id, f'{job_prov} run accepted.', run['run_data']['instancename'])
                 else:
                     # update the run status in the DB
                     self.pg_db.update_job_status(run_id, 'Error - Lacks the required run properties.')
