@@ -170,7 +170,7 @@ class APSVizSupervisor:
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
                         # get the type of run
-                        if run['status_prov'].tolower().contains('hazus-singleton'):
+                        if run['status_prov'].lower().contains('hazus-singleton'):
                             run_type = 'HAZUS-SINGLETON'
                         else:
                             run_type = 'APS'
