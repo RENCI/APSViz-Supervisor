@@ -187,7 +187,7 @@ class JobCreate:
                 image=run[run['job-type']]['run-config']['IMAGE'],
                 command=new_cmd_list,
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
-                image_pull_policy='Always',
+                image_pull_policy='IfNotPresent',
                 env=[log_dir, ssh_username_env, ssh_host, asgs_db_username, asgs_db_password, asgs_db_host, asgs_db_port, asgs_db_database,
                      geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace, slack_client, slack_channel, aws_access_key_id, aws_secret_access_key],
                 resources=resources,
