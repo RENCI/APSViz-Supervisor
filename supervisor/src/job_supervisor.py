@@ -169,11 +169,13 @@ class APSVizSupervisor:
                         run['status_prov'] += ', Run complete'
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
+                        status_prov = run['status_prov'].lower()
+
                         # get the type of run
-                        if run['status_prov'].lower().contains('hazus-singleton'):
-                            run_type = 'HAZUS-SINGLETON'
-                        else:
+                        if status_prov.find('hazus-singleton') == -1:
                             run_type = 'APS'
+                        else:
+                            run_type = 'HAZUS-SINGLETON'
 
                         # add a comment on overall pass/fail
                         if run['status_prov'].find('Error') == -1:
