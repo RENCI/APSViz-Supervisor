@@ -96,6 +96,10 @@ class APSVizSupervisor:
         """
         inits the class
         """
+        # set DB the polling values
+        self.POLL_SHORT_SLEEP = 30
+        self.POLL_LONG_SLEEP = 120
+
         # load the run configuration params
         self.k8s_config: dict = self.get_config()
 
@@ -132,6 +136,8 @@ class APSVizSupervisor:
 
         :return: Dict, baseline run params
         """
+
+        # TODO: refactor this method so the run parameters are from the database
 
         # get the supervisor config file path/name
         config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
@@ -248,13 +254,13 @@ class APSVizSupervisor:
             # check for something to do after a period of time
             if no_activity_counter >= 10:
                 # set the sleep timeout
-                sleep_timeout = self.k8s_config['POLL_LONG_SLEEP']
+                sleep_timeout = self.POLL_LONG_SLEEP
 
                 # try again at this poll rate
                 no_activity_counter = 9
             else:
                 # set the sleep timeout
-                sleep_timeout = self.k8s_config['POLL_SHORT_SLEEP']
+                sleep_timeout = self.POLL_SHORT_SLEEP
 
             self.logger.debug(f"All active run checks complete. Sleeping for {sleep_timeout / 60} minutes.")
 
