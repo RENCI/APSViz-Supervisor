@@ -85,6 +85,8 @@ class PGUtils:
 
         :return: a json record of newly requested runs
         """
+        # TODO: correct the name and implementation of this SP
+
         # create the sql
         sql: str = 'SELECT public.get_supervisor_config_items_json_x()'
 
