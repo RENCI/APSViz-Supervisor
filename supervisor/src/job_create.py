@@ -160,7 +160,7 @@ class JobCreate:
         # init a list for all the containers in this job
         containers: list = []
 
-        # add on the
+        # add on the resources
         for idx, item in enumerate(run[run['job-type']]['run-config']['COMMAND_MATRIX']):
             # get the base command line
             new_cmd_list: list = run[run['job-type']]['run-config']['COMMAND_LINE'].copy()
