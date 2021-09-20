@@ -78,8 +78,8 @@ class JobType(str, Enum):
     compute_mbtiles_0_10 = 'compute-mbtiles-0-10',
     load_geo_server = 'load-geo-server',
     final_staging = 'final-staging',
-    error = 'error'
-    other_1 = 'TBD'
+    error = 'error',
+    other_1 = 'TBD',
     complete = 'complete'
 
 
