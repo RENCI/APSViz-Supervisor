@@ -5,7 +5,7 @@
 # gets the aragorn-ranker repo
 # and runs main which enables the gunicorn web server
 
-FROM python:3.8.5
+FROM python:3.9.7
 
 # get some credit
 LABEL maintainer="powen@renci.org"
