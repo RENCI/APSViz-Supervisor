@@ -805,7 +805,7 @@ class APSVizSupervisor:
         :return: nothing
         """
         # get the job definitions
-        self.get_config()
+        self.k8s_config = self.get_config()
 
         # get the run definitions
         runs = self.pg_db.get_new_runs()
