@@ -205,6 +205,7 @@ class APSVizSupervisor:
                         # report the exception
                         self.logger.error(f"Error detected: About to clean up of intermediate files. Run id: {run['id']}")
                         run['status_prov'] += ', Error detected'
+
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
                         # set the type to clean up
@@ -216,9 +217,7 @@ class APSVizSupervisor:
 
                 except Exception as e_main:
                     # report the exception
-                    self.logger.exception(f"Cleanup exception detected, id: {run['id']}, \
-                                        job-type: {run['job-type']}, status: {run['status_prov']}, downloadurl: {run['downloadurl']},\
-                                        gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e_main}")
+                    self.logger.exception(f"Cleanup exception detected, id: {run['id']}, exception: {e_main}")
 
                     msg = f'Exception {e_main} caught. Terminating run.'
 
@@ -241,9 +240,6 @@ class APSVizSupervisor:
                                         job-type: {run['job-type']}, status: {run['status_prov']}, downloadurl: {run['downloadurl']}, \
                                         gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
 
-                    # delete the k8s job if it exists
-                    self.k8s_create.delete_job(run)
-
                     # prepare the DB status
                     run['status_prov'] += ', Run handler error detected'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
@@ -251,6 +247,9 @@ class APSVizSupervisor:
                     # set error conditions
                     run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
+
+                    # delete the k8s job if it exists
+                    self.k8s_create.delete_job(run)
 
                     # continue processing runs
                     continue
