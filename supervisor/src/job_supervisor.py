@@ -101,7 +101,7 @@ class APSVizSupervisor:
         self.POLL_LONG_SLEEP = 120
 
         # load the run configuration params
-        self.k8s_config: dict = self.get_config()
+        self.k8s_config: dict = {}
 
         # create a job creator object
         self.k8s_create = JobCreate()
@@ -129,8 +129,7 @@ class APSVizSupervisor:
         self.slack_channel = os.getenv('SLACK_CHANNEL')
 
     # TODO: make this a common function
-    @staticmethod
-    def get_config() -> dict:
+    def get_config(self) -> dict:
         """
         gets the run configuration
 
@@ -138,6 +137,10 @@ class APSVizSupervisor:
         """
 
         # TODO: refactor this method so the run parameters are from the database
+        # db_data = self.pg_db.get_job_defs()
+
+        # get the data looking like we are used to
+        # new_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
 
         # get the supervisor config file path/name
         config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
@@ -145,10 +148,10 @@ class APSVizSupervisor:
         # open the config file
         with open(config_name, 'r') as json_file:
             # load the config items into a dict
-            data: dict = load(json_file)
+            file_data: dict = load(json_file)
 
         # return the config data
-        return data
+        return file_data
 
     def run(self):
         """
@@ -213,9 +216,17 @@ class APSVizSupervisor:
 
                 except Exception as e_main:
                     # report the exception
-                    self.logger.error(f"Cleanup exception detected, id: {run['id']}, \
+                    self.logger.exception(f"Cleanup exception detected, id: {run['id']}, \
                                         job-type: {run['job-type']}, status: {run['status_prov']}, downloadurl: {run['downloadurl']},\
                                         gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e_main}")
+
+                    msg = f'Exception {e_main} caught. Terminating run.'
+
+                    # send the message
+                    self.send_slack_msg(run['id'], msg, run['instance_name'])
+
+                    # remove the run
+                    self.run_list.remove(run)
 
                     # continue processing runs
                     continue
@@ -796,7 +807,10 @@ class APSVizSupervisor:
 
         :return: nothing
         """
-        # get the new runs
+        # get the job definitions
+        self.get_config()
+
+        # get the run definitions
         runs = self.pg_db.get_new_runs()
 
         # did we find anything to do
