@@ -236,9 +236,7 @@ class APSVizSupervisor:
                     no_activity = self.handle_run(run)
                 except Exception as e:
                     # report the exception
-                    self.logger.exception(f"Run handler exception detected, id: {run['id']}, \
-                                        job-type: {run['job-type']}, status: {run['status_prov']}, downloadurl: {run['downloadurl']}, \
-                                        gridname: {run['gridname']}, instance_name: {run['instance_name']}, exception: {e}")
+                    self.logger.exception(f"Run handler exception detected, id: {run['id']}, exception: {e}")
 
                     # prepare the DB status
                     run['status_prov'] += ', Run handler error detected'
