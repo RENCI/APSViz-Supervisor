@@ -79,16 +79,28 @@ class PGUtils:
         except Exception as e:
             self.logger.error(f'Error detected executing SQL: {sql_stmt}. {e}')
 
+    def get_job_defs(self):
+        """
+        gets the supervisor job definitions
+
+        :return:
+        """
+
+        # create the sql
+        sql: str = 'SELECT public.get_supervisor_job_defs_json()'
+
+        # get the data
+        return self.exec_sql(sql)
+
     def get_new_runs(self):
         """
         gets the DB records for new runs
 
         :return: a json record of newly requested runs
         """
-        # TODO: correct the name and implementation of this SP
 
         # create the sql
-        sql: str = 'SELECT public.get_supervisor_config_items_json_x()'
+        sql: str = 'SELECT public.get_supervisor_config_items_json()'
 
         # get the data
         return self.exec_sql(sql)
