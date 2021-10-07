@@ -30,7 +30,7 @@ RUN git clone https://github.com/RENCI/APSVIZ-k8s.git
 WORKDIR /repo/APSVIZ-k8s
 
 # add in the real config files
-ADD ./supervisor_config.json /repo/APSVIZ-k8s/supervisor
+#ADD ./supervisor_config.json /repo/APSVIZ-k8s/supervisor
 ADD ./base_config.json /repo/APSVIZ-k8s/supervisor
 
 # install requirements
