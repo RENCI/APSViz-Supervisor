@@ -2,7 +2,7 @@ import time
 import os
 import logging
 import slack
-from json import load
+import json
 from enum import Enum
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
@@ -135,23 +135,28 @@ class APSVizSupervisor:
 
         :return: Dict, baseline run params
         """
-
-        # TODO: refactor this method so the run parameters are from the database
-        # db_data = self.pg_db.get_job_defs()
+        # get all the job parameter definitions
+        db_data = self.pg_db.get_job_defs()
 
         # get the data looking like we are used to
-        # new_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
+        config_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
 
-        # get the supervisor config file path/name
-        config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
+        # fix the arrays for each job def.
+        # they come in as a string
+        for item in config_data.items():
+            item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
+            item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
 
-        # open the config file
-        with open(config_name, 'r') as json_file:
-            # load the config items into a dict
-            file_data: dict = load(json_file)
+        # # get the supervisor config file path/name
+        # config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
+        #
+        # # open the config file
+        # with open(config_name, 'r') as json_file:
+        #     # load the config items into a dict
+        #     config_data: dict = load(json_file)
 
         # return the config data
-        return file_data
+        return config_data
 
     def run(self):
         """
