@@ -778,7 +778,7 @@ class APSVizSupervisor:
                 config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
                 config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
 
-            self.logger.info(f"Job command line. Run ID: {run['id']}, Job type: {run['job-type']}, Command line: {config['COMMAND_LINE']}")
+            self.logger.debug(f"Job command line. Run ID: {run['id']}, Job type: {run['job-type']}, Command line: {config['COMMAND_LINE']}")
 
             # save these params in the run info
             run[run['job-type']] = {'run-config': config}
