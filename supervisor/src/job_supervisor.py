@@ -778,6 +778,8 @@ class APSVizSupervisor:
                 config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
                 config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
 
+            self.logger.info(f"Job command line. Run ID: {run['id']}, Job type: {run['job-type']}, Command line: {config['COMMAND_LINE']}")
+
             # save these params in the run info
             run[run['job-type']] = {'run-config': config}
 
@@ -882,7 +884,6 @@ class APSVizSupervisor:
               
             --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
         """
-        # self.run_list.append({'id': 2620, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
-        # self.run_list.append({'id': 2620, 'job-type': JobType.obs_mod, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
-        # self.run_list.append({'id': 2620, 'job-type': JobType.run_geo_tiff, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
-        # self.run_list.append({'id': 2620, 'job-type': JobType.compute_mbtiles_1, 'status': JobStatus.new, 'status_prov': 'New, Run accepted'})
+
+        # self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': f'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
+        # return
