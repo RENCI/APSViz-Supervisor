@@ -1,9 +1,9 @@
-# This Dockerfile is used to build the aragorn ranker image
+# This Dockerfile is used to build the APSVIZ-Supervisor image
 # starts with the python image
 # installs nano
 # creates a directory for the repo
-# gets the aragorn-ranker repo
-# and runs main which enables the gunicorn web server
+# gets the APSVIZ-Supervisor repo
+# and runs main which enables the supervisor
 
 FROM python:3.9.7
 
