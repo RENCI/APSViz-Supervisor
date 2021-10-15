@@ -147,14 +147,6 @@ class APSVizSupervisor:
             item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
             item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
 
-        # # get the supervisor config file path/name
-        # config_name = os.path.join(os.path.dirname(__file__), '..', 'supervisor_config.json')
-        #
-        # # open the config file
-        # with open(config_name, 'r') as json_file:
-        #     # load the config items into a dict
-        #     config_data: dict = load(json_file)
-
         # return the config data
         return config_data
 
@@ -828,9 +820,11 @@ class APSVizSupervisor:
                 if run['run_data']['supervisor_job_status'].startswith('hazus'):
                     job_prov = 'New HAZUS-SINGLETON'
                     job_type = JobType.hazus_singleton
-                else:
+                elif run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
                     job_type = JobType.staging
+                else:
+                    continue
 
                 # continue only if we have everything needed for a run
                 if 'downloadurl' in run['run_data'] and 'adcirc.gridname' in run['run_data'] and 'instancename' in run['run_data']:
