@@ -178,8 +178,13 @@ class JobCreate:
                         cpus = str(item[i+1])
                         break
 
+            memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
+            memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
+            memory_limit_val = int(memory_val_txt) + 10
+            memory_limit = f'{memory_limit_val}{memory_unit_txt}'
+
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}}
+            resources = {'limits': {'cpu': cpus, 'memory': memory_limit}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}}
 
             # configure the pod template container
             container = client.V1Container(
