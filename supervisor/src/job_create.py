@@ -179,7 +179,7 @@ class JobCreate:
                         break
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}}
+            resources = {'limits': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}}
 
             # configure the pod template container
             container = client.V1Container(
