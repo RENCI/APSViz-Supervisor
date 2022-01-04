@@ -181,7 +181,7 @@ class JobCreate:
             # this is done to make the memory limit greater than what is requested
             memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
             memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
-            memory_limit_val = int(memory_val_txt) + 1
+            memory_limit_val = int(memory_val_txt) + 5
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
             # get the baseline set of container resources
@@ -196,17 +196,21 @@ class JobCreate:
                 image_pull_policy='IfNotPresent',
                 env=[log_dir, ssh_username_env, ssh_host, asgs_db_username, asgs_db_password, asgs_db_host, asgs_db_port, asgs_db_database,
                      geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace, slack_client, slack_channel, aws_access_key_id, aws_secret_access_key],
-                resources=resources,
+                resources=resources
                 )
 
             # if idx == 2 or run[run['job-type']]['run-config']['JOB_NAME'].startswith('staging'):
             # add the container to the list
             containers.append(container)
 
+        # create a security context for the pod
+        security_context = client.V1PodSecurityContext(run_as_user=1000, run_as_group=3000, fs_group=2000)
+
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume])  # , node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume],security_context=security_context)
+            # , node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
         )
 
         # create the specification of job deployment
