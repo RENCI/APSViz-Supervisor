@@ -178,9 +178,11 @@ class JobCreate:
                         cpus = str(item[i+1])
                         break
 
+            # this is done to make the memory limit is 10% greater than what is requested
             memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
             memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
-            memory_limit_val = int(memory_val_txt) + 10
+            memory_limit_val = int(memory_val_txt)
+            memory_limit_val += memory_limit_val * .1
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
             # get the baseline set of container resources
