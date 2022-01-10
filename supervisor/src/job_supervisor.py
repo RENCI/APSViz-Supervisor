@@ -879,5 +879,5 @@ class APSVizSupervisor:
             --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
         """
 
-        # self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': f'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
+        # self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
         # return
