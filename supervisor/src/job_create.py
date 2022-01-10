@@ -6,6 +6,7 @@ from json import load
 from kubernetes import client, config
 from common.logging import LoggingUtil
 
+
 class JobCreate:
     """
     Class that uses the k8s API to create, run and delete a job
@@ -185,7 +186,7 @@ class JobCreate:
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus, 'memory': memory_limit}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY']}}
+            resources = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': '1Gi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
 
             # configure the pod template container
             container = client.V1Container(
@@ -204,13 +205,13 @@ class JobCreate:
             containers.append(container)
 
         # create a security context for the pod
-        security_context = client.V1PodSecurityContext(run_as_user=1000, run_as_group=3000, fs_group=2000)
+        # security_context = client.V1PodSecurityContext(run_as_user=1000, run_as_group=3000, fs_group=2000)
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume]) # , security_context=security_context
-            #, node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume])  # , security_context=security_context
+            # , node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
         )
 
         # create the specification of job deployment
