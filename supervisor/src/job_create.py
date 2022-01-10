@@ -186,7 +186,7 @@ class JobCreate:
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': '512Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
+            resources = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': '1Gi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
 
             # configure the pod template container
             container = client.V1Container(
