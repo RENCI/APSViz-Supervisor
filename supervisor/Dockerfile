@@ -24,14 +24,13 @@ RUN mkdir /repo
 WORKDIR /repo
 
 # get the latest code
-RUN git clone https://github.com/RENCI/APSVIZ-k8s.git
+RUN git clone https://github.com/RENCI/APSVIZ-Supervisor.git
 
 # go to the repo dir
-WORKDIR /repo/APSVIZ-k8s
+WORKDIR /repo/APSVIZ-Supervisor
 
-# add in the real config files
-#ADD ./supervisor_config.json /repo/APSVIZ-k8s/supervisor
-ADD ./base_config.json /repo/APSVIZ-k8s/supervisor
+# add in the base config file
+ADD ./base_config.json /repo/APSVIZ-Supervisor/supervisor
 
 # install requirements
 RUN pip install -r requirements.txt
