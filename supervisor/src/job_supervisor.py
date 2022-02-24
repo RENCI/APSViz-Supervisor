@@ -957,9 +957,9 @@ class APSVizSupervisor:
                 elif run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
                     job_type = JobType.staging
-                elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                    job_prov = 'New debug'
-                    job_type = JobType.adcirc2cog_tiff
+                # elif run['run_data']['supervisor_job_status'].startswith('debug'):
+                #     job_prov = 'New debug'
+                #     job_type = JobType.adcirc2cog_tiff
                 else:
                     continue
 
