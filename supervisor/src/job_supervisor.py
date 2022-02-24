@@ -53,13 +53,21 @@ class JobStatus(int, Enum):
     final_staging_running = 160
     final_staging_complete = 170
 
-    # run hazus statuses
+    # hazus run statuses
     hazus_running = 180
     hazus_complete = 190
 
-    # run hazus singleton statuses
+    # hazus singleton run statuses
     hazus_singleton_running = 200
     hazus_singleton_complete = 210
+
+    # adcirc2cog tiff run statuses
+    adcirc2cog_tiff_running = 220
+    adcirc2cog_tiff_complete = 230
+
+    # geotiff to cog run statuses
+    geotiff2cog_running = 240
+    geotiff2cog_complete = 250
 
     # overall status indicators
     warning = 9999
@@ -78,6 +86,8 @@ class JobType(str, Enum):
     compute_mbtiles_0_10 = 'compute-mbtiles-0-10',
     load_geo_server = 'load-geo-server',
     final_staging = 'final-staging',
+    adcirc2cog_tiff = 'adcirc2cog-tiff',
+    geotiff2cog = 'geotiff2cog',
     error = 'error',
     other_1 = 'TBD',
     complete = 'complete'
@@ -615,9 +625,133 @@ class APSVizSupervisor:
                     self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
                     # set the next stage and stage status
-                    run['job-type'] = JobType.load_geo_server
+                    run['job-type'] = JobType.adcirc2cog_tiff
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Compute mbtiles zoom 0-10 complete'
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                # was there a failure
+                elif job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
+
+                    # set error conditions
+                    run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
+
+        # is this a adcirc2cog_tiff job array
+        elif run['job-type'] == JobType.adcirc2cog_tiff:
+            # work the current state
+            if run['status'] == JobStatus.new:
+                # set the activity flag
+                no_activity = False
+
+
+                """
+                """
+
+                # create the additional command line parameters
+                command_line_params = ['--inputDir',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/input',
+                                       '--outputDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) +
+                                       self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--inputFile']
+
+                # create the job configuration for a new run
+                self.k8s_create_job_obj(run, command_line_params)
+
+                # execute the k8s job run
+                self.k8s_create.execute(run)
+
+                # move to the next stage
+                run['status'] = JobStatus.adcirc2cog_tiff_running
+                run['status_prov'] += ', adcirc2cog tiff running'
+                self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif run['status'] == JobStatus.adcirc2cog_tiff_running and run['status'] != JobStatus.error:
+                # set the activity flag
+                no_activity = False
+
+                # find the job, get the status
+                job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                if job_status is None and not job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
+
+                    # set the next stage and stage status
+                    run['job-type'] = JobType.geotiff2cog
+                    run['status'] = JobStatus.new
+                    run['status_prov'] += ', adcirc2cog tiff complete'
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                # was there a failure
+                elif job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
+
+                    # set error conditions
+                    run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
+
+        # is this a geotiff2cog job array
+        elif run['job-type'] == JobType.geotiff2cog:
+            # work the current state
+            if run['status'] == JobStatus.new:
+                # set the activity flag
+                no_activity = False
+
+                # create the additional command line parameters
+                command_line_params = ['--inputDir',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/cogeo',
+                                       '--finalDIR',
+                                       self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                       str(run['id']) + '/' +
+                                       'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                       '--inputFile']
+
+                # create the job configuration for a new run
+                self.k8s_create_job_obj(run, command_line_params)
+
+                # execute the k8s job run
+                self.k8s_create.execute(run)
+
+                # move to the next stage
+                run['status'] = JobStatus.geotiff2cog_running
+                run['status_prov'] += ', adcirc2cog tiff running'
+                self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif run['status'] == JobStatus.geotiff2cog_running and run['status'] != JobStatus.error:
+                # set the activity flag
+                no_activity = False
+
+                # find the job, get the status
+                job_status, job_pod_status = self.k8s_find.find_job_info(run)
+
+                # if the job status is not active (!=1) it is complete or dead. either way it gets removed
+                if job_status is None and not job_pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_status = self.k8s_create.delete_job(run)
+
+                    self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
+
+                    # set the next stage and stage status
+                    run['job-type'] = JobType.load_geo_server
+                    run['status'] = JobStatus.new
+                    run['status_prov'] += ', geotiff2cog complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
                 # was there a failure
                 elif job_pod_status.startswith('Failed'):
@@ -823,6 +957,9 @@ class APSVizSupervisor:
                 elif run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
                     job_type = JobType.staging
+                elif run['run_data']['supervisor_job_status'].startswith('debug'):
+                    job_prov = 'New debug'
+                    job_type = JobType.adcirc2cog_tiff
                 else:
                     continue
 
@@ -879,5 +1016,5 @@ class APSVizSupervisor:
             --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
         """
 
-        # self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
-        # return
+        #self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
+        #return
