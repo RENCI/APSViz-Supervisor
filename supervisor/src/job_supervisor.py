@@ -96,7 +96,6 @@ class JobType(str, Enum):
 class APSVizSupervisor:
     """
     Class for the APSViz supervisor
-
     """
 
     # the list of pending runs. this stores all job details of the run
@@ -648,10 +647,6 @@ class APSVizSupervisor:
                 # set the activity flag
                 no_activity = False
 
-
-                """
-                """
-
                 # create the additional command line parameters
                 command_line_params = ['--inputDir',
                                        self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
@@ -1016,5 +1011,5 @@ class APSVizSupervisor:
             --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
         """
 
-        #self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
-        #return
+        # self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
+        # return
