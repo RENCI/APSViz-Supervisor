@@ -725,7 +725,7 @@ class APSVizSupervisor:
 
                 # move to the next stage
                 run['status'] = JobStatus.geotiff2cog_running
-                run['status_prov'] += ', adcirc2cog tiff running'
+                run['status_prov'] += ', geotiff2cog running'
                 self.pg_db.update_job_status(run['id'], run['status_prov'])
 
                 self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
