@@ -648,7 +648,7 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--inputDir',
+                command_line_params = ['--inputDIR',
                                        self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                        str(run['id']) + '/input',
                                        '--outputDIR',
@@ -708,7 +708,7 @@ class APSVizSupervisor:
                 no_activity = False
 
                 # create the additional command line parameters
-                command_line_params = ['--inputDir',
+                command_line_params = ['--inputDIR',
                                        self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                        str(run['id']) + '/cogeo',
                                        '--finalDIR',
@@ -924,7 +924,7 @@ class APSVizSupervisor:
         final_msg += f'Run ID: {run_id} ' + msg
 
         # send the message
-        self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
+        # self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
 
     def get_incomplete_runs(self):
         """
@@ -946,15 +946,15 @@ class APSVizSupervisor:
                 run_id = run['run_id']
 
                 # check the run types to get the correct run params
-                if run['run_data']['supervisor_job_status'].startswith('hazus'):
-                    job_prov = 'New HAZUS-SINGLETON'
-                    job_type = JobType.hazus_singleton
-                elif run['run_data']['supervisor_job_status'].startswith('new'):
-                    job_prov = 'New APS'
+                if run['run_data']['supervisor_job_status'].startswith('debug'):
+                    job_prov = 'New debug'
                     job_type = JobType.staging
-                # elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                #     job_prov = 'New debug'
-                #     job_type = JobType.adcirc2cog_tiff
+                # elif run['run_data']['supervisor_job_status'].startswith('hazus'):
+                #     job_prov = 'New HAZUS-SINGLETON'
+                #     job_type = JobType.hazus_singleton
+                # elif run['run_data']['supervisor_job_status'].startswith('new'):
+                #     job_prov = 'New APS'
+                #     job_type = JobType.staging
                 else:
                     continue
 
