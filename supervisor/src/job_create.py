@@ -170,7 +170,7 @@ class JobCreate:
             new_cmd_list.extend(item)
 
             # set the default number of CPUs
-            cpus: str = '1'
+            cpus: str = '2'
 
             # find the number of CPUs needed if it is there
             if len(item) > 1:
