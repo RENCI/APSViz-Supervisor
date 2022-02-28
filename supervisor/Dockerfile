@@ -5,14 +5,8 @@
 # gets the APSVIZ-Supervisor repo
 # and runs main which enables the supervisor
 
-FROM python:3.9.7
-
-# get some credit
-LABEL maintainer="powen@renci.org"
-
-# install basic tools
-RUN apt-get update
-RUN apt-get install -yq nano
+# leverage the renci python base image
+FROM renciorg/renci-python-image:v0.0.1
 
 # create log level env param (debug=10, info=20)
 ENV LOG_LEVEL 20
@@ -29,11 +23,23 @@ RUN git clone https://github.com/RENCI/APSVIZ-Supervisor.git
 # go to the repo dir
 WORKDIR /repo/APSVIZ-Supervisor
 
+# make sure everythign is read/write in the repo code
+RUN chmod 777 -R .
+
+# install all required packages
+RUN pip install -r requirements.txt
+
+# debug only - copy in test supervisor code. other wise the repo code is fine
+COPY ./src/job_supervisor.py /repo/APSVIZ-Supervisor/supervisor/src/job_supervisor.py
+
 # add in the base config file
 ADD ./base_config.json /repo/APSVIZ-Supervisor/supervisor
 
 # install requirements
 RUN pip install -r requirements.txt
+
+# switch to the non-root user (nru). defined in the base image
+USER nru
 
 # start the service entry point
 ENTRYPOINT ["python", "main.py"]
