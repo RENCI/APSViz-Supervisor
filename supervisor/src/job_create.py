@@ -210,8 +210,7 @@ class JobCreate:
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume])  # , security_context=security_context
-            # , node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume], node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']})
         )
 
         # create the specification of job deployment
