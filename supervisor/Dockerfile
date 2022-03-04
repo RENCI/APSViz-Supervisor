@@ -31,9 +31,10 @@ RUN pip install -r requirements.txt
 
 # debug only - copy in test supervisor code. other wise the repo code is fine
 COPY ./src/job_supervisor.py /repo/APSVIZ-Supervisor/supervisor/src/job_supervisor.py
+COPY ./src/job_create.py /repo/APSVIZ-Supervisor/supervisor/src/job_create.py
 
 # add in the base config file
-ADD ./base_config.json /repo/APSVIZ-Supervisor/supervisor
+# ADD ./base_config.json /repo/APSVIZ-Supervisor/supervisor
 
 # install requirements
 RUN pip install -r requirements.txt
