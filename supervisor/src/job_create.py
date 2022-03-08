@@ -207,10 +207,16 @@ class JobCreate:
         # create a security context for the pod
         # security_context = client.V1PodSecurityContext(run_as_user=1000, run_as_group=3000, fs_group=2000)
 
+        # if there was a node selector found use it
+        if run[run['job-type']]['run-config']['NODE_TYPE']:
+            node_selector = {'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
+        else:
+            node_selector = None
+
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume], node_selector={'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']})
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume], node_selector=node_selector)
         )
 
         # create the specification of job deployment
