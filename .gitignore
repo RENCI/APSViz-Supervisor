@@ -1,0 +1,5 @@
+common/__pycache__/
+postgres/src/APSVIZ.pg_utils.log
+postgres/src/__pycache__/
+supervisor/src/__pycache__/
+supervisor/src/logs/
