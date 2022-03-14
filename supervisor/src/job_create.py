@@ -231,7 +231,8 @@ class JobCreate:
             api_version="batch/v1",
             kind="Job",
             metadata=client.V1ObjectMeta(name=run[run['job-type']]['run-config']['JOB_NAME']),
-            spec=spec)
+            spec=spec
+        )
 
         # save these params onto the run info
         run[run['job-type']]['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
@@ -341,7 +342,7 @@ class JobCreate:
             config.load_incluster_config()
         except config.ConfigException:
             try:
-                # else get the local config
+                # else get the local config. this local config must match the cluster name in your k8s config
                 config.load_kube_config(context=job_details['CLUSTER'])
             except config.ConfigException:
                 raise Exception("Could not configure kubernetes python client")
