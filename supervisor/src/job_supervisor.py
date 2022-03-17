@@ -623,8 +623,11 @@ class APSVizSupervisor:
 
                     self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final job status: {job_status}")
 
+                    # this is commented out for now until cog runs are requested
+                    # run['job-type'] = JobType.adcirc2cog_tiff
+
                     # set the next stage and stage status
-                    run['job-type'] = JobType.adcirc2cog_tiff
+                    run['job-type'] = JobType.load_geo_server
                     run['status'] = JobStatus.new
                     run['status_prov'] += ', Compute mbtiles zoom 0-10 complete'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
@@ -924,7 +927,7 @@ class APSVizSupervisor:
         final_msg += f'Run ID: {run_id} ' + msg
 
         # send the message
-        # self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
+        self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
 
     def get_incomplete_runs(self):
         """
