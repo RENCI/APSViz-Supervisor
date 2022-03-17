@@ -952,12 +952,12 @@ class APSVizSupervisor:
                 if run['run_data']['supervisor_job_status'].startswith('debug'):
                     job_prov = 'New debug'
                     job_type = JobType.staging
-                # elif run['run_data']['supervisor_job_status'].startswith('hazus'):
-                #     job_prov = 'New HAZUS-SINGLETON'
-                #     job_type = JobType.hazus_singleton
-                # elif run['run_data']['supervisor_job_status'].startswith('new'):
-                #     job_prov = 'New APS'
-                #     job_type = JobType.staging
+                elif run['run_data']['supervisor_job_status'].startswith('hazus'):
+                    job_prov = 'New HAZUS-SINGLETON'
+                    job_type = JobType.hazus_singleton
+                elif run['run_data']['supervisor_job_status'].startswith('new'):
+                    job_prov = 'New APS'
+                    job_type = JobType.staging
                 else:
                     continue
 
