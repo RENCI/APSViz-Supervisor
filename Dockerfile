@@ -23,7 +23,7 @@ RUN git clone https://github.com/RENCI/APSVIZ-Supervisor.git
 # go to the repo dir
 WORKDIR /repo/APSVIZ-Supervisor
 
-# make sure everythign is read/write in the repo code
+# make sure everything is read/write in the repo code
 RUN chmod 777 -R .
 
 # install all required packages
