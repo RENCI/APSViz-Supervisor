@@ -169,24 +169,27 @@ class JobCreate:
             # add the command matrix value
             new_cmd_list.extend(item)
 
-            # set the default number of CPUs
-            cpus: str = '2'
-
-            # find the number of CPUs needed if it is there
-            if len(item) > 1:
-                for i, arg in enumerate(item):
-                    if arg.startswith('--cpu'):
-                        cpus = str(item[i+1])
-                        break
-
-            # this is done to make the memory limit greater than what is requested
+            # this is done to make the memory limit 25% greater than what is requested
             memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
             memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
-            memory_limit_val = int(memory_val_txt) + 5
+            memory_limit_val = int(memory_val_txt) + int((int(memory_val_txt) * .25))
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
+            # use what is defined in the DB if it exists
+            if run[run['job-type']]['run-config']['CPUS']:
+                cpus = run[run['job-type']]['run-config']['CPUS']
+            # this should never happen if the DB is setup properly
+            else:
+                cpus = "250m"
+
+            # this is done to make sure that cpu limit is 25% greater than what is created
+            cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
+            cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
+            cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * .25))
+            cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
+
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': '1Gi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
+            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '1Gi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
 
             # configure the pod template container
             container = client.V1Container(
@@ -205,7 +208,7 @@ class JobCreate:
             containers.append(container)
 
         # create a security context for the pod
-        # security_context = client.V1PodSecurityContext(run_as_user=1000, run_as_group=3000, fs_group=2000)
+        # security_context = client.V1PodSecurityContext(run_as_user=1000, fs_group=2000, run_as_group=3000)
 
         # if there was a node selector found use it
         if run[run['job-type']]['run-config']['NODE_TYPE']:
@@ -216,7 +219,7 @@ class JobCreate:
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume], node_selector=node_selector)
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume], node_selector=node_selector)  # , security_context=security_context
         )
 
         # create the specification of job deployment
