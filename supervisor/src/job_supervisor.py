@@ -281,7 +281,10 @@ class APSVizSupervisor:
 
         # is this a geo tiff job array
         elif run['job-type'] == JobType.run_geo_tiff:
-            command_line_params = ['--outputDIR',
+            command_line_params = ['--inputDIR',
+                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                   str(run['id']) + '/input',
+                                   '--outputDIR',
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                    str(run['id']) +
                                    self.k8s_config[run['job-type']]['SUB_PATH'],
@@ -293,7 +296,10 @@ class APSVizSupervisor:
 
         # is this a mbtiles zoom 0-10 job array
         elif run['job-type'] == JobType.compute_mbtiles_0_10:
-            command_line_params = ['--outputDIR',
+            command_line_params = ['--inputDIR',
+                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
+                                   str(run['id']) + '/input',
+                                   '--outputDIR',
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                    str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--finalDIR',
@@ -304,7 +310,7 @@ class APSVizSupervisor:
 
         # is this a adcirc2cog_tiff job array
         elif run['job-type'] == JobType.adcirc2cog_tiff:
-            command_line_params =  ['--inputDIR',
+            command_line_params = ['--inputDIR',
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                    str(run['id']) + '/input',
                                    '--outputDIR',
