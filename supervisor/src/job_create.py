@@ -56,7 +56,7 @@ class JobCreate:
         # configure a secret claim for the secret keys
         ssh_secret_claim = client.V1SecretVolumeSource(
             secret_name=f'{job_details["SECRETS_CLAIM"]}',
-            default_mode=0o600)
+            default_mode=0o777)
 
         # configure the data volume claim
         data_volume = client.V1Volume(
