@@ -172,9 +172,16 @@ class APSVizSupervisor:
 
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                        # set the type to clean up
-                        run['job-type'] = JobType.final_staging
-                        run['status'] = JobStatus.new
+                        # if this is not a repeat failed final staging run try to clean up
+                        if run['job-type'] != JobType.final_staging:
+                            # set the type to clean up
+                            run['job-type'] = JobType.final_staging
+                            run['status'] = JobStatus.new
+                        # else it failed so complete the run
+                        else:
+                            # set the type to clean up
+                            run['job-type'] = JobType.complete
+                            run['status'] = JobStatus.complete
 
                         # continue processing
                         continue
@@ -298,7 +305,7 @@ class APSVizSupervisor:
         elif run['job-type'] == JobType.compute_mbtiles_0_10:
             command_line_params = ['--inputDIR',
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/input',
+                                   str(run['id']) + '/tiff',
                                    '--outputDIR',
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
                                    str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
