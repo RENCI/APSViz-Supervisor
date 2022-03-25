@@ -172,16 +172,17 @@ class APSVizSupervisor:
 
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                        # if this is not a repeat failed final staging run try to clean up
-                        if run['job-type'] != JobType.final_staging:
-                            # set the type to clean up
-                            run['job-type'] = JobType.final_staging
-                            run['status'] = JobStatus.new
-                        # else it failed so complete the run
-                        else:
+                        # if this is a repeat failed final staging run just complete the run
+                        if JobType.final_staging.value in run:
+                            self.send_slack_msg(run['id'], "final-staging failed. Some run data may not have been removed.", run['instance_name'])
                             # set the type to clean up
                             run['job-type'] = JobType.complete
                             run['status'] = JobStatus.complete
+                        # else try to clean up
+                        else:
+                            # set the type to clean up
+                            run['job-type'] = JobType.final_staging
+                            run['status'] = JobStatus.new
 
                         # continue processing
                         continue
@@ -277,64 +278,33 @@ class APSVizSupervisor:
             # create the additional command line parameters
             command_line_params = ['--instanceId', str(run['id']),
                                    '--inputURL', access_type, '--grid', run['gridname'],
-                                   '--outputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) +
-                                   self.k8s_config[run['job-type']]['SUB_PATH'] +
-                                   self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/' +
-                                   'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
+                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
+                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
 
         # is this a geo tiff job array
         elif run['job-type'] == JobType.run_geo_tiff:
-            command_line_params = ['--inputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/input',
-                                   '--outputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) +
-                                   self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--finalDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/' +
-                                   'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
+                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--inputFile']
 
         # is this a mbtiles zoom 0-10 job array
         elif run['job-type'] == JobType.compute_mbtiles_0_10:
-            command_line_params = ['--inputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/tiff',
-                                   '--outputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--finalDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/' +
-                                   'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/tiff',
+                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--inputFile']
 
         # is this a adcirc2cog_tiff job array
         elif run['job-type'] == JobType.adcirc2cog_tiff:
-            command_line_params = ['--inputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/input',
-                                   '--outputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) +
-                                   self.k8s_config[run['job-type']]['SUB_PATH'],
+            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
+                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--inputFile']
 
         # is this a geotiff2cog job array
         elif run['job-type'] == JobType.geotiff2cog:
-            command_line_params = ['--inputDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/cogeo',
-                                   '--finalDIR',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) + '/' +
-                                   'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo',
+                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--inputFile']
 
         # is this a geo server load job
@@ -343,15 +313,9 @@ class APSVizSupervisor:
 
         # is this a final staging job
         elif run['job-type'] == JobType.final_staging:
-            command_line_params = ['--inputDir',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' +
-                                   str(run['id']) +
-                                   self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--outputDir',
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] +
-                                   self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--tarMeta',
-                                   str(run['id'])]
+            command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--tarMeta', str(run['id'])]
 
         return command_line_params, extend_output_path
 
