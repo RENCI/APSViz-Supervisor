@@ -30,8 +30,8 @@ class JobCreate:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
-    @staticmethod
-    def create_job_object(run, job_details):
+    #@staticmethod
+    def create_job_object(self, run, job_details):
         """
         creates a k8s job description object
 
@@ -190,6 +190,8 @@ class JobCreate:
 
             # get the baseline set of container resources
             resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '1Gi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
+
+            self.logger.info(f'command line: {new_cmd_list}')
 
             # configure the pod template container
             container = client.V1Container(
