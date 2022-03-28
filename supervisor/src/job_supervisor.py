@@ -172,7 +172,7 @@ class APSVizSupervisor:
                         # if this was a final staging run that failed force complete
                         if 'final-staging' in run:
                             self.logger.error(f"Error detected in final staging for run id: {run['id']}")
-                            run['status_prov'] += ', Error detected in final staging. An incomplete cleanup may have occurred.'
+                            run['status_prov'] += ', Error detected in final staging. An incomplete cleanup may have occurred'
 
                             # set error conditions
                             run['job-type'] = JobType.complete
