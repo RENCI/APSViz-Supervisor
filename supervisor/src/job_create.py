@@ -229,7 +229,7 @@ class JobCreate:
         # create the specification of job deployment
         spec = client.V1JobSpec(
             template=template,
-            backoff_limit=1,
+            backoff_limit=0,
             ttl_seconds_after_finished=120
             )
 
