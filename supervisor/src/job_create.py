@@ -191,7 +191,9 @@ class JobCreate:
             # get the baseline set of container resources
             resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '1Gi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
 
-            self.logger.info(f'command line: {new_cmd_list}')
+            # output the command line for debug runs
+            if run['debug'] is True:
+                self.logger.info(f'command line: {new_cmd_list}')
 
             # configure the pod template container
             container = client.V1Container(
