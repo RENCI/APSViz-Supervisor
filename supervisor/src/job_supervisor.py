@@ -157,7 +157,10 @@ class APSVizSupervisor:
                             msg = f"*{run_type} run completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
 
                         # send the message
-                        self.send_slack_msg(run['id'], msg, run['instance_name'])
+                        self.send_slack_msg(run, msg, run['instance_name'])
+
+                        # send something to log to indicate complete
+                        self.logger.info(f"{run['id']} complete.")
 
                         # remove the run
                         self.run_list.remove(run)
@@ -166,25 +169,27 @@ class APSVizSupervisor:
                         continue
                     # or an error
                     elif run['job-type'] == JobType.error:
-                        # report the exception
-                        self.logger.error(f"Error detected: About to clean up of intermediate files. Run id: {run['id']}")
-                        run['status_prov'] += ', Error detected'
+                        # if this was a final staging run that failed force complete
+                        if 'final-staging' in run:
+                            self.logger.error(f"Error detected in final staging for run id: {run['id']}")
+                            run['status_prov'] += ', Error detected in final staging. An incomplete cleanup may have occurred.'
 
-                        self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                        # if this is a repeat failed final staging run just complete the run
-                        if JobType.final_staging.value in run:
-                            self.send_slack_msg(run['id'], "final-staging failed. Some run data may not have been removed.", run['instance_name'])
-                            # set the type to clean up
+                            # set error conditions
                             run['job-type'] = JobType.complete
-                            run['status'] = JobStatus.complete
+                            run['status'] = JobStatus.error
                         # else try to clean up
                         else:
+                            self.logger.error(f"Error detected: About to clean up of intermediate files. Run id: {run['id']}")
+                            run['status_prov'] += ', Error detected'
+
                             # set the type to clean up
                             run['job-type'] = JobType.final_staging
                             run['status'] = JobStatus.new
 
-                        # continue processing
+                        # report the issue
+                        self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                        # continue processing runs
                         continue
                 except Exception as e_main:
                     # report the exception
@@ -193,7 +198,7 @@ class APSVizSupervisor:
                     msg = f'Exception {e_main} caught. Terminating run.'
 
                     # send the message
-                    self.send_slack_msg(run['id'], msg, run['instance_name'])
+                    self.send_slack_msg(run, msg, run['instance_name'])
 
                     # remove the run
                     self.run_list.remove(run)
@@ -378,7 +383,7 @@ class APSVizSupervisor:
                 job_status = self.k8s_create.delete_job(run)
 
                 self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
-                self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['instance_name'])
+                self.send_slack_msg(run, f"failed in {run['job-type']}.", run['instance_name'])
 
                 # set error conditions
                 run['job-type'] = JobType.error
@@ -416,11 +421,11 @@ class APSVizSupervisor:
             # save these params in the run info
             run[run['job-type']] = {'run-config': config}
 
-    def send_slack_msg(self, run_id, msg, instance_name=None):
+    def send_slack_msg(self, run, msg, instance_name=None):
         """
         sends a msg to the slack channel
 
-        :param run_id:
+        :param run:
         :param msg:
         :param instance_name:
         :return:
@@ -433,10 +438,12 @@ class APSVizSupervisor:
             final_msg += f'Instance name: ' + instance_name + ', '
 
         # add the run id and msg
-        final_msg += f'Run ID: {run_id} ' + msg
+        final_msg += f"Run ID: {run['id']} {msg}"
 
         # send the message if we arent in debug mode
-        if msg.find('debug') == -1:
+        if run['debug']:
+            self.logger.info(final_msg)
+        else:
             self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
 
     def get_incomplete_runs(self):
@@ -458,10 +465,15 @@ class APSVizSupervisor:
                 # get the run id
                 run_id = run['run_id']
 
+                # default the run mode and run id
+                run['debug'] = False
+                run['id'] = run_id
+
                 # check the run types to get the correct run params
                 if run['run_data']['supervisor_job_status'].startswith('debug'):
                     job_prov = 'New debug'
                     job_type = JobType.staging
+                    run['debug'] = True
                 elif run['run_data']['supervisor_job_status'].startswith('hazus'):
                     job_prov = 'New HAZUS-SINGLETON'
                     job_type = JobType.hazus_singleton
@@ -474,13 +486,13 @@ class APSVizSupervisor:
                 # continue only if we have everything needed for a run
                 if 'downloadurl' in run['run_data'] and 'adcirc.gridname' in run['run_data'] and 'instancename' in run['run_data']:
                     # create the new run
-                    self.run_list.append({'id': run_id, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                    self.run_list.append({'id': run_id, 'debug': run['debug'], 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                     # update the run status in the DB
                     self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
 
                     # notify slack
-                    self.send_slack_msg(run_id, f'{job_prov} run accepted.', run['run_data']['instancename'])
+                    self.send_slack_msg(run, f'{job_prov} run accepted.', run['run_data']['instancename'])
                 else:
                     # update the run status in the DB
                     self.pg_db.update_job_status(run_id, 'Error - Lacks the required run properties.')
@@ -492,7 +504,7 @@ class APSVizSupervisor:
                         instance_name = None
 
                     # send the slack message
-                    self.send_slack_msg(run_id, "lacked the required run properties.", instance_name)
+                    self.send_slack_msg(run, "lacked the required run properties.", instance_name)
 
         # debugging only
         """
