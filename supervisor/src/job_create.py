@@ -162,7 +162,7 @@ class JobCreate:
         containers: list = []
 
         # set the limit multiplier
-        limit_multiplier = 0
+        limit_multiplier = .25
 
         # add on the resources
         for idx, item in enumerate(run[run['job-type']]['run-config']['COMMAND_MATRIX']):
@@ -210,7 +210,6 @@ class JobCreate:
                 resources=resources
                 )
 
-            # if idx == 2 or run[run['job-type']]['run-config']['JOB_NAME'].startswith('staging'):
             # add the container to the list
             containers.append(container)
 
