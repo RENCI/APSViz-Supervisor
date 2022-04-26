@@ -30,7 +30,7 @@ class JobCreate:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
-    #@staticmethod
+    # @staticmethod
     def create_job_object(self, run, job_details):
         """
         creates a k8s job description object
@@ -181,7 +181,7 @@ class JobCreate:
             # use what is defined in the DB if it exists
             if run[run['job-type']]['run-config']['CPUS']:
                 cpus = run[run['job-type']]['run-config']['CPUS']
-            # this should never happen if the DB is setup properly
+            # this should never happen if the DB is set up properly
             else:
                 cpus = "250m"
 
@@ -289,8 +289,8 @@ class JobCreate:
         # return the job controller uid
         return job_id
 
-    @staticmethod
-    def delete_job(run) -> str:
+    # @staticmethod
+    def delete_job(self, run) -> str:
         """
         deletes the k8s job
 
@@ -305,16 +305,25 @@ class JobCreate:
         # create an API hook
         api_instance = client.BatchV1Api()
 
-        # remove the job
-        api_response = api_instance.delete_namespaced_job(
-            name=run_details['JOB_NAME'],
-            namespace=job_details['NAMESPACE'],
-            body=client.V1DeleteOptions(
-                propagation_policy='Foreground',
-                grace_period_seconds=5))
+        try:
+            # remove the job
+            api_response = api_instance.delete_namespaced_job(
+                name=run_details['JOB_NAME'],
+                namespace=job_details['NAMESPACE'],
+                body=client.V1DeleteOptions(
+                    propagation_policy='Foreground',
+                    grace_period_seconds=5))
+
+            # set the return value
+            ret_val = str(api_response.status)
+
+        # trap any k8s call errors
+        except (client.exceptions.ApiException, Exception) as e:
+            self.logger.error(f'Job delete error {e}')
+            ret_val = "Failed"
 
         # return the final status of the job
-        return str(api_response.status)
+        return str(ret_val)
 
     @staticmethod
     def get_config() -> dict:
