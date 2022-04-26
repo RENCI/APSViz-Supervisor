@@ -374,15 +374,9 @@ class APSVizSupervisor:
                 run['status_prov'] += f", {run['job-type'].value} complete"
                 self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                # if there was an error deleting the job terminate this run
-                if job_status.startswith('Failed'):
-                    # set error conditions
-                    run['job-type'] = JobType.error
-                    run['status'] = JobStatus.error
-                else:
-                    # prepare for next stage
-                    run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
-                    run['status'] = JobStatus.new
+                # prepare for next stage
+                run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
+                run['status'] = JobStatus.new
             # was there a failure
             elif job_pod_status.startswith('Failed'):
                 # remove the job and get the final run status
