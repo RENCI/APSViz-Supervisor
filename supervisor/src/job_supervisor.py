@@ -366,23 +366,29 @@ class APSVizSupervisor:
             # if the job status is not active (!=1) it is complete or dead. either way it gets removed
             if job_status is None and not job_pod_status.startswith('Failed'):
                 # remove the job and get the final run status
-                job_status = self.k8s_create.delete_job(run)
+                job_status = str(self.k8s_create.delete_job(run))
 
-                self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, Final status: {job_status}")
+                self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, job delete status: {job_status}")
 
                 # set the stage status
                 run['status_prov'] += f", {run['job-type'].value} complete"
                 self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                # prepare for next stage
-                run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
-                run['status'] = JobStatus.new
+                # if there was an error deleting the job terminate this run
+                if job_status.startswith('Failed'):
+                    # set error conditions
+                    run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
+                else:
+                    # prepare for next stage
+                    run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
+                    run['status'] = JobStatus.new
             # was there a failure
             elif job_pod_status.startswith('Failed'):
                 # remove the job and get the final run status
-                job_status = self.k8s_create.delete_job(run)
+                job_status = str(self.k8s_create.delete_job(run))
 
-                self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job status: {job_status}, pod status: {job_pod_status}.")
+                self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_status}, pod status: {job_pod_status}.")
                 self.send_slack_msg(run, f"failed in {run['job-type']}.", run['instance_name'])
 
                 # set error conditions
