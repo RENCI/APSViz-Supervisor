@@ -309,7 +309,8 @@ class APSVizSupervisor:
         # is this a geotiff2cog job array
         elif run['job-type'] == JobType.geotiff2cog:
             command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo',
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH']]
+                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--inputParam']
 
         # is this a geo server load job
         elif run['job-type'] == JobType.load_geo_server:
