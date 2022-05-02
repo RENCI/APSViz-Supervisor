@@ -196,7 +196,7 @@ class JobCreate:
 
             # output the command line for debug runs
             if run['debug'] is True:
-                self.logger.info(f'command line: {new_cmd_list}')
+                self.logger.info(f'command line: {" ".join(new_cmd_list)}')
 
             # configure the pod template container
             container = client.V1Container(
