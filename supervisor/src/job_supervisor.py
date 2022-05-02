@@ -275,7 +275,7 @@ class APSVizSupervisor:
         elif run['job-type'] == JobType.hazus_singleton:
             command_line_params = [run['downloadurl']]
 
-        # is this a obs_mod job
+        # is this an obs_mod job
         elif run['job-type'] == JobType.obs_mod:
             access_type = run['downloadurl'] + '/fort.63.nc'
             access_type = access_type.replace('fileServer', 'dodsC')
@@ -300,7 +300,7 @@ class APSVizSupervisor:
                                    '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--inputFile']
 
-        # is this a adcirc2cog_tiff job array
+        # is this an adcirc2cog_tiff job array
         elif run['job-type'] == JobType.adcirc2cog_tiff:
             command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
                                    '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
@@ -400,7 +400,7 @@ class APSVizSupervisor:
 
         :return:
         """
-        # create a new configuration if tis is a new run
+        # create a new configuration if this is a new run
         if run['status'] == JobStatus.new:
             # get the config
             config = self.get_config()[run['job-type']]
@@ -423,7 +423,7 @@ class APSVizSupervisor:
 
     def send_slack_msg(self, run, msg, instance_name=None):
         """
-        sends a msg to the slack channel
+        sends a msg to the Slack channel
 
         :param run:
         :param msg:
@@ -440,7 +440,7 @@ class APSVizSupervisor:
         # add the run id and msg
         final_msg += f"Run ID: {run['id']} {msg}"
 
-        # send the message if we arent in debug mode
+        # send the message if we aren't in debug mode
         if run['debug']:
             self.logger.info(final_msg)
         else:
@@ -503,7 +503,7 @@ class APSVizSupervisor:
                     else:
                         instance_name = None
 
-                    # send the slack message
+                    # send the Slack message
                     self.send_slack_msg(run, "lacked the required run properties.", instance_name)
 
         # debugging only
