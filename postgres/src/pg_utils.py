@@ -200,8 +200,8 @@ class PGUtils:
         # split the run id. run id is in the form <instance id>_<url>
         run = run_id.split('-')
 
-        # create the sql
-        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}-{run[2]}', 'supervisor_job_status', '{value}')"
+        # create the sql. ensure the value does not exceed the column size (1024)
+        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}-{run[2]}', 'supervisor_job_status', '{value[:1024]}')"
 
         # run the SQL
         self.exec_sql(sql)
