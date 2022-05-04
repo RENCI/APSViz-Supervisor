@@ -30,6 +30,29 @@ class JobCreate:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
+        # declare the secret environment variables
+        self.secret_env_params = [
+            {'name': 'LOG_PATH', 'key': 'log-path'},
+            {'name': 'SSH_USERNAME', 'key': 'ssh-username'},
+            {'name': 'SSH_HOST', 'key': 'ssh-host'},
+            {'name': 'ASGS_DB_USERNAME', 'key': 'asgs-username'},
+            {'name': 'ASGS_DB_PASSWORD', 'key': 'asgs-password'},
+            {'name': 'ASGS_DB_HOST', 'key': 'asgs-host'},
+            {'name': 'ASGS_DB_PORT', 'key': 'asgs-port'},
+            {'name': 'ASGS_DB_DATABASE', 'key': 'asgs-database'},
+            {'name': 'GEOSERVER_USER', 'key': 'geo-username'},
+            {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'},
+            {'name': 'GEOSERVER_URL', 'key': 'geo-url'},
+            {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
+            {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
+            {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
+            {'name': 'SLACK_ACCESS_TOKEN', 'key': 'slack-access-token'},
+            {'name': 'SLACK_CHANNEL', 'key': 'slack-channel'},
+            {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
+            {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
+            {'name': 'FILESERVER_HOST', 'key': 'file-server-host-key'}
+        ]
+
     # @staticmethod
     def create_job_object(self, run, job_details):
         """
@@ -68,100 +91,12 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             secret=ssh_secret_claim)
 
-        log_dir = client.V1EnvVar(
-            name='LOG_PATH',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='log-path')))
+        # declare an array for the env declarations
+        secret_envs = []
 
-        ssh_username_env = client.V1EnvVar(
-            name='SSH_USERNAME',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='ssh-username')))
-
-        ssh_host = client.V1EnvVar(
-            name='SSH_HOST',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='ssh-host')))
-
-        asgs_db_username = client.V1EnvVar(
-            name='ASGS_DB_USERNAME',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='asgs-username')))
-
-        asgs_db_password = client.V1EnvVar(
-            name='ASGS_DB_PASSWORD',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='asgs-password')))
-
-        asgs_db_host = client.V1EnvVar(
-            name='ASGS_DB_HOST',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='asgs-host')))
-
-        asgs_db_port = client.V1EnvVar(
-            name='ASGS_DB_PORT',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='asgs-port')))
-
-        asgs_db_database = client.V1EnvVar(
-            name='ASGS_DB_DATABASE',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='asgs-database')))
-
-        geo_username = client.V1EnvVar(
-            name='GEOSERVER_USER',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='geo-username')))
-
-        geo_password = client.V1EnvVar(
-            name='GEOSERVER_PASSWORD',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='geo-password')))
-
-        geo_url = client.V1EnvVar(
-            name='GEOSERVER_URL',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='geo-url')))
-
-        geo_host = client.V1EnvVar(
-            name='GEOSERVER_HOST',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='geo-host')))
-
-        geo_proj_path = client.V1EnvVar(
-            name='GEOSERVER_PROJ_PATH',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='geo-proj-path')))
-
-        geo_workspace = client.V1EnvVar(
-            name='GEOSERVER_WORKSPACE',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='geo-workspace')))
-
-        slack_client = client.V1EnvVar(
-            name='SLACK_ACCESS_TOKEN',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='slack-access-token')))
-
-        slack_channel = client.V1EnvVar(
-            name='SLACK_CHANNEL',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='slack-channel')))
-
-        aws_access_key_id = client.V1EnvVar(
-            name='AWS_ACCESS_KEY_ID',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='aws-access-key-id')))
-
-        aws_secret_access_key = client.V1EnvVar(
-            name='AWS_SECRET_ACCESS_KEY',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='aws-secret-access-key')))
-
-        file_server_host_key = client.V1EnvVar(
-            name='FILESERVER_HOST',
-            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
-                name='eds-keys', key='file-server-host-key')))
+        # get all the env params into an array
+        for item in self.secret_env_params:
+            secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(name='eds-keys', key=item['key']))))
 
         # init a list for all the containers in this job
         containers: list = []
@@ -210,8 +145,7 @@ class JobCreate:
                 command=new_cmd_list,
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
                 image_pull_policy='IfNotPresent',
-                env=[log_dir, ssh_username_env, ssh_host, asgs_db_username, asgs_db_password, asgs_db_host, asgs_db_port, asgs_db_database,
-                     geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace, slack_client, slack_channel, aws_access_key_id, aws_secret_access_key, file_server_host_key],
+                env=secret_envs,
                 resources=resources
                 )
 
