@@ -158,6 +158,11 @@ class JobCreate:
             value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
                 name='eds-keys', key='aws-secret-access-key')))
 
+        file_server_host_key = client.V1EnvVar(
+            name='FILESERVER_HOST',
+            value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(
+                name='eds-keys', key='file-server-host-key')))
+
         # init a list for all the containers in this job
         containers: list = []
 
@@ -192,7 +197,7 @@ class JobCreate:
             cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '511Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
+            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '512Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
 
             # output the command line for debug runs
             if run['debug'] is True:
@@ -206,7 +211,7 @@ class JobCreate:
                 volume_mounts=[data_volume_mount, ssh_volume_mount],
                 image_pull_policy='IfNotPresent',
                 env=[log_dir, ssh_username_env, ssh_host, asgs_db_username, asgs_db_password, asgs_db_host, asgs_db_port, asgs_db_database,
-                     geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace, slack_client, slack_channel, aws_access_key_id, aws_secret_access_key],
+                     geo_username, geo_password, geo_url, geo_host, geo_proj_path, geo_workspace, slack_client, slack_channel, aws_access_key_id, aws_secret_access_key, file_server_host_key],
                 resources=resources
                 )
 
