@@ -254,6 +254,8 @@ class APSVizSupervisor:
     def get_base_command_line(self, run):
         """
         gets the command lines for each run type
+        note: use this to keep a pod running after command_line and command_matrix for the job have been set to '[""]' in the DB
+            command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
 
         :param run:
         :return:
