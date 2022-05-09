@@ -132,7 +132,16 @@ class JobCreate:
             cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '512Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '256Mi'}}
+            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
+
+            # if the command has a '--cpu' in it replace the value with the cpu amount specified when the cpu value is >= 1
+            if '--cpu' in new_cmd_list and int(cpu_val_txt)/1000 > .5:
+                new_cmd_list = list(map(lambda val: val.replace("~", f"{int(int(cpu_val_txt)/1000)}"), new_cmd_list))
+
+            # remove any empty elements. this becomes important when setting the pod into a loop
+            # see get_base_command_line() in the supervisor code
+            if '' in new_cmd_list:
+                new_cmd_list.remove('')
 
             # output the command line for debug runs
             if run['debug'] is True:
@@ -157,7 +166,11 @@ class JobCreate:
 
         # if there was a node selector found use it
         if run[run['job-type']]['run-config']['NODE_TYPE']:
-            node_selector = {'apsviz-ng': run[run['job-type']]['run-config']['NODE_TYPE']}
+            # separate the tag and type
+            params = run[run['job-type']]['run-config']['NODE_TYPE'].split(':')
+
+            # set the node selector
+            node_selector = {params[0]: params[1]}
         else:
             node_selector = None
 
