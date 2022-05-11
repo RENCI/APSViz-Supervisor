@@ -96,14 +96,11 @@ class JobCreate:
         volume_mounts = [data_volume_mount, ssh_volume_mount]
 
         # if there is a desire to mount the file server PV
-        if True:
-            run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'] = 'some-vol-name'
-            run[run['job-type']]['run-config']['FILESVR_VOLUME_PATH'] = '/fileserver'
-
+        if run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME']:
             # configure the data volume mount for the container
             filesvr_volume_mount = client.V1VolumeMount(
                 name=run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'],
-                mount_path=run[run['job-type']]['run-config']['FILESVR_VOLUME_PATH'])
+                mount_path=run[run['job-type']]['run-config']['FILESVR_MOUNT_PATH'])
 
             # configure a persistent claim for the data
             filesvr_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
