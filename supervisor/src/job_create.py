@@ -50,7 +50,7 @@ class JobCreate:
             {'name': 'SLACK_CHANNEL', 'key': 'slack-channel'},
             {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
             {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
-            {'name': 'FILESERVER_HOST', 'key': 'file-server-host-key'}
+            {'name': 'FILESERVER_HOST', 'key': 'file-server-host'}
         ]
 
     # @staticmethod
@@ -66,30 +66,57 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
             mount_path=run[run['job-type']]['run-config']['DATA_MOUNT_PATH'])
 
+        # configure a persistent claim for the data
+        data_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
+            claim_name=f'{job_details["DATA_PVC_CLAIM"]}')
+
+        # configure the data volume claim
+        data_volume = client.V1Volume(
+            name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
+            persistent_volume_claim=data_persistent_volume_claim)
+
         # configure the ssh key volume mount for the container
         ssh_volume_mount = client.V1VolumeMount(
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             read_only=True,
             mount_path=run[run['job-type']]['run-config']['SSH_MOUNT_PATH'])
 
-        # configure a persistent claim for the data
-        persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
-            claim_name=f'{job_details["PVC_CLAIM"]}')
-
         # configure a secret claim for the secret keys
         ssh_secret_claim = client.V1SecretVolumeSource(
             secret_name=f'{job_details["SECRETS_CLAIM"]}',
             default_mode=0o777)
 
-        # configure the data volume claim
-        data_volume = client.V1Volume(
-            name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
-            persistent_volume_claim=persistent_volume_claim)
-
         # configure the ssh secret claim
         ssh_volume = client.V1Volume(
             name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
             secret=ssh_secret_claim)
+
+        # declare the volume mounts
+        volumes = [data_volume, ssh_volume]
+        volume_mounts = [data_volume_mount, ssh_volume_mount]
+
+        # if there is a desire to mount the file server PV
+        if True:
+            run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'] = 'some-vol-name'
+            run[run['job-type']]['run-config']['FILESVR_VOLUME_PATH'] = '/fileserver'
+
+            # configure the data volume mount for the container
+            filesvr_volume_mount = client.V1VolumeMount(
+                name=run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'],
+                mount_path=run[run['job-type']]['run-config']['FILESVR_VOLUME_PATH'])
+
+            # configure a persistent claim for the data
+            filesvr_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
+                claim_name=f'{job_details["FILESVR_PVC_CLAIM"]}')
+
+            # configure the data volume claim
+            filesvr_volume = client.V1Volume(
+                name=run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'],
+                persistent_volume_claim=filesvr_persistent_volume_claim)
+
+            # add this to the mounted volumes list
+            volumes.append(filesvr_volume)
+            volume_mounts.append(filesvr_volume_mount)
 
         # declare an array for the env declarations
         secret_envs = []
@@ -152,7 +179,7 @@ class JobCreate:
                 name=run[run['job-type']]['run-config']['JOB_NAME'] + '-' + str(idx),
                 image=run[run['job-type']]['run-config']['IMAGE'],
                 command=new_cmd_list,
-                volume_mounts=[data_volume_mount, ssh_volume_mount],
+                volume_mounts=volume_mounts,
                 image_pull_policy='IfNotPresent',
                 env=secret_envs,
                 resources=resources
@@ -177,7 +204,7 @@ class JobCreate:
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=[data_volume, ssh_volume], node_selector=node_selector)  # , security_context=security_context
+            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=volumes, node_selector=node_selector)  # , security_context=security_context
         )
 
         # create the specification of job deployment
