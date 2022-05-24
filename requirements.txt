@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Phillips Owen <powen@renci.org>
+#
+# SPDX-License-Identifier: MIT
+
 kubernetes==12.0.1
 psycopg2==2.9.3
 slackclient==2.9.3

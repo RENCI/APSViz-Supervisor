@@ -1,5 +1,10 @@
+# SPDX-FileCopyrightText: 2022 Phillips Owen <powen@renci.org>
+#
+# SPDX-License-Identifier: MIT
+
 common/__pycache__/
 postgres/src/APSVIZ.pg_utils.log
 postgres/src/__pycache__/
 supervisor/src/__pycache__/
 supervisor/src/logs/
+/supervisor/base_config.json
