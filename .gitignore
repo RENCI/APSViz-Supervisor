@@ -10,5 +10,5 @@ supervisor/src/logs/
 supervisor/base_config.json
 .reuse
 .reuse/dep5
-LICENCES
+LICENSES
 LICENSES/MIT.txt
