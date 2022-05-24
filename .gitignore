@@ -7,4 +7,8 @@ postgres/src/APSVIZ.pg_utils.log
 postgres/src/__pycache__/
 supervisor/src/__pycache__/
 supervisor/src/logs/
-/supervisor/base_config.json
+supervisor/base_config.json
+.reuse
+.reuse/dep5
+LICENCES
+LICENSES/MIT.txt
