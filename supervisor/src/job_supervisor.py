@@ -48,6 +48,7 @@ class JobType(str, Enum):
     final_staging = 'final-staging',
     adcirc2cog_tiff = 'adcirc2cog-tiff',
     geotiff2cog = 'geotiff2cog',
+    obs_mod_ast = 'obs-mod-ast',
     error = 'error',
     other_1 = 'TBD',
     complete = 'complete'
@@ -327,6 +328,17 @@ class APSVizSupervisor:
             command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--tarMeta', str(run['id'])]
+
+        # is this a obs mod ast job
+        # ./ execute_APSVIZ_pipeline.sh
+        elif run['job-type'] == JobType.obs_mod_ast:
+            access_type = run['downloadurl'] + '/fort.63.nc'
+            access_type = access_type.replace('fileServer', 'dodsC')
+
+            # create the additional command line parameters
+            command_line_params = [access_type,
+                                   run['gridname'],
+                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
 
         return command_line_params, extend_output_path
 
