@@ -50,7 +50,7 @@ class JobCreate:
             {'name': 'SLACK_CHANNEL', 'key': 'slack-channel'},
             {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
             {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
-            {'name': 'FILESERVER_HOST', 'key': 'file-server-host'},
+            {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host'},
             {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
             {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
             {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}
