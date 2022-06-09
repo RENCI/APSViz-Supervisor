@@ -280,12 +280,15 @@ class APSVizSupervisor:
 
         # is this an obs_mod job
         elif run['job-type'] == JobType.obs_mod:
-            access_type = run['downloadurl'] + '/fort.63.nc'
-            access_type = access_type.replace('fileServer', 'dodsC')
+            thredds_url = run['downloadurl'] + '/fort.63.nc'
+            thredds_url = thredds_url.replace('fileServer', 'dodsC')
+            # thredds_svc_name = os.getenv('THREDDS_SVC_NAME')
+            # thredds_host_url = os.getenv('THREDDS_HOST_URL')
+            # thredds_url = thredds_url.replace(thredds_svc_name, f'{thredds_svc_name}{thredds_host_url}')
 
             # create the additional command line parameters
             command_line_params = ['--instanceId', str(run['id']),
-                                   '--inputURL', access_type, '--grid', run['gridname'],
+                                   '--inputURL', thredds_url, '--grid', run['gridname'],
                                    '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
                                    '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
 
@@ -328,11 +331,14 @@ class APSVizSupervisor:
         # is this a obs mod ast job
         # ./ execute_APSVIZ_pipeline.sh
         elif run['job-type'] == JobType.obs_mod_ast:
-            access_type = run['downloadurl'] + '/fort.63.nc'
-            access_type = access_type.replace('fileServer', 'dodsC')
+            thredds_url = run['downloadurl'] + '/fort.63.nc'
+            thredds_url = thredds_url.replace('fileServer', 'dodsC')
+            # thredds_svc_name = os.getenv('THREDDS_SVC_NAME')
+            # thredds_host_url = os.getenv('THREDDS_HOST_URL')
+            # thredds_url = thredds_url.replace(thredds_svc_name, f'{thredds_svc_name}{thredds_host_url}')
 
             # create the additional command line parameters
-            command_line_params = [access_type,
+            command_line_params = [thredds_url,
                                    run['gridname'],
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
 
