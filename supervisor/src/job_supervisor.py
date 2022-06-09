@@ -282,9 +282,6 @@ class APSVizSupervisor:
         elif run['job-type'] == JobType.obs_mod:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
-            # thredds_svc_name = os.getenv('THREDDS_SVC_NAME')
-            # thredds_host_url = os.getenv('THREDDS_HOST_URL')
-            # thredds_url = thredds_url.replace(thredds_svc_name, f'{thredds_svc_name}{thredds_host_url}')
 
             # create the additional command line parameters
             command_line_params = ['--instanceId', str(run['id']),
@@ -333,9 +330,6 @@ class APSVizSupervisor:
         elif run['job-type'] == JobType.obs_mod_ast:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
-            # thredds_svc_name = os.getenv('THREDDS_SVC_NAME')
-            # thredds_host_url = os.getenv('THREDDS_HOST_URL')
-            # thredds_url = thredds_url.replace(thredds_svc_name, f'{thredds_svc_name}{thredds_host_url}')
 
             # create the additional command line parameters
             command_line_params = [thredds_url,
