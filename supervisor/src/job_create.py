@@ -100,23 +100,27 @@ class JobCreate:
 
         # if there is a desire to mount the file server PV
         if run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME']:
-            # configure the data volume mount for the container
-            filesvr_volume_mount = client.V1VolumeMount(
-                name=run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'],
-                mount_path=run[run['job-type']]['run-config']['FILESVR_MOUNT_PATH'])
+            volume_names = run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'].split(',')
+            mount_paths = run[run['job-type']]['run-config']['FILESVR_MOUNT_PATH'].split(',')
 
-            # configure a persistent claim for the data
-            filesvr_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
-                claim_name=f'{job_details["FILESVR_PVC_CLAIM"]}')
+            for index, value in enumerate(volume_names):
+                # configure the data volume mount for the container
+                filesvr_volume_mount = client.V1VolumeMount(
+                    name=volume_names[index],
+                    mount_path=mount_paths[index])
 
-            # configure the data volume claim
-            filesvr_volume = client.V1Volume(
-                name=run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'],
-                persistent_volume_claim=filesvr_persistent_volume_claim)
+                # configure a persistent claim for the data
+                filesvr_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
+                    claim_name=f"{volume_names[index]}")
 
-            # add this to the mounted volumes list
-            volumes.append(filesvr_volume)
-            volume_mounts.append(filesvr_volume_mount)
+                # configure the data volume claim
+                filesvr_volume = client.V1Volume(
+                    name=volume_names[index],
+                    persistent_volume_claim=filesvr_persistent_volume_claim)
+
+                # add this to the mounted volumes list
+                volumes.append(filesvr_volume)
+                volume_mounts.append(filesvr_volume_mount)
 
         # declare an array for the env declarations
         secret_envs = []
