@@ -43,6 +43,7 @@ class JobCreate:
             {'name': 'GEOSERVER_USER', 'key': 'geo-username'},
             {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'},
             {'name': 'GEOSERVER_URL', 'key': 'geo-url'},
+            {'name': 'GEOSERVER_URL_EXT', 'key': 'geo-url-ext'},
             {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
             {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
             {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
