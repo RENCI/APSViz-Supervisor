@@ -500,7 +500,7 @@ class APSVizSupervisor:
         # get the job definitions
         self.k8s_config = self.get_config()
 
-        # get the run definitions
+        # get the new runs
         runs = self.pg_db.get_new_runs()
 
         # use this for some test runs
@@ -515,10 +515,11 @@ class APSVizSupervisor:
         if runs != -1 and runs is not None:
             # add this run to the list
             for run in runs:
-                # save the run id that was provided in the DB query result
+                # save the run id that was provided by the DB run.properties data
                 run_id = run['run_id']
 
-                # make sure all the needed params are available
+                # make sure all the needed params are available. instance name and debug mode are handled here
+                # because they both affect messaging and logging.
                 missing_params_msg, instance_name, debug_mode = self.check_input_params(run['run_data'])
 
                 # if there is a message something is missing
@@ -530,7 +531,7 @@ class APSVizSupervisor:
 
                     # continue processing the remaining runs
                     continue
-                # check the run types to get the correct run params. ignore the entry if it is not in a "ready to run" state.
+                # get the run params.
                 elif run['run_data']['supervisor_job_status'].startswith('debug'):
                     job_prov = 'New debug'
                     job_type = JobType.staging
@@ -541,16 +542,16 @@ class APSVizSupervisor:
                     job_prov = 'New APS'
                     job_type = JobType.staging
                 else:
-                    # presume that this is not a new run. so no need to add it to the list
+                    # this is not a new run. ignore the entry as it is not in a legit "start" state.
                     continue
 
-                # create the new run
+                # add the new run to the list
                 self.run_list.append({'id': run_id, 'debug': debug_mode, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                 # update the run status in the DB
                 self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
 
-                # notify slack
+                # notify Slack
                 self.send_slack_msg(run_id, f'{job_prov} run accepted.', debug_mode, run['run_data']['instancename'])
 
     # debugging only
