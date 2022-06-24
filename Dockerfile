@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Phillips Owen <powen@renci.org>
+#
+# SPDX-License-Identifier: MIT
+
 # This Dockerfile is used to build the APSVIZ-Supervisor image
 # starts with the python image
 # installs nano

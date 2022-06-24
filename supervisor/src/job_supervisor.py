@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Phillips Owen <powen@renci.org>
+#
+# SPDX-License-Identifier: MIT
+
 import time
 import os
 import logging
@@ -77,6 +81,9 @@ class APSVizSupervisor:
 
         # create the postgres access object
         self.pg_db = PGUtils()
+
+        # init the run params to look for list
+        self.needed_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename']
 
         # get the log level and directory from the environment.
         # level comes from the container dockerfile, path comes from the k8s secrets
@@ -158,7 +165,7 @@ class APSVizSupervisor:
                             msg = f"*{run_type} run completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
 
                         # send the message
-                        self.send_slack_msg(run, msg, run['instance_name'])
+                        self.send_slack_msg(run['id'], msg, run['debug'], run['instance_name'])
 
                         # send something to log to indicate complete
                         self.logger.info(f"{run['id']} complete.")
@@ -199,7 +206,7 @@ class APSVizSupervisor:
                     msg = f'Exception {e_main} caught. Terminating run.'
 
                     # send the message
-                    self.send_slack_msg(run, msg, run['instance_name'])
+                    self.send_slack_msg(run['id'], msg, run['debug'], run['instance_name'])
 
                     # remove the run
                     self.run_list.remove(run)
@@ -327,7 +334,7 @@ class APSVizSupervisor:
                                    '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--tarMeta', str(run['id'])]
 
-        # is this a obs mod ast job
+        # is this an obs mod ast job
         # ./ execute_APSVIZ_pipeline.sh
         elif run['job-type'] == JobType.obs_mod_ast:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
@@ -399,7 +406,7 @@ class APSVizSupervisor:
                 job_status = str(self.k8s_create.delete_job(run))
 
                 self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_status}, pod status: {job_pod_status}.")
-                self.send_slack_msg(run, f"failed in {run['job-type']}.", run['instance_name'])
+                self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
 
                 # set error conditions
                 run['job-type'] = JobType.error
@@ -437,12 +444,13 @@ class APSVizSupervisor:
             # save these params in the run info
             run[run['job-type']] = {'run-config': config}
 
-    def send_slack_msg(self, run, msg, instance_name=None):
+    def send_slack_msg(self, run_id, msg, debug_mode=False, instance_name=None):
         """
         sends a msg to the Slack channel
 
-        :param run:
+        :param run_id:
         :param msg:
+        :param debug_mode:
         :param instance_name:
         :return:
         """
@@ -454,13 +462,36 @@ class APSVizSupervisor:
             final_msg += f'Instance name: ' + instance_name + ', '
 
         # add the run id and msg
-        final_msg += f"Run ID: {run['id']} {msg}"
+        final_msg += f"Run ID: {run_id} {msg}"
 
-        # send the message if we aren't in debug mode
-        if run['debug']:
+        # log the message if in debug mode
+        if debug_mode:
             self.logger.info(final_msg)
+        # else send the message to slack
         else:
             self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
+
+    def check_input_params(self, run_info: dict) -> (str, str, bool):
+        """
+        Checks the run data to insure we have all the necessary info to start a run
+
+        :param run_info:
+        :return:
+        """
+        # if there was an instance name use it
+        if 'instancename' in run_info:
+            instance_name = run_info['instancename']
+        else:
+            instance_name = None
+
+        # should we send the Slack message
+        if 'supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'):
+            debug_mode = True
+        else:
+            debug_mode = False
+
+        # loop through the params and return the ones that are missing
+        return f"{', '.join([run_param for run_param in self.needed_run_params if run_param not in run_info])}", instance_name, debug_mode
 
     def get_incomplete_runs(self):
         """
@@ -471,25 +502,41 @@ class APSVizSupervisor:
         # get the job definitions
         self.k8s_config = self.get_config()
 
-        # get the run definitions
+        # get the new runs
         runs = self.pg_db.get_new_runs()
+
+        # use this for some test runs
+        # runs = [
+        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'}},
+        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname'}},
+        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'new', 'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname', 'instancename': 'instancename'}},
+        #     {'run_id': '1234-5678-test', 'run_data': {'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname'}}
+        # ]
 
         # did we find anything to do
         if runs != -1 and runs is not None:
             # add this run to the list
             for run in runs:
-                # get the run id
+                # save the run id that was provided by the DB run.properties data
                 run_id = run['run_id']
 
-                # default the run mode and run id
-                run['debug'] = False
-                run['id'] = run_id
+                # make sure all the needed params are available. instance name and debug mode are handled here
+                # because they both affect messaging and logging.
+                missing_params_msg, instance_name, debug_mode = self.check_input_params(run['run_data'])
 
-                # check the run types to get the correct run params
-                if run['run_data']['supervisor_job_status'].startswith('debug'):
+                # if there is a message something is missing
+                if len(missing_params_msg) > 0:
+                    # update the run status everywhere
+                    self.pg_db.update_job_status(run_id, f'Error - Run lacks the required run properties ({missing_params_msg}).')
+                    self.logger.error(f"Error - Run lacks the required run properties ({missing_params_msg}): {run_id}")
+                    self.send_slack_msg(run_id, f'Error - Run lacks the required run properties ({missing_params_msg})', debug_mode, instance_name)
+
+                    # continue processing the remaining runs
+                    continue
+                # get the run params.
+                elif run['run_data']['supervisor_job_status'].startswith('debug'):
                     job_prov = 'New debug'
                     job_type = JobType.staging
-                    run['debug'] = True
                 elif run['run_data']['supervisor_job_status'].startswith('hazus'):
                     job_prov = 'New HAZUS-SINGLETON'
                     job_type = JobType.hazus_singleton
@@ -497,60 +544,44 @@ class APSVizSupervisor:
                     job_prov = 'New APS'
                     job_type = JobType.staging
                 else:
+                    # this is not a new run. ignore the entry as it is not in a legit "start" state.
                     continue
 
-                # continue only if we have everything needed for a run
-                if 'downloadurl' in run['run_data'] and 'adcirc.gridname' in run['run_data'] and 'instancename' in run['run_data']:
-                    # create the new run
-                    self.run_list.append({'id': run_id, 'debug': run['debug'], 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                # add the new run to the list
+                self.run_list.append({'id': run_id, 'debug': debug_mode, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
-                    # update the run status in the DB
-                    self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
+                # update the run status in the DB
+                self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
 
-                    # notify slack
-                    self.send_slack_msg(run, f'{job_prov} run accepted.', run['run_data']['instancename'])
-                else:
-                    # update the run status in the DB
-                    self.pg_db.update_job_status(run_id, 'Error - Lacks the required run properties.')
+                # notify Slack
+                self.send_slack_msg(run_id, f'{job_prov} run accepted.', debug_mode, run['run_data']['instancename'])
 
-                    # if there was an instance name use it
-                    if 'instancename' in run['run_data']:
-                        instance_name = run['run_data']['instancename']
-                    else:
-                        instance_name = None
+    # debugging only
+    """
+        SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
+        
+        SELECT public.get_config_items_json(2620);
+        SELECT public.get_supervisor_config_items_json();
+        
+        UPDATE public."ASGS_Mon_config_item" SET value='do not run' WHERE key='supervisor_job_status' AND instance_id=0;
+        
+        select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status', 'instancename');
 
-                    # send the Slack message
-                    self.send_slack_msg(run, "lacked the required run properties.", instance_name)
+        select pg_terminate_backend(pid) from pg_stat_activity where datname='adcirc_obs';
 
-        # debugging only
-        """
-            SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
-            
-            SELECT public.get_config_items_json(2620);
-            SELECT public.get_supervisor_config_items_json();
-            
-            UPDATE public."ASGS_Mon_config_item" SET value='do not run' WHERE key='supervisor_job_status' AND instance_id=0;
-            
-            select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status', 'instancename');
-
-            select pg_terminate_backend(pid) from pg_stat_activity where datname='adcirc_obs';
-
-            select distinct id, instance_id, uid, key, value
-                FROM public."ASGS_Mon_config_item"
-                where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
-                and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
-                --and uid='2021052506-namforecast'
-                order by 2 desc, 1 desc, 4, 5;   
-            
-            select distinct
-                'SELECT public.set_config_item(' || instance_id || ', ''' || uid || ''', ''supervisor_job_status'', ''new'');' as cmd
-                FROM public."ASGS_Mon_config_item"
-                where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
-                and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
-                and value='New, Run accepted, Staging running, Staging complete, Obs/Mod running, Obs/Mod complete, Geo tiff running';
-              
-            --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
-        """
-
-        # self.run_list.append({'id': 1, 'job-type': JobType.staging, 'status': JobStatus.new, 'status_prov': 'run accepted', 'downloadurl': 'downloadurl', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'})
-        # return
+        select distinct id, instance_id, uid, key, value
+            FROM public."ASGS_Mon_config_item"
+            where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
+            and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
+            --and uid='2021052506-namforecast'
+            order by 2 desc, 1 desc, 4, 5;   
+        
+        select distinct
+            'SELECT public.set_config_item(' || instance_id || ', ''' || uid || ''', ''supervisor_job_status'', ''new'');' as cmd
+            FROM public."ASGS_Mon_config_item"
+            where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
+            and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
+            and value='New, Run accepted, Staging running, Staging complete, Obs/Mod running, Obs/Mod complete, Geo tiff running';
+          
+        --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
+    """
