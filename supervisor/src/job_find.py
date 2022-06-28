@@ -73,7 +73,7 @@ class JobFind:
         core_api = client.CoreV1Api()
 
         # init the status storage
-        job_status: int = 0
+        job_status: int = None
         pod_status: str = ''
 
         # get the job run information
@@ -84,8 +84,11 @@ class JobFind:
 
         # for each item returned
         for job in jobs.items:
+            # is this a valid job
+            if 'job-name' not in job.metadata.labels:
+                self.logger.error(f'Job with no "job-name" label element detected while looking in {job}')
             # is this the one that was launched
-            if job.metadata.labels['job-name'] == job_name:
+            elif job.metadata.labels['job-name'] == job_name:
                 self.logger.debug(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
                 # get the job status
@@ -94,13 +97,13 @@ class JobFind:
                 # get the container status
                 for pod in pods.items:
                     if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
+                        # grab the status
                         pod_status = str(pod.status.phase)
 
-                        # if pod_status.startswith("Failed"):
-                        #     # no need to continue
-                        #     break
+                        # no need to continue if we got the state
+                        break
 
-                # no need to continue
+                # no need to continue if the job status was gathered
                 break
 
         # return the job controller uid, job status and pod status
