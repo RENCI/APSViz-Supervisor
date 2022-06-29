@@ -492,6 +492,7 @@ class APSVizSupervisor:
 
         # if there is a special k8s download url in the data use it.
         if 'post.opendap.renci_tds-k8.downloadurl' in run_info:
+            # use only the service name and save it for the run
             run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl']
 
         # loop through the params and return the ones that are missing
