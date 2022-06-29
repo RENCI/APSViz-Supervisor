@@ -83,7 +83,7 @@ class APSVizSupervisor:
         self.pg_db = PGUtils()
 
         # init the run params to look for list
-        self.needed_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename']
+        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename']
 
         # get the log level and directory from the environment.
         # level comes from the container dockerfile, path comes from the k8s secrets
@@ -484,14 +484,18 @@ class APSVizSupervisor:
         else:
             instance_name = None
 
-        # should we send the Slack message
+        # should we set debug mode
         if 'supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'):
             debug_mode = True
         else:
             debug_mode = False
 
+        # if there is a special k8s download url in the data use it.
+        if 'post.opendap.renci_tds-k8.downloadurl' in run_info:
+            run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl']
+
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.needed_run_params if run_param not in run_info])}", instance_name, debug_mode
+        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode
 
     def get_incomplete_runs(self):
         """
@@ -507,7 +511,7 @@ class APSVizSupervisor:
 
         # use this for some test runs
         # runs = [
-        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename'}},
+        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename', 'post.opendap.renci_tds-k8.downloadurl': 'special-downloadurl'}},
         #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname'}},
         #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'new', 'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname', 'instancename': 'instancename'}},
         #     {'run_id': '1234-5678-test', 'run_data': {'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname'}}
