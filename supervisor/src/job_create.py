@@ -310,8 +310,8 @@ class JobCreate:
 
         # trap any k8s call errors
         except (client.exceptions.ApiException, Exception) as e:
-            self.logger.error(f'Job delete error, job may no longer exist: {e}')
             ret_val = "Job delete error, job may no longer exist"
+            self.logger.warning(f'{ret_val}: {e}')
 
         # return the final status of the job
         return str(ret_val)
