@@ -12,46 +12,7 @@ from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
 from common.logging import LoggingUtil
-
-
-class JobStatus(int, Enum):
-    """
-    Class that stores the job status constants
-    """
-    # new run status indicator
-    new = 1
-
-    # the run is currently active indicator
-    running = 2
-
-    # the run is complete indicator
-    complete = 3
-
-    # something non-fatal happened in the process indicator
-    warning = 9999
-
-    # something fatal happened in the process indicator
-    error = -1
-
-
-class JobType(str, Enum):
-    """
-    Class that stores the job type name constants
-    """
-    staging = 'staging',
-    hazus = 'hazus',
-    hazus_singleton = 'hazus-singleton',
-    obs_mod = 'obs-mod',
-    run_geo_tiff = 'run-geo-tiff',
-    compute_mbtiles_0_10 = 'compute-mbtiles-0-10',
-    load_geo_server = 'load-geo-server',
-    final_staging = 'final-staging',
-    adcirc2cog_tiff = 'adcirc2cog-tiff',
-    geotiff2cog = 'geotiff2cog',
-    obs_mod_ast = 'obs-mod-ast',
-    error = 'error',
-    other_1 = 'TBD',
-    complete = 'complete'
+from common.job_enums import JobType, JobStatus
 
 
 class APSVizSupervisor:
@@ -95,7 +56,7 @@ class APSVizSupervisor:
             os.mkdir(log_path)
 
         # get the environment this instance is running on
-        self.system = os.getenv('SYSTEM', 'Not set')
+        self.system = os.getenv('SYSTEM', 'System name not set')
 
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=log_path)

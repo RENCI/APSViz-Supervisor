@@ -9,7 +9,7 @@ import logging
 from json import load
 from kubernetes import client, config
 from common.logging import LoggingUtil
-
+from common.job_enums import JobType
 
 class JobCreate:
     """
@@ -35,7 +35,7 @@ class JobCreate:
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
         # declare the secret environment variables
-        self.secret_env_params = [
+        self.secret_env_params: list = [
             {'name': 'LOG_PATH', 'key': 'log-path'},
             {'name': 'SSH_USERNAME', 'key': 'ssh-username'},
             {'name': 'SSH_HOST', 'key': 'ssh-host'},
@@ -61,9 +61,7 @@ class JobCreate:
             {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
             {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
             {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
-            {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'},
-            {'name': 'http_proxy', 'key': 'http-proxy-url'},
-            {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}
+            {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}
         ]
 
     # @staticmethod
@@ -135,8 +133,16 @@ class JobCreate:
         # declare an array for the env declarations
         secret_envs = []
 
+        # duplicate the evn param list
+        secret_env_params = self.secret_env_params.copy()
+
+        # load geo cant use the http_proxy values
+        if run['job-type'] != JobType.load_geo_server:
+            # add the proxy values to the env param list
+            secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}])
+
         # get all the env params into an array
-        for item in self.secret_env_params:
+        for item in secret_env_params:
             secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(name='eds-keys', key=item['key']))))
 
         # init a list for all the containers in this job
