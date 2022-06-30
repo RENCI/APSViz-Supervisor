@@ -62,6 +62,7 @@ class JobCreate:
             {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
             {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
             {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'},
+            {'name': 'http_proxy', 'key': 'http-proxy-url'},
             {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}
         ]
 

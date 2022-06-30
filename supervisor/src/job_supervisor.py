@@ -94,6 +94,9 @@ class APSVizSupervisor:
         if not os.path.exists(log_path):
             os.mkdir(log_path)
 
+        # get the environment this instance is running on
+        self.system = os.getenv('SYSTEM', 'Not set')
+
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=log_path)
 
@@ -455,7 +458,7 @@ class APSVizSupervisor:
         :return:
         """
         # init the final msg
-        final_msg = "APSViz Supervisor - "
+        final_msg = f"APSViz Supervisor ({self.system}) - "
 
         # if there was an instance name use it
         if instance_name is not None:
