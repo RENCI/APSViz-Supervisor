@@ -11,6 +11,7 @@ from kubernetes import client, config
 from common.logging import LoggingUtil
 from common.job_enums import JobType
 
+
 class JobCreate:
     """
     Class that uses the k8s API to create, run and delete a job
@@ -136,7 +137,7 @@ class JobCreate:
         # duplicate the evn param list
         secret_env_params = self.secret_env_params.copy()
 
-        # load geo cant use the http_proxy values
+        # load geo can't use the http_proxy values
         if run['job-type'] != JobType.load_geo_server:
             # add the proxy values to the env param list
             secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}])
