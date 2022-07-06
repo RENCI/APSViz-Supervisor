@@ -73,7 +73,7 @@ class JobFind:
         core_api = client.CoreV1Api()
 
         # init the status storage
-        job_status: int = None
+        job_status = None
         pod_status: str = ''
 
         # get the job run information
