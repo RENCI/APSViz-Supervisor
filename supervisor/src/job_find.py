@@ -24,7 +24,7 @@ class JobFind:
 
         # get the log level and directory from the environment
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.join(os.path.dirname(__file__)))
+        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
 
         # create the dir if it does not exist
         if not os.path.exists(log_path):
