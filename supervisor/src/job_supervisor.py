@@ -7,11 +7,10 @@ import os
 import logging
 import slack
 import json
-from enum import Enum
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
-from common.logging import LoggingUtil
+from common.logger import LoggingUtil
 from common.job_enums import JobType, JobStatus
 
 
@@ -49,7 +48,7 @@ class APSVizSupervisor:
         # get the log level and directory from the environment.
         # level comes from the container dockerfile, path comes from the k8s secrets
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.join(os.path.dirname(__file__), 'logs'))
+        log_path: str = os.getenv('LOG_PATH', os.path.join(os.path.dirname(__file__)))
 
         # create the dir if it does not exist
         if not os.path.exists(log_path):
