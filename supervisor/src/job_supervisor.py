@@ -472,16 +472,17 @@ class APSVizSupervisor:
         # get the job definitions
         self.k8s_config = self.get_config()
 
-        # get the new runs
-        runs = self.pg_db.get_new_runs()
+        # get the flag that indicates we are pausing the handling of run requests
+        pause = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
 
-        # use this for some test runs
-        # runs = [
-        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'gridname': 'adcirc.gridname', 'instance_name': 'instancename', 'post.opendap.renci_tds-k8.downloadurl': 'special-downloadurl'}},
-        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'debug', 'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname'}},
-        #     {'run_id': '1234-5678-test', 'run_data': {'supervisor_job_status': 'new', 'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname', 'instancename': 'instancename'}},
-        #     {'run_id': '1234-5678-test', 'run_data': {'downloadurl': 'downloadurl', 'adcirc.gridname': 'adcirc.gridname'}}
-        # ]
+        # are we processing run requests
+        if not pause:
+            # get the new runs
+            runs = self.pg_db.get_new_runs()
+        # else no runs none
+        else:
+            self.logger.info(f'Application is currently in pause mode.')
+            runs = None
 
         # did we find anything to do
         if runs != -1 and runs is not None:
@@ -525,33 +526,3 @@ class APSVizSupervisor:
 
                 # notify Slack
                 self.send_slack_msg(run_id, f'{job_prov} run accepted.', debug_mode, run['run_data']['instancename'])
-
-    # debugging only
-    """
-        SELECT id, key, value, instance_id FROM public."ASGS_Mon_config_item" where instance_id=2620;
-        
-        SELECT public.get_config_items_json(2620);
-        SELECT public.get_supervisor_config_items_json();
-        
-        UPDATE public."ASGS_Mon_config_item" SET value='do not run' WHERE key='supervisor_job_status' AND instance_id=0;
-        
-        select * from public."ASGS_Mon_config_item" where instance_id=0 and uid='' and key in ('downloadurl','adcirc.gridname','supervisor_job_status', 'instancename');
-
-        select pg_terminate_backend(pid) from pg_stat_activity where datname='adcirc_obs';
-
-        select distinct id, instance_id, uid, key, value
-            FROM public."ASGS_Mon_config_item"
-            where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
-            and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
-            --and uid='2021052506-namforecast'
-            order by 2 desc, 1 desc, 4, 5;   
-        
-        select distinct
-            'SELECT public.set_config_item(' || instance_id || ', ''' || uid || ''', ''supervisor_job_status'', ''new'');' as cmd
-            FROM public."ASGS_Mon_config_item"
-            where key in ('supervisor_job_status')--, 'adcirc.gridname', 'downloadurl', 'instancename'
-            and instance_id in (select id from public."ASGS_Mon_instance" order by id desc)
-            and value='New, Run accepted, Staging running, Staging complete, Obs/Mod running, Obs/Mod complete, Geo tiff running';
-          
-        --SELECT public.set_config_item(instance_id, 'uid', 'supervisor_job_status', 'new');	
-    """
