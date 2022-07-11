@@ -191,8 +191,11 @@ class PGUtils:
         # get the flag that indicates we are pausing the handling of run requests
         pause = os.getenv('PAUSE', 'false')
 
+        self.logger.info(f'PAUSE: {pause}')
+
         # are we processing run requests
         if not pause.startswith('true'):
+            self.logger.info(f'Application is currently in run mode.')
             # create the sql
             sql: str = 'SELECT public.get_supervisor_config_items_json()'
 
