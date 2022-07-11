@@ -188,23 +188,11 @@ class PGUtils:
         :return: a json record of newly requested runs
         """
 
-        # get the flag that indicates we are pausing the handling of run requests
-        pause = os.path.exists('/data/pause')
+        # create the sql
+        sql: str = 'SELECT public.get_supervisor_config_items_json()'
 
-        self.logger.info(f'PAUSE: {pause}')
-
-        # are we processing run requests
-        if not pause:
-            self.logger.info(f'Application is currently in run mode.')
-            # create the sql
-            sql: str = 'SELECT public.get_supervisor_config_items_json()'
-
-            # get the data
-            return self.exec_sql(sql)
-        # else return none
-        else:
-            self.logger.info(f'Application is currently in pause mode.')
-            return None
+        # get the data
+        return self.exec_sql(sql)
 
     def update_job_status(self, run_id, value):
         """
