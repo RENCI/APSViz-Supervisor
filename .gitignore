@@ -10,3 +10,6 @@ postgres/src/__pycache__/
 supervisor/src/__pycache__/
 supervisor/src/logs/
 supervisor/base_config.json
+supervisor/src/APSVIZ.APSVizSupervisor.log
+supervisor/src/APSVIZ.JobCreate.log
+supervisor/src/APSVIZ.JobFind.log
