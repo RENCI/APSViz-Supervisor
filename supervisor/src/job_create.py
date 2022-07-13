@@ -142,7 +142,7 @@ class JobCreate:
         # load geo can't use the http_proxy values
         if run['job-type'] != JobType.load_geo_server:
             # add the proxy values to the env param list
-            secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}])
+            secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}, {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}])
 
         # get all the env params into an array
         for item in secret_env_params:
