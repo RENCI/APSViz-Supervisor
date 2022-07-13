@@ -37,6 +37,9 @@ class JobCreate:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
+        # set the resource limit multiplier
+        self.limit_multiplier = .25
+
         # declare the secret environment variables
         self.secret_env_params: list = [
             {'name': 'LOG_PATH', 'key': 'log-path'},
@@ -154,9 +157,6 @@ class JobCreate:
         # init a list for all the containers in this job
         containers: list = []
 
-        # set the limit multiplier
-        limit_multiplier = .25
-
         # add on the resources
         for idx, item in enumerate(run[run['job-type']]['run-config']['COMMAND_MATRIX']):
             # get the base command line
@@ -168,7 +168,7 @@ class JobCreate:
             # this is done to make the memory limit 25% greater than what is requested
             memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
             memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
-            memory_limit_val = int(memory_val_txt) + int((int(memory_val_txt) * limit_multiplier))
+            memory_limit_val = int(memory_val_txt) + int((int(memory_val_txt) * self.limit_multiplier))
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
             # use what is defined in the DB if it exists
@@ -181,7 +181,7 @@ class JobCreate:
             # this is done to make sure that cpu limit is 25% greater than what is created
             cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
             cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
-            cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * limit_multiplier))
+            cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
             cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
 
             # get the baseline set of container resources

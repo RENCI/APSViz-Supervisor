@@ -457,7 +457,7 @@ class APSVizSupervisor:
 
         # if there is a special k8s download url in the data use it.
         if 'post.opendap.renci_tds-k8.downloadurl' in run_info:
-            # use only the service name and save it for the run. also forcing the apviz thredds url to be https:
+            # use only the service name and save it for the run. also forcing the apsviz thredds url to be https:
             run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl'].replace('http://apsviz-thredds', 'https://apsviz-thredds')
 
         # loop through the params and return the ones that are missing
