@@ -308,7 +308,8 @@ class APSVizSupervisor:
             # create the additional command line parameters
             command_line_params = [thredds_url,
                                    run['gridname'],
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
+                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
+                                   str(run['id'])]
 
         return command_line_params, extend_output_path
 
