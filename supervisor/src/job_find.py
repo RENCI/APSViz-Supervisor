@@ -76,6 +76,7 @@ class JobFind:
 
         # init the status storage
         job_status = None
+        job_found = False
         pod_status: str = ''
 
         # get the job run information
@@ -96,6 +97,9 @@ class JobFind:
                 # get the job status
                 job_status = job.status.active
 
+                # set the job found flag
+                job_found = True
+
                 # get the container status
                 for pod in pods.items:
                     if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
@@ -109,4 +113,4 @@ class JobFind:
                 break
 
         # return the job controller uid, job status and pod status
-        return job_status, pod_status
+        return job_found, job_status, pod_status, job
