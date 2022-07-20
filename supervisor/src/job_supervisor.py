@@ -66,6 +66,9 @@ class APSVizSupervisor:
         self.slack_client = slack.WebClient(token=os.getenv('SLACK_ACCESS_TOKEN'))
         self.slack_channel = os.getenv('SLACK_CHANNEL')
 
+        # declare ready
+        self.logger.info('The supervisor is running...')
+
     # TODO: make this a common function
     def get_config(self) -> dict:
         """
@@ -105,6 +108,10 @@ class APSVizSupervisor:
 
             # reset the activity flag
             no_activity: bool = True
+
+            # output the current number of runs in progress if there are any
+            if len(self.run_list) > 0:
+                self.logger.info(f"There are currently {len(self.run_list)} run(s) in progress.")
 
             # for each run returned from the database
             for run in self.run_list:
@@ -321,7 +328,7 @@ class APSVizSupervisor:
         :return:
         """
         # init the activity flag
-        no_activity: bool = False
+        no_activity: bool = True
 
         # is this a staging job
         # if run['job-type'] == JobType.staging:
@@ -350,35 +357,43 @@ class APSVizSupervisor:
             no_activity = False
 
             # find the job, get the status
-            job_status, job_pod_status = self.k8s_find.find_job_info(run)
+            job_found, job_status, pod_status, job = self.k8s_find.find_job_info(run)
 
-            # if the job status is not active (!=1) it is complete or dead. either way it gets removed
-            if job_status is None and not job_pod_status.startswith('Failed'):
-                # remove the job and get the final run status
-                job_status = str(self.k8s_create.delete_job(run))
-
-                self.logger.info(f"Job complete. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, job delete status: {job_status}")
-
-                # set the stage status
-                run['status_prov'] += f", {run['job-type'].value} complete"
-                self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                # prepare for next stage
-                run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
-                run['status'] = JobStatus.new
-            # was there a failure
-            elif job_pod_status.startswith('Failed'):
-                # remove the job and get the final run status
-                job_status = str(self.k8s_create.delete_job(run))
-
-                self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_status}, pod status: {job_pod_status}.")
-                self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
-
-                # set error conditions
-                run['job-type'] = JobType.error
-                run['status'] = JobStatus.error
+            # if the job status is empty report it and continue
+            if not job_found:
+                self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, full job dump: {job}")
+            elif job_status is None:
+                self.logger.debug(f"Job in an unknown state. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, full job dump: {job}")
             else:
-                no_activity = True
+                self.logger.debug(f"Job is running. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+
+            # if the job was found
+            if job_found:
+                # if the status is !=1 it is complete so remove it and proceed to the next job
+                if job_status is None and not pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_del_status = str(self.k8s_create.delete_job(run))
+
+                    self.logger.info(f"Job complete, job_status is None. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, job delete status: {job_del_status}")
+
+                    # set the stage status
+                    run['status_prov'] += f", {run['job-type'].value} complete"
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                    # prepare for next stage
+                    run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
+                    run['status'] = JobStatus.new
+                # was there a failure. remove the job and declare failure
+                elif job_found and pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_del_status = str(self.k8s_create.delete_job(run))
+
+                    self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
+                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
+
+                    # set error conditions
+                    run['job-type'] = JobType.error
+                    run['status'] = JobStatus.error
 
         # return to the caller
         return no_activity
