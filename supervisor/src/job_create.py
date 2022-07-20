@@ -38,7 +38,7 @@ class JobCreate:
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
         # set the resource limit multiplier
-        self.limit_multiplier = .25
+        self.limit_multiplier = .1
 
         # declare the secret environment variables
         self.secret_env_params: list = [
@@ -157,6 +157,9 @@ class JobCreate:
         # init a list for all the containers in this job
         containers: list = []
 
+        # init the restart policy for the job
+        restart_policy = 'Never'
+
         # add on the resources
         for idx, item in enumerate(run[run['job-type']]['run-config']['COMMAND_MATRIX']):
             # get the base command line
@@ -178,16 +181,25 @@ class JobCreate:
             else:
                 cpus = "250m"
 
-            # this is done to make sure that cpu limit is 25% greater than what is created
+            # this is done to make sure that cpu limit is some percentage greater than what is created
             cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
-            cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
             cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
-            cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
+
+            # for processes that use a lot of cpu resources we set some alternatives
+            #  - make sure we wait for resources to become available rather than having the job fail.
+            #  - avoid giving it slightly higher cpu limits
+            if cpus_limit_val >= 2:
+                restart_policy = 'OnFailure'
+                cpus_limit = cpus
+            else:
+                # make sure the cpu value is built up properly
+                cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
+                cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
 
             # get the baseline set of container resources
             resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
 
-            # if the command has a '--cpu' in it replace the value with the cpu amount specified when the cpu value is >= 1
+            # if the command line has a '--cpu' in it replace the "~" value with the cpu amount specified when the cpu value is > .5 cpus
             if '--cpu' in new_cmd_list and int(cpu_val_txt)/1000 > .5:
                 new_cmd_list = list(map(lambda val: val.replace("~", f"{int(int(cpu_val_txt)/1000)}"), new_cmd_list))
 
@@ -230,14 +242,14 @@ class JobCreate:
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy="Never", containers=containers, volumes=volumes, node_selector=node_selector)  # , security_context=security_context
+            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector)  # , security_context=security_context
         )
 
         # create the specification of job deployment
         spec = client.V1JobSpec(
             template=template,
-            backoff_limit=0,
-            ttl_seconds_after_finished=120
+            backoff_limit=25,
+            ttl_seconds_after_finished=600
             )
 
         # instantiate the job object
