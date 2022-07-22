@@ -357,13 +357,13 @@ class APSVizSupervisor:
             no_activity = False
 
             # find the job, get the status
-            job_found, job_status, pod_status, job = self.k8s_find.find_job_info(run)
+            job_found, job_status, pod_status = self.k8s_find.find_job_info(run)
 
             # if the job status is empty report it and continue
             if not job_found:
-                self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, full job dump: {job}")
+                self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
             elif job_status is None:
-                self.logger.debug(f"Job in an unknown state. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, full job dump: {job}")
+                self.logger.debug(f"Job in an unknown state. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
             else:
                 self.logger.debug(f"Job is running. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
 
