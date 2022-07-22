@@ -294,7 +294,7 @@ class JobCreate:
         # for each item returned
         for job in jobs.items:
             # is this the one that was launched
-            if job.metadata.labels['app'] == run_details['JOB_NAME']:
+            if 'app' in job.metadata.labels and job.metadata.labels['app'] == run_details['JOB_NAME']:
                 self.logger.debug(f"Found new job: {run_details['JOB_NAME']}, controller-uid: {job.metadata.labels['controller-uid']}, status: {job.status.active}")
 
                 # save job id
