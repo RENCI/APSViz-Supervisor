@@ -113,4 +113,4 @@ class JobFind:
                 break
 
         # return the job controller uid, job status and pod status
-        return job_found, job_status, pod_status, job
+        return job_found, job_status, pod_status
