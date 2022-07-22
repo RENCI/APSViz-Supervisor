@@ -384,7 +384,7 @@ class APSVizSupervisor:
                     run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
                     run['status'] = JobStatus.new
                 # was there a failure. remove the job and declare failure
-                elif job_found and pod_status.startswith('Failed'):
+                elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_del_status = str(self.k8s_create.delete_job(run))
 
@@ -394,6 +394,13 @@ class APSVizSupervisor:
                     # set error conditions
                     run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
+            else:
+                self.logger.error( f"Error: Job not found. Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}")
+                self.send_slack_msg(run['id'], f"failed in {run['job-type']}: Job not found", run['debug'], run['instance_name'])
+
+                # set error conditions
+                run['job-type'] = JobType.error
+                run['status'] = JobStatus.error
 
         # return to the caller
         return no_activity
