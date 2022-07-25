@@ -7,6 +7,7 @@
 import time
 import os
 import logging
+import datetime as dt
 
 from json import load
 from kubernetes import client, config
@@ -38,7 +39,10 @@ class JobCreate:
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
         # set the resource limit multiplier
-        self.limit_multiplier = .1
+        self.limit_multiplier = float(self.k8s_config.get("JOB_LIMIT_MULTIPLIER"))
+
+        # set the job backoff limit
+        self.backoffLimit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
 
         # declare the secret environment variables
         self.secret_env_params: list = [
@@ -77,6 +81,9 @@ class JobCreate:
 
         :return: client.V1Job, the job description object
         """
+
+        # save the start time of the job
+        run[run['job-type']]['job-start'] = dt.datetime.now()
 
         # configure the data volume mount for the container
         data_volume_mount = client.V1VolumeMount(
@@ -143,6 +150,7 @@ class JobCreate:
         secret_env_params = self.secret_env_params.copy()
 
         # load geo can't use the http_proxy values
+        # TODO: change this to something configurable
         if run['job-type'] != JobType.load_geo_server:
             # add the proxy values to the env param list
             secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'},
@@ -168,7 +176,7 @@ class JobCreate:
             # add the command matrix value
             new_cmd_list.extend(item)
 
-            # this is done to make the memory limit 25% greater than what is requested
+            # this is done to make the memory limit "self.limit_multiplier" greater than what is requested
             memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
             memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
             memory_limit_val = int(memory_val_txt) + int((int(memory_val_txt) * self.limit_multiplier))
@@ -179,13 +187,14 @@ class JobCreate:
                 cpus = run[run['job-type']]['run-config']['CPUS']
             # this should never happen if the DB is set up properly
             else:
-                cpus = "250m"
+                cpus = '250m'
 
             # this is done to make sure that cpu limit is some percentage greater than what is created
             cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
             cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
 
-            # for processes that use a lot of cpu resources we set some alternatives
+            # for processes that use a lot of cpu resources set some alternatives
+            # TODO: make the restart policy something configurable
             #  - make sure we wait for resources to become available rather than having the job fail.
             #  - avoid giving it slightly higher cpu limits
             if cpus_limit_val >= 2:
@@ -246,9 +255,9 @@ class JobCreate:
         )
 
         # create the specification of job deployment
-        spec = client.V1JobSpec(
+        job_spec = client.V1JobSpec(
             template=template,
-            backoff_limit=25,
+            backoff_limit=self.backoffLimit,
             ttl_seconds_after_finished=600
             )
 
@@ -257,7 +266,7 @@ class JobCreate:
             api_version="batch/v1",
             kind="Job",
             metadata=client.V1ObjectMeta(name=run[run['job-type']]['run-config']['JOB_NAME']),
-            spec=spec
+            spec=job_spec
         )
 
         # save these params onto the run info
@@ -332,15 +341,15 @@ class JobCreate:
                     grace_period_seconds=5))
 
             # set the return value
-            ret_val = str(api_response.status)
+            ret_val = api_response.status
 
         # trap any k8s call errors
         except (client.exceptions.ApiException, Exception) as e:
-            ret_val = "Job delete error, job may no longer exist"
-            self.logger.warning(f'{ret_val}: {e}')
+            ret_val = "Job delete error, job may no longer exist."
+            self.logger.error(f'{ret_val}: {e}')
 
         # return the final status of the job
-        return str(ret_val)
+        return ret_val
 
     @staticmethod
     def get_config() -> dict:

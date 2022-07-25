@@ -109,10 +109,6 @@ class APSVizSupervisor:
             # reset the activity flag
             no_activity: bool = True
 
-            # output the current number of runs in progress if there are any
-            if len(self.run_list) > 0:
-                self.logger.info(f"There are currently {len(self.run_list)} run(s) in progress.")
-
             # for each run returned from the database
             for run in self.run_list:
                 # catch cleanup exceptions
@@ -198,12 +194,16 @@ class APSVizSupervisor:
                     run['status_prov'] += ', Run handler error detected'
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
 
+                    # delete the k8s job if it exists
+                    job_del_status = self.k8s_create.delete_job(run)
+
+                    # if there was a job error
+                    if job_del_status == '{}' or job_del_status.find('Failed') != -1:
+                        self.logger.error(f"Error failed job. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, job delete status: {job_del_status}")
+
                     # set error conditions
                     run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
-
-                    # delete the k8s job if it exists
-                    self.k8s_create.delete_job(run)
 
                     # continue processing runs
                     continue
@@ -213,6 +213,10 @@ class APSVizSupervisor:
                 # increment the counter
                 no_activity_counter += 1
             else:
+                # output the current number of runs in progress if there are any
+                if len(self.run_list) > 0:
+                    self.logger.info(f"There are currently {len(self.run_list)} run(s) in progress.")
+
                 no_activity_counter = 0
 
             # check for something to do after a period of time
@@ -362,45 +366,61 @@ class APSVizSupervisor:
             # if the job status is empty report it and continue
             if not job_found:
                 self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-            elif job_status is None:
-                self.logger.debug(f"Job in an unknown state. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-            else:
-                self.logger.debug(f"Job is running. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif job_status.startswith('Timeout'):
+                self.logger.error(f"Job has timed out. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif job_status.startswith('Failed'):
+                self.logger.error(f"Job has failed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            elif job_status.startswith('Complete'):
+                self.logger.debug(f"Job has completed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
 
             # if the job was found
             if job_found:
-                # if the status is !=1 it is complete so remove it and proceed to the next job
-                if job_status is None and not pod_status.startswith('Failed'):
+                # did the job timeout (presumably waiting for resources) or failed
+                if job_status.startswith('Timeout') or job_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = str(self.k8s_create.delete_job(run))
+                    job_del_status = self.k8s_create.delete_job(run)
 
-                    self.logger.info(f"Job complete, job_status is None. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, job delete status: {job_del_status}")
+                    # set error conditions
+                    run['status'] = JobStatus.error
+                # did the job and pod succeed
+                elif job_status.startswith('Complete') and not pod_status.startswith('Failed'):
+                    # remove the job and get the final run status
+                    job_del_status = self.k8s_create.delete_job(run)
 
-                    # set the stage status
-                    run['status_prov'] += f", {run['job-type'].value} complete"
-                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    # was there an error on the job
+                    if job_del_status.find('Failed') != -1:
+                        self.logger.error(f"Error failed job: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
 
-                    # prepare for next stage
-                    run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
-                    run['status'] = JobStatus.new
+                        # set error conditions
+                        run['status'] = JobStatus.error
+                    else:
+                        # set the stage status
+                        run['status_prov'] += f", {run['job-type'].value} complete"
+                        self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+                        # prepare for next stage
+                        run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
+                        run['status'] = JobStatus.new
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = str(self.k8s_create.delete_job(run))
+                    job_del_status = self.k8s_create.delete_job(run)
 
-                    self.logger.error(f"Error: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
-                    self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
+                    if job_del_status.find('Failed') != -1:
+                        self.logger.error(f"Error failed job and/or pod: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
 
                     # set error conditions
-                    run['job-type'] = JobType.error
                     run['status'] = JobStatus.error
             else:
-                self.logger.error( f"Error: Job not found. Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}")
-                self.send_slack_msg(run['id'], f"failed in {run['job-type']}: Job not found", run['debug'], run['instance_name'])
+                self.logger.error(f"Error job not found: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}")
 
                 # set error conditions
-                run['job-type'] = JobType.error
                 run['status'] = JobStatus.error
+
+        # send out the error status on error
+        if run['status'] == JobStatus.error:
+            self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
+            run['job-type'] = JobType.error
 
         # return to the caller
         return no_activity
