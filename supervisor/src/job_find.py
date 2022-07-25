@@ -6,6 +6,7 @@
 
 import os
 import logging
+import datetime as dt
 
 from json import load
 from kubernetes import client, config
@@ -31,6 +32,8 @@ class JobFind:
         # create the dir if it does not exist
         if not os.path.exists(log_path):
             os.mkdir(log_path)
+
+        self.job_timeout = self.k8s_config.get("JOB_TIMEOUT")
 
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=log_path)
@@ -75,7 +78,7 @@ class JobFind:
         core_api = client.CoreV1Api()
 
         # init the status storage
-        job_status = None
+        job_status = ''
         job_found = False
         pod_status: str = ''
 
@@ -92,24 +95,42 @@ class JobFind:
                 self.logger.error(f'Job with no "job-name" label element detected while looking in {job}')
             # is this the one that was launched
             elif job.metadata.labels['job-name'] == job_name:
-                self.logger.debug(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
-
-                # get the job status
-                job_status = job.status.active
-
                 # set the job found flag
                 job_found = True
 
-                # get the container status
-                for pod in pods.items:
-                    if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
-                        # grab the status
-                        pod_status = str(pod.status.phase)
+                self.logger.debug(f'Found running job: {job_name}, controller-uid: {job.metadata.labels["controller-uid"]}, status: {job.status.active}')
 
-                        # no need to continue if we got the state
+                # init the job status
+                job_status = 'Running'
+
+                # did the job fail
+                if job.status.failed:
+                    job_status = 'Failed'
+                # did the job succeed
+                elif job.status.succeeded:
+                    job_status = 'Complete'
+                # did the job ever start
+                elif not job.status.active:
+                    # see how long this has been waiting to start (in seconds)
+                    time_diff = (dt.datetime.now() - run[run['job-type']]['job-start'])
+
+                    # if this has been inactive for some period of time (presumably waiting for resources
+                    if time_diff.total_seconds() > self.job_timeout:
+                        self.logger.error(f'Job timeout: {job_name}')
+                        job_status = 'Timeout'
                         break
 
-                # no need to continue if the job status was gathered
+                if job_status.startswith('Complete'):
+                    # get the container status
+                    for pod in pods.items:
+                        if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
+                            # grab the status
+                            pod_status = str(pod.status.phase)
+
+                            # no need to continue if we got the state
+                            break
+
+                # no need to continue if the job was found and interrogated
                 break
 
         # return the job controller uid, job status and pod status
