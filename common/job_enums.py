@@ -42,6 +42,8 @@ class JobType(str, Enum):
     adcirc2cog_tiff = 'adcirc2cog-tiff',
     geotiff2cog = 'geotiff2cog',
     obs_mod_ast = 'obs-mod-ast',
+    adcirctime_to_cog = 'adcirctime-to-cog',
     error = 'error',
     other_1 = 'TBD',
     complete = 'complete'
+

@@ -322,6 +322,15 @@ class APSVizSupervisor:
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
                                    str(run['id'])]
 
+        # conda run -n adcircTime2cogs python adcircTime2cogs.py --inputDIR $stageDir/input --outputDIR $stageDir/cogeo —-finalDir $stageDir/final/cogeo --inputFile maxele.63.nc –-inputVariable zeta
+
+        # is this an adcirc2cog_tiff job array
+        elif run['job-type'] == JobType.adcirctime_to_cog:
+            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
+                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+                                   '--inputFile']
+
         return command_line_params, extend_output_path
 
     def handle_run(self, run):
