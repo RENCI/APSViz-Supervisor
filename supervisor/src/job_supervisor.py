@@ -250,20 +250,20 @@ class APSVizSupervisor:
         command_line_params = None
         extend_output_path = False
 
-        # is this a staging job
+        # is this a staging job array
         if run['job-type'] == JobType.staging:
             command_line_params = ['--inputURL', run['downloadurl'], '--outputDir']
             extend_output_path = True
 
-        # is this a hazus job
+        # is this a hazus job array
         elif run['job-type'] == JobType.hazus:
             command_line_params = [run['downloadurl']]
 
-        # is this a hazus-singleton job
+        # is this a hazus-singleton job array
         elif run['job-type'] == JobType.hazus_singleton:
             command_line_params = [run['downloadurl']]
 
-        # is this an obs_mod job
+        # is this an obs_mod job array
         elif run['job-type'] == JobType.obs_mod:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
@@ -300,17 +300,17 @@ class APSVizSupervisor:
                                    '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--inputParam']
 
-        # is this a geo server load job
+        # is this a geo server load job array
         elif run['job-type'] == JobType.load_geo_server:
             command_line_params = ['--instanceId', str(run['id'])]
 
-        # is this a final staging job
+        # is this a final staging job array
         elif run['job-type'] == JobType.final_staging:
             command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--tarMeta', str(run['id'])]
 
-        # is this an obs mod ast job
+        # is this an obs mod ast job array
         # ./ execute_APSVIZ_pipeline.sh
         elif run['job-type'] == JobType.obs_mod_ast:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
@@ -322,9 +322,7 @@ class APSVizSupervisor:
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
                                    str(run['id'])]
 
-        # conda run -n adcircTime2cogs python adcircTime2cogs.py --inputDIR $stageDir/input --outputDIR $stageDir/cogeo —-finalDir $stageDir/final/cogeo --inputFile maxele.63.nc –-inputVariable zeta
-
-        # is this an adcirc2cog_tiff job array
+        # is this an adcirc time to cog converter job array
         elif run['job-type'] == JobType.adcirctime_to_cog:
             command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
                                    '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
