@@ -47,6 +47,9 @@ class APSVizSupervisor:
         # init the run params to look for list
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename']
 
+        # flag for pause mode
+        self.pause_mode = False
+
         # get the log level and directory from the environment.
         # level comes from the container dockerfile, path comes from the k8s secrets
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
@@ -67,7 +70,7 @@ class APSVizSupervisor:
         self.slack_channel = os.getenv('SLACK_CHANNEL')
 
         # declare ready
-        self.logger.info('The supervisor is running...')
+        self.logger.info(f'K8s Supervisor ({self.system}) has started...')
 
     # TODO: make this a common function
     def get_config(self) -> dict:
@@ -519,20 +522,27 @@ class APSVizSupervisor:
 
         :return: nothing
         """
-        # get the job definitions
+        # init the storage for the new runs
+        runs = None
+
+        # get the latest job definitions
         self.k8s_config = self.get_config()
 
-        # get the flag that indicates we are pausing the handling of run requests
-        pause = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
+        # get the flag that indicates we are pausing the handling of new run requests
+        pause_mode = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
 
-        # are we processing run requests
-        if not pause:
-            # get the new runs
-            runs = self.pg_db.get_new_runs()
-        # else no runs none
-        else:
-            self.logger.info(f'Application is currently in pause mode.')
-            runs = None
+        # are we toggling pause mode
+        if pause_mode != self.pause_mode:
+            # if we are not in pause mode get all the new rune
+            if not pause_mode:
+                # get the new runs
+                runs = self.pg_db.get_new_runs()
+
+            # save the current pause mode
+            self.pause_mode = pause_mode
+
+            # let everyone know
+            self.logger.info(f'K8s Supervisor ({self.system}) application is now {"paused" if pause_mode else "active"}.')
 
         # did we find anything to do
         if runs != -1 and runs is not None:
