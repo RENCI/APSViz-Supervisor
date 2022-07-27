@@ -48,7 +48,10 @@ class APSVizSupervisor:
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename']
 
         # flag for pause mode
-        self.pause_mode = False
+        self.pause_mode = True
+
+        # counter for current runs
+        self.run_count = 0
 
         # get the log level and directory from the environment.
         # level comes from the container dockerfile, path comes from the k8s secrets
@@ -124,10 +127,7 @@ class APSVizSupervisor:
                         status_prov = run['status_prov'].lower()
 
                         # get the type of run
-                        if status_prov.find('hazus-singleton') == -1:
-                            run_type = 'APS'
-                        else:
-                            run_type = 'HAZUS-SINGLETON'
+                        run_type = ('APS' if status_prov.find('hazus-singleton') == -1 else 'HAZUS-SINGLETON')
 
                         # add a comment on overall pass/fail
                         if run['status_prov'].find('Error') == -1:
@@ -211,15 +211,17 @@ class APSVizSupervisor:
                     # continue processing runs
                     continue
 
+            # output the current number of runs in progress if there are any
+            if self.run_count != len(self.run_list):
+                # save the new run count
+                self.run_count = len(self.run_list)
+                self.logger.info(f'There {"are" if self.run_count != 1 else "is"} {self.run_count} run{"s" if self.run_count != 1 else ""} in progress.')
+
             # was there any activity
             if no_activity:
                 # increment the counter
                 no_activity_counter += 1
             else:
-                # output the current number of runs in progress if there are any
-                if len(self.run_list) > 0:
-                    self.logger.info(f"There are currently {len(self.run_list)} run(s) in progress.")
-
                 no_activity_counter = 0
 
             # check for something to do after a period of time
@@ -528,24 +530,11 @@ class APSVizSupervisor:
         # get the latest job definitions
         self.k8s_config = self.get_config()
 
-        # get the flag that indicates we are pausing the handling of new run requests
-        pause_mode = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
-
-        # are we toggling pause mode
-        if pause_mode != self.pause_mode:
-            # if we are not in pause mode get all the new rune
-            if not pause_mode:
-                # get the new runs
-                runs = self.pg_db.get_new_runs()
-
-            # save the current pause mode
-            self.pause_mode = pause_mode
-
-            # let everyone know
-            self.logger.info(f'K8s Supervisor ({self.system}) application is now {"paused" if pause_mode else "active"}.')
+        # check to see if we are in pause mode
+        runs = self.check_pause_status(runs)
 
         # did we find anything to do
-        if runs != -1 and runs is not None:
+        if runs is not None:
             # add this run to the list
             for run in runs:
                 # save the run id that was provided by the DB run.properties data
@@ -586,3 +575,34 @@ class APSVizSupervisor:
 
                 # notify Slack
                 self.send_slack_msg(run_id, f'{job_prov} run accepted.', debug_mode, run['run_data']['instancename'])
+
+    def check_pause_status(self, runs):
+        """
+        checks to see if we are in pause mode.
+
+        :param runs:
+        :return:
+        """
+        # get the flag that indicates we are pausing the handling of new run requests
+        pause_mode = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
+
+        # are we toggling pause mode
+        if pause_mode != self.pause_mode:
+            # save the new pause mode
+            self.pause_mode = pause_mode
+
+            # let everyone know
+            self.logger.info(f'K8s Supervisor ({self.system}) application is now {"paused" if pause_mode else "active"}.')
+
+        # if we are not in pause mode get all the new rune
+        if not pause_mode:
+            # get the new runs
+            runs = self.pg_db.get_new_runs()
+
+            # were there any new runs
+            if runs == -1:
+                self.logger.debug(f'No new runs found.')
+                runs = None
+
+        # return to the caller
+        return runs
