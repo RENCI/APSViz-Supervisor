@@ -21,13 +21,13 @@ class APSVizSupervisor:
     Class for the APSViz supervisor. this tool runs processes as defined in the database.
     """
 
-    # the list of pending runs. this stores all job details of the run
-    run_list = []
-
     def __init__(self):
         """
         inits the class
         """
+        # the list of pending runs. this stores all job details of the run
+        self.run_list = []
+
         # set DB the polling values
         self.POLL_SHORT_SLEEP = 30
         self.POLL_LONG_SLEEP = 120
@@ -58,7 +58,7 @@ class APSVizSupervisor:
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
         log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
 
-        # create the dir if it does not exist
+        # create the log dir if it does not exist
         if not os.path.exists(log_path):
             os.mkdir(log_path)
 
@@ -75,7 +75,6 @@ class APSVizSupervisor:
         # declare ready
         self.logger.info(f'K8s Supervisor ({self.system}) has started...')
 
-    # TODO: make this a common function
     def get_config(self) -> dict:
         """
         gets the run configuration
@@ -240,7 +239,7 @@ class APSVizSupervisor:
             # wait for the next check for something to do
             time.sleep(sleep_timeout)
 
-    def get_base_command_line(self, run):
+    def get_base_command_line(self, run) -> (list, bool):
         """
         gets the command lines for each run type
         note: use this to keep a pod running after command_line and command_matrix for the job have been set to '[""]' in the DB
@@ -336,7 +335,7 @@ class APSVizSupervisor:
 
         return command_line_params, extend_output_path
 
-    def handle_run(self, run):
+    def handle_run(self, run) -> bool:
         """
         handles the run processing
 
@@ -576,7 +575,7 @@ class APSVizSupervisor:
                 # notify Slack
                 self.send_slack_msg(run_id, f'{job_prov} run accepted.', debug_mode, run['run_data']['instancename'])
 
-    def check_pause_status(self, runs):
+    def check_pause_status(self, runs) -> dict:
         """
         checks to see if we are in pause mode.
 

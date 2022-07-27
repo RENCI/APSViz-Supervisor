@@ -42,6 +42,23 @@ class PGUtils:
         # get a db connection and cursor
         self.get_db_connection()
 
+    def __del__(self):
+        """
+        close up the DB
+
+        :return:
+        """
+        try:
+            # in there is a cursor, delete it
+            if self.cursor is not None:
+                self.cursor.close()
+
+            # if there is a connection, close it
+            if self.conn is not None:
+                self.conn.close()
+        except Exception as e:
+            self.logger.error(f'Error detected closing cursor or connection. {e}')
+
     def get_db_connection(self):
         """
         Gets a connection to the DB. performs a check to continue trying until
@@ -117,23 +134,6 @@ class PGUtils:
 
         # return to the caller
         return ret_val
-
-    def __del__(self):
-        """
-        close up the DB
-
-        :return:
-        """
-        try:
-            # in there is a cursor, delete it
-            if self.cursor is not None:
-                self.cursor.close()
-
-            # if there is a connection, close it
-            if self.conn is not None:
-                self.conn.close()
-        except Exception as e:
-            self.logger.error(f'Error detected closing cursor or connection. {e}')
 
     def exec_sql(self, sql_stmt):
         """
