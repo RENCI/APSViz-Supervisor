@@ -399,7 +399,7 @@ class APSVizSupervisor:
                     job_del_status = self.k8s_create.delete_job(run)
 
                     # was there an error on the job
-                    if job_del_status.find('Failed') != -1:
+                    if job_del_status == '{}' or job_del_status.find('Failed') != -1:
                         self.logger.error(f"Error failed job: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
 
                         # set error conditions
@@ -417,7 +417,7 @@ class APSVizSupervisor:
                     # remove the job and get the final run status
                     job_del_status = self.k8s_create.delete_job(run)
 
-                    if job_del_status.find('Failed') != -1:
+                    if job_del_status == '{}' or job_del_status.find('Failed') != -1:
                         self.logger.error(f"Error failed job and/or pod: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
 
                     # set error conditions
@@ -477,11 +477,10 @@ class APSVizSupervisor:
         final_msg = f"APSViz Supervisor ({self.system}) - "
 
         # if there was an instance name use it
-        if instance_name is not None:
-            final_msg += f'Instance name: ' + instance_name + ', '
+        final_msg += '' if instance_name is None else 'Instance name: {instance_name}, '
 
         # add the run id and msg
-        final_msg += f"Run ID: {run_id} {msg}"
+        final_msg += msg if run_id is None else f'Run ID: {run_id} {msg}'
 
         # log the message if in debug mode
         if debug_mode:
@@ -591,7 +590,7 @@ class APSVizSupervisor:
             self.pause_mode = pause_mode
 
             # let everyone know
-            self.logger.info(f'K8s Supervisor ({self.system}) application is now {"paused" if pause_mode else "active"}.')
+            self.send_slack_msg(None, f'K8s Supervisor application ({self.system}) is now {"paused" if pause_mode else "active"}.', debug_mode=True)
 
         # if we are not in pause mode get all the new rune
         if not pause_mode:

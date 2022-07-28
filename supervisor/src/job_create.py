@@ -258,7 +258,7 @@ class JobCreate:
         job_spec = client.V1JobSpec(
             template=template,
             backoff_limit=self.backoffLimit,
-            ttl_seconds_after_finished=600
+            ttl_seconds_after_finished=180
             )
 
         # instantiate the job object
@@ -323,30 +323,35 @@ class JobCreate:
         :param run: the run configuration details
         :return:
         """
+        # if this is a debug run keep the jobs available for interrogation
+        # note: a duplicate name collision on the next run could occur
+        # if the jobs are not removed before the same run is restarted.
+        if not run['debug']:
+            job_data = run[run['job-type']]['job-config']
+            job_details = job_data['job-details']
+            run_details = run[run['job-type']]['run-config']
 
-        job_data = run[run['job-type']]['job-config']
-        job_details = job_data['job-details']
-        run_details = run[run['job-type']]['run-config']
+            # create an API hook
+            api_instance = client.BatchV1Api()
 
-        # create an API hook
-        api_instance = client.BatchV1Api()
+            try:
+                # remove the job
+                api_response = api_instance.delete_namespaced_job(
+                    name=run_details['JOB_NAME'],
+                    namespace=job_details['NAMESPACE'],
+                    body=client.V1DeleteOptions(
+                        propagation_policy='Foreground',
+                        grace_period_seconds=5))
 
-        try:
-            # remove the job
-            api_response = api_instance.delete_namespaced_job(
-                name=run_details['JOB_NAME'],
-                namespace=job_details['NAMESPACE'],
-                body=client.V1DeleteOptions(
-                    propagation_policy='Foreground',
-                    grace_period_seconds=5))
+                # set the return value
+                ret_val = api_response.status
 
-            # set the return value
-            ret_val = api_response.status
-
-        # trap any k8s call errors
-        except (client.exceptions.ApiException, Exception) as e:
-            ret_val = "Job delete error, job may no longer exist."
-            self.logger.error(f'{ret_val}: {e}')
+            # trap any k8s call errors
+            except (client.exceptions.ApiException, Exception) as e:
+                ret_val = "Job delete error, job may no longer exist."
+                self.logger.error(f'{ret_val}: {e}')
+        else:
+            ret_val = 'success'
 
         # return the final status of the job
         return ret_val
