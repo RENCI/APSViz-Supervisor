@@ -590,7 +590,7 @@ class APSVizSupervisor:
             self.pause_mode = pause_mode
 
             # let everyone know
-            self.send_slack_msg(None, f'K8s Supervisor application ({self.system}) is now {"paused" if pause_mode else "active"}.', debug_mode=True)
+            self.send_slack_msg(None, f'K8s Supervisor application ({self.system}) is now {"paused" if pause_mode else "active"}.', debug_mode=True if self.system.startswith('Prod') else False)
 
         # if we are not in pause mode get all the new rune
         if not pause_mode:
