@@ -405,7 +405,7 @@ class APSVizSupervisor:
                         # set error conditions
                         run['status'] = JobStatus.error
                     else:
-                        # set the stage status
+                        # complete this job and setup for the next job
                         run['status_prov'] += f", {run['job-type'].value} complete"
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
@@ -482,12 +482,12 @@ class APSVizSupervisor:
         # add the run id and msg
         final_msg += msg if run_id is None else f'Run ID: {run_id} {msg}'
 
-        # log the message if in debug mode
-        if debug_mode:
-            self.logger.info(final_msg)
-        # else send the message to slack
-        else:
+        # send the message to slack if not in debug mode
+        if not debug_mode and self.system in ['Dev', 'Prod']:
             self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
+
+        # log the message
+        self.logger.info(final_msg)
 
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
