@@ -258,7 +258,7 @@ class JobCreate:
         job_spec = client.V1JobSpec(
             template=template,
             backoff_limit=self.backoffLimit,
-            ttl_seconds_after_finished=180
+            ttl_seconds_after_finished=600
             )
 
         # instantiate the job object
