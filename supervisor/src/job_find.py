@@ -116,7 +116,7 @@ class JobFind:
 
                     # if this has been inactive for some period of time (presumably waiting for resources
                     if time_diff.total_seconds() > self.job_timeout:
-                        self.logger.error(f'Job timeout: {job_name}')
+                        self.logger.error(f'Job timeout. Waited {time_diff.total_seconds()} seconds for {job_name}')
                         job_status = 'Timeout'
                         break
 
