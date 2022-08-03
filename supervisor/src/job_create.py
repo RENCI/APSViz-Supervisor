@@ -272,7 +272,7 @@ class JobCreate:
         # save these params onto the run info
         run[run['job-type']]['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
 
-    def create_job(self, run) -> str:
+    def create_job(self, run) -> object:
         """
         creates the k8s job
 
@@ -286,10 +286,14 @@ class JobCreate:
         job_details = job_data['job-details']
         run_details = run[run['job-type']]['run-config']
 
-        # create the job
-        api_instance.create_namespaced_job(
-            body=job_data['job'],
-            namespace=job_details['NAMESPACE'])
+        try:
+            # create the job
+            api_instance.create_namespaced_job(
+                body=job_data['job'],
+                namespace=job_details['NAMESPACE'])
+        except client.ApiException as ae:
+            self.logger.error(f"Error creating job: {run_details['JOB_NAME']}")
+            return None
 
         # init the return storage
         job_id: str = ''
@@ -382,6 +386,9 @@ class JobCreate:
         :return: the job ID
         """
 
+        # init the return
+        job_id = None
+
         # load the baseline config params
         job_details = self.k8s_config
 
@@ -404,3 +411,6 @@ class JobCreate:
 
         # save these params onto the run info
         run[run['job-type']]['job-config']['job_id'] = job_id
+
+        # return to the caller
+        return job_id
