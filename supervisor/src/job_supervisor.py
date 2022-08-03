@@ -359,14 +359,22 @@ class APSVizSupervisor:
             self.k8s_create_job_obj(run, command_line_params, extend_output_path)
 
             # execute the k8s job run
-            self.k8s_create.execute(run)
+            job_id = self.k8s_create.execute(run)
 
-            # set the current status
-            run['status'] = JobStatus.running
-            run['status_prov'] += f", {run['job-type'].value} running"
-            self.pg_db.update_job_status(run['id'], run['status_prov'])
+            # did we not get a job_id
+            if job_id is not None:
+                # set the current status
+                run['status'] = JobStatus.running
+                run['status_prov'] += f", {run['job-type'].value} running"
+                self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-            self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+            else:
+                # set the error status
+                run['status'] = JobStatus.error
+
+                self.logger.info(f"Job was not created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+
         elif run['status'] == JobStatus.running and run['status'] != JobStatus.error:
             # set the activity flag
             no_activity = False
