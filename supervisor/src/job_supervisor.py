@@ -125,6 +125,7 @@ class APSVizSupervisor:
                         run['status_prov'] += ', Run complete'
                         self.pg_db.update_job_status(run['id'], run['status_prov'])
 
+                        # make sure the provenance is lowercase
                         status_prov = run['status_prov'].lower()
 
                         # get the type of run
@@ -132,9 +133,10 @@ class APSVizSupervisor:
 
                         # add a comment on overall pass/fail
                         if run['status_prov'].find('Error') == -1:
-                            msg = f'*{run_type} run completed successfully*.'
+                            msg = f'*{run_type} run completed successfully* :100:'
                         else:
-                            msg = f"*{run_type} run completed unsuccessfully*.\nRun provenance: {run['status_prov']}."
+                            msg = f"*{run_type} run completed unsuccessfully* :boom:"
+                            self.send_slack_issues_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", run['debug'], run['instance_name'])
 
                         # send the message
                         self.send_slack_status_msg(run['id'], msg, run['debug'], run['instance_name'])
@@ -178,7 +180,7 @@ class APSVizSupervisor:
                     msg = f'Exception {e_main} caught. Terminating run.'
 
                     # send the message
-                    self.send_slack_status_msg(run['id'], msg, run['debug'], run['instance_name'])
+                    self.send_slack_issues_msg(run['id'], msg, run['debug'], run['instance_name'])
 
                     # remove the run
                     self.run_list.remove(run)
@@ -435,12 +437,12 @@ class APSVizSupervisor:
             else:
                 self.logger.error(f"Error job not found: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}")
 
-                # set error conditions
+                # set error condition
                 run['status'] = JobStatus.error
 
         # send out the error status on error
         if run['status'] == JobStatus.error:
-            self.send_slack_status_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
+            self.send_slack_issues_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
             run['job-type'] = JobType.error
 
         # return to the caller
@@ -460,7 +462,6 @@ class APSVizSupervisor:
             # load the config with the info from the config file
             config['JOB_NAME'] += str(run['id']).lower()
             config['DATA_VOLUME_NAME'] += str(run['id']).lower()
-            config['SSH_VOLUME_NAME'] += str(run['id']).lower()
             config['COMMAND_LINE'].extend(command_line_params)
 
             # tack on any additional paths if requested
@@ -583,7 +584,7 @@ class APSVizSupervisor:
                     # update the run status everywhere
                     self.pg_db.update_job_status(run_id, f'Error - Run lacks the required run properties ({missing_params_msg}).')
                     self.logger.error(f"Error - Run lacks the required run properties ({missing_params_msg}): {run_id}")
-                    self.send_slack_status_msg(run_id, f'Error - Run lacks the required run properties ({missing_params_msg})', debug_mode, instance_name)
+                    self.send_slack_issues_msg(run_id, f'Error - Run lacks the required run properties ({missing_params_msg})', debug_mode, instance_name)
 
                     # continue processing the remaining runs
                     continue
@@ -629,7 +630,7 @@ class APSVizSupervisor:
             self.pause_mode = pause_mode
 
             # let everyone know pause mode was toggled
-            self.send_slack_status_msg(None, f'K8s Supervisor application ({self.system}) is now {"paused" if pause_mode else "active"}.')
+            self.send_slack_status_msg(None, f'Application is now {"paused" if pause_mode else "active"}.')
 
         # get all the new runs if system is not in pause mode
         if not pause_mode:
