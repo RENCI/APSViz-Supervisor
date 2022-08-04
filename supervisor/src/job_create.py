@@ -62,6 +62,8 @@ class JobCreate:
             {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
             {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
             {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
+            {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
+            {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
             {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
             {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
             {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
@@ -171,18 +173,12 @@ class JobCreate:
             cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
             cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
 
-            # for processes that use a lot of cpu resources set some alternatives
-            # TODO: make the restart policy something configurable
-            #  - make sure we wait for resources to become available rather than having the job fail.
-            #  - avoid giving it slightly higher cpu limits
+            # set some cpu padding
+            cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
+            cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
+
             # set this to "Never" when troubleshooting pod issues
-            if cpus_limit_val >= 2:
-                restart_policy = 'OnFailure'
-                cpus_limit = cpus
-            else:
-                # make sure the cpu value is built up properly
-                cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
-                cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
+            restart_policy = run[run['job-type']]['run-config']['RESTART_POLICY']
 
             # get the baseline set of container resources
             resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
