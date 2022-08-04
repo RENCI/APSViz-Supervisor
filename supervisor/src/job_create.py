@@ -197,6 +197,7 @@ class JobCreate:
             # TODO: make the restart policy something configurable
             #  - make sure we wait for resources to become available rather than having the job fail.
             #  - avoid giving it slightly higher cpu limits
+            # set this to "Never" when troubleshooting pod issues
             if cpus_limit_val >= 2:
                 restart_policy = 'OnFailure'
                 cpus_limit = cpus
