@@ -47,8 +47,6 @@ class JobCreate:
         # declare the secret environment variables
         self.secret_env_params: list = [
             {'name': 'LOG_PATH', 'key': 'log-path'},
-            {'name': 'SSH_USERNAME', 'key': 'ssh-username'},
-            {'name': 'SSH_HOST', 'key': 'ssh-host'},
             {'name': 'ASGS_DB_HOST', 'key': 'asgs-host'},
             {'name': 'ASGS_DB_PORT', 'key': 'asgs-port'},
             {'name': 'ASGS_DB_USERNAME', 'key': 'asgs-username'},
@@ -64,10 +62,6 @@ class JobCreate:
             {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
             {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
             {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
-            {'name': 'SLACK_ACCESS_TOKEN', 'key': 'slack-access-token'},
-            {'name': 'SLACK_CHANNEL', 'key': 'slack-channel'},
-            {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
-            {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
             {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
             {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
             {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
