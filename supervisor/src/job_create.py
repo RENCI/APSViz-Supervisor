@@ -93,25 +93,9 @@ class JobCreate:
             name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
             persistent_volume_claim=data_persistent_volume_claim)
 
-        # configure the ssh key volume mount for the container
-        ssh_volume_mount = client.V1VolumeMount(
-            name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
-            read_only=True,
-            mount_path=run[run['job-type']]['run-config']['SSH_MOUNT_PATH'])
-
-        # configure a secret claim for the secret keys
-        ssh_secret_claim = client.V1SecretVolumeSource(
-            secret_name=f'{job_details["SECRETS_CLAIM"]}',
-            default_mode=0o777)
-
-        # configure the ssh secret claim
-        ssh_volume = client.V1Volume(
-            name=run[run['job-type']]['run-config']['SSH_VOLUME_NAME'],
-            secret=ssh_secret_claim)
-
         # declare the volume mounts
-        volumes = [data_volume, ssh_volume]
-        volume_mounts = [data_volume_mount, ssh_volume_mount]
+        volumes = [data_volume]
+        volume_mounts = [data_volume_mount]
 
         # if there is a desire to mount the file server PV
         if run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME']:
