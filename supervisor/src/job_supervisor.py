@@ -490,12 +490,12 @@ class APSVizSupervisor:
         # add the run id and msg
         final_msg += msg if run_id is None else f'Run ID: {run_id} {msg}'
 
+        # log the message
+        self.logger.info(final_msg)
+
         # send the message to slack if not in debug mode
         if not debug_mode and self.system in ['Dev', 'Prod']:
             self.slack_client.chat_postMessage(channel=self.slack_channel, text=final_msg)
-
-        # log the message
-        self.logger.info(final_msg)
 
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
@@ -584,11 +584,14 @@ class APSVizSupervisor:
 
     def check_pause_status(self, runs) -> dict:
         """
-        checks to see if we are in pause mode.
+        checks to see if we are in pause mode. if the system isn't, get new runs.
 
         :param runs:
         :return:
         """
+        # init the return value
+        runs = None
+
         # get the flag that indicates we are pausing the handling of new run requests
         pause_mode = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
 
@@ -597,18 +600,13 @@ class APSVizSupervisor:
             # save the new pause mode
             self.pause_mode = pause_mode
 
-            # let everyone know
-            self.send_slack_msg(None, f'K8s Supervisor application ({self.system}) is now {"paused" if pause_mode else "active"}.', debug_mode=True if self.system.startswith('Prod') else False)
+            # let everyone know pause mode was toggled
+            self.send_slack_msg(None, f'K8s Supervisor application ({self.system}) is now {"paused" if pause_mode else "active"}.')
 
-        # if we are not in pause mode get all the new rune
+        # get all the new runs if system is not in pause mode
         if not pause_mode:
             # get the new runs
             runs = self.pg_db.get_new_runs()
-
-            # were there any new runs
-            if runs == -1:
-                self.logger.debug(f'No new runs found.')
-                runs = None
 
         # return to the caller
         return runs

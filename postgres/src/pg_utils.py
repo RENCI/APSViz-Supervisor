@@ -193,7 +193,14 @@ class PGUtils:
         sql: str = 'SELECT public.get_supervisor_config_items_json()'
 
         # get the data
-        return self.exec_sql(sql)
+        ret_val = self.exec_sql(sql)
+
+        # if there were no runs return None
+        if ret_val == -1:
+            ret_val = None
+
+        # return to the caller
+        return ret_val
 
     def update_job_status(self, run_id, value):
         """
