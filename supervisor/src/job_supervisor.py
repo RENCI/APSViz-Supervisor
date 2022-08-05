@@ -69,7 +69,7 @@ class APSVizSupervisor:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=log_path)
 
-        # init the slack channels
+        # init the Slack channels
         self.slack_status_channel = os.getenv('SLACK_STATUS_CHANNEL')
         self.slack_issues_channel = os.getenv('SLACK_ISSUES_CHANNEL')
 
@@ -484,7 +484,7 @@ class APSVizSupervisor:
         :param instance_name:
         :return:
         """
-        # if the channel is empty default to the status channel
+        # determine the client based on the channel
         if channel == self.slack_status_channel:
             client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
         else:
