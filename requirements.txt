@@ -6,4 +6,4 @@
 
 kubernetes==22.6.0
 psycopg2==2.9.3
-slackclient==2.9.4
+slack-sdk==3.18.1
