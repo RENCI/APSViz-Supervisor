@@ -99,9 +99,9 @@ class APSVizSupervisor:
 
     def run(self):
         """
-        endless loop finding process requests to create and run k8s jobs
+        endless loop processing run requests
 
-        :return:
+        :return: nothing
         """
         # init counter that indicates how many times nothing was launched.
         # used to slow down the checks that look for work
@@ -250,8 +250,8 @@ class APSVizSupervisor:
             command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
             update public."ASGS_Mon_supervisor_config" set command_line='[""]', command_matrix='[""]' where id=;
 
-        :param run:
-        :return:
+        :param run: the run parameters
+        :return: a list of the command line parameters
         """
         # init the returns
         command_line_params = None
@@ -342,8 +342,8 @@ class APSVizSupervisor:
         """
         handles the run processing
 
-        :param run:
-        :return:
+        :param run: the run parameters
+        :return: boolean run activity indicator
         """
         # init the activity flag
         no_activity: bool = True
@@ -451,7 +451,7 @@ class APSVizSupervisor:
         """
         Creates the details for a job from the database
 
-        :return:
+        :return: nothing
         """
         # create a new configuration if this is a new run
         if run['status'] == JobStatus.new:
@@ -477,19 +477,13 @@ class APSVizSupervisor:
         """
         sends a msg to the Slack channel
 
-        :param run_id:
-        :param msg:
-        :param channel:
-        :param debug_mode:
-        :param instance_name:
-        :return:
+        :param run_id: the ID of the supervisor run
+        :param msg: the msg tpo be sent
+        :param channel: the Slack channel to post the message to
+        :param debug_mode: mode to indicate that this is a
+        :param instance_name: the name of the ASGS instance
+        :return: nothing
         """
-        # determine the client based on the channel
-        if channel == self.slack_status_channel:
-            client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
-        else:
-            client = WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
-
         # init the final msg
         final_msg = f"APSViz Supervisor ({self.system}) - "
 
@@ -502,19 +496,27 @@ class APSVizSupervisor:
         # log the message
         self.logger.info(final_msg)
 
-        try:
-            # send the message to slack if not in debug mode
-            if not debug_mode and self.system in ['Dev', 'Prod']:
-                result = client.chat_postMessage(channel=channel, text=final_msg)
-        except SlackApiError as e:
-            self.logger.exception(f'Slack {channel} messaging failed. msg: {final_msg}')
+        # send the message to Slack if not in debug mode and not running locally
+        if not debug_mode and self.system in ['Dev', 'Prod']:
+            # determine the client based on the channel
+            if channel == self.slack_status_channel:
+                client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
+            else:
+                client = WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
+
+            try:
+                # send the message
+                client.chat_postMessage(channel=channel, text=final_msg)
+            except SlackApiError as e:
+                # log the error
+                self.logger.exception(f'Slack {channel} messaging failed. msg: {final_msg}')
 
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
         Checks the run data to insure we have all the necessary info to start a run
 
         :param run_info:
-        :return:
+        :return: list of required items that weren't found
         """
         # if there was an instance name use it
         if 'instancename' in run_info:
@@ -598,8 +600,8 @@ class APSVizSupervisor:
         """
         checks to see if we are in pause mode. if the system isn't, get new runs.
 
-        :param runs:
-        :return:
+        :param runs: the run parameters
+        :return: returnsdict of newly discovered runs
         """
         # init the return value
         runs = None
