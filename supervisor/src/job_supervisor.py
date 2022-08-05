@@ -441,7 +441,7 @@ class APSVizSupervisor:
 
         # send out the error status on error
         if run['status'] == JobStatus.error:
-            self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", self.slack_issues_channel, run['debug'], run['instance_name'])
+            self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", self.slack_status_channel, run['debug'], run['instance_name'])
             run['job-type'] = JobType.error
 
         # return to the caller
