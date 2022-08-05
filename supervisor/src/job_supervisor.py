@@ -7,8 +7,9 @@
 import time
 import os
 import logging
-import slack
 import json
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from postgres.src.pg_utils import PGUtils
@@ -68,10 +69,8 @@ class APSVizSupervisor:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=log_path)
 
-        # instantiate slack connectivity
-        self.slack_status_client = slack.WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
+        # init the slack channels
         self.slack_status_channel = os.getenv('SLACK_STATUS_CHANNEL')
-        self.slack_issues_client = slack.WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
         self.slack_issues_channel = os.getenv('SLACK_ISSUES_CHANNEL')
 
         # declare ready
@@ -136,10 +135,10 @@ class APSVizSupervisor:
                             msg = f'*{run_type} run completed successfully* :100:'
                         else:
                             msg = f"*{run_type} run completed unsuccessfully* :boom:"
-                            self.send_slack_issues_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", run['debug'], run['instance_name'])
+                            self.send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", self.slack_issues_channel, run['debug'], run['instance_name'])
 
                         # send the message
-                        self.send_slack_status_msg(run['id'], msg, run['debug'], run['instance_name'])
+                        self.send_slack_msg(run['id'], msg, self.slack_status_channel, run['debug'], run['instance_name'])
 
                         # send something to log to indicate complete
                         self.logger.info(f"{run['id']} complete.")
@@ -175,12 +174,12 @@ class APSVizSupervisor:
                         continue
                 except Exception as e_main:
                     # report the exception
-                    self.logger.exception(f"Cleanup exception detected, id: {run['id']}, exception: {e_main}")
+                    self.logger.exception(f"Cleanup exception detected, id: {run['id']}")
 
                     msg = f'Exception {e_main} caught. Terminating run.'
 
                     # send the message
-                    self.send_slack_issues_msg(run['id'], msg, run['debug'], run['instance_name'])
+                    self.send_slack_msg(run['id'], msg, self.slack_issues_channel, run['debug'], run['instance_name'])
 
                     # remove the run
                     self.run_list.remove(run)
@@ -194,7 +193,7 @@ class APSVizSupervisor:
                     no_activity = self.handle_run(run)
                 except Exception as e:
                     # report the exception
-                    self.logger.exception(f"Run handler exception detected, id: {run['id']}, exception: {e}")
+                    self.logger.exception(f"Run handler exception detected, id: {run['id']}")
 
                     # prepare the DB status
                     run['status_prov'] += ', Run handler error detected'
@@ -442,7 +441,7 @@ class APSVizSupervisor:
 
         # send out the error status on error
         if run['status'] == JobStatus.error:
-            self.send_slack_issues_msg(run['id'], f"failed in {run['job-type']}.", run['debug'], run['instance_name'])
+            self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", self.slack_issues_channel, run['debug'], run['instance_name'])
             run['job-type'] = JobType.error
 
         # return to the caller
@@ -474,16 +473,23 @@ class APSVizSupervisor:
             # save these params in the run info
             run[run['job-type']] = {'run-config': config}
 
-    def send_slack_status_msg(self, run_id, msg, debug_mode=False, instance_name=None):
+    def send_slack_msg(self, run_id, msg, channel, debug_mode=False, instance_name=None):
         """
-        sends a msg to the Slack status channel
+        sends a msg to the Slack channel
 
         :param run_id:
         :param msg:
+        :param channel:
         :param debug_mode:
         :param instance_name:
         :return:
         """
+        # if the channel is empty default to the status channel
+        if channel == self.slack_status_channel:
+            client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
+        else:
+            client = WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
+
         # init the final msg
         final_msg = f"APSViz Supervisor ({self.system}) - "
 
@@ -496,35 +502,12 @@ class APSVizSupervisor:
         # log the message
         self.logger.info(final_msg)
 
-        # send the message to slack if not in debug mode
-        if not debug_mode and self.system in ['Dev', 'Prod']:
-            self.slack_status_client.chat_postMessage(channel=self.slack_status_channel, text=final_msg)
-
-    def send_slack_issues_msg(self, run_id, msg, debug_mode=False, instance_name=None):
-        """
-        sends a msg to the Slack issues channel
-
-        :param run_id:
-        :param msg:
-        :param debug_mode:
-        :param instance_name:
-        :return:
-        """
-        # init the final msg
-        final_msg = f"APSViz Supervisor ({self.system}) - "
-
-        # if there was an instance name use it
-        final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
-
-        # add the run id and msg
-        final_msg += msg if run_id is None else f'Run ID: {run_id} {msg}'
-
-        # log the message
-        self.logger.info(final_msg)
-
-        # send the message to slack if not in debug mode
-        if not debug_mode and self.system in ['Dev', 'Prod']:
-            self.slack_status_client.chat_postMessage(channel=self.slack_status_channel, text=final_msg)
+        try:
+            # send the message to slack if not in debug mode
+            if not debug_mode and self.system in ['Dev', 'Prod']:
+                result = client.chat_postMessage(channel=channel, text=final_msg)
+        except SlackApiError as e:
+            self.logger.exception(f'Slack {channel} messaging failed. msg: {final_msg}')
 
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
@@ -584,7 +567,7 @@ class APSVizSupervisor:
                     # update the run status everywhere
                     self.pg_db.update_job_status(run_id, f'Error - Run lacks the required run properties ({missing_params_msg}).')
                     self.logger.error(f"Error - Run lacks the required run properties ({missing_params_msg}): {run_id}")
-                    self.send_slack_issues_msg(run_id, f'Error - Run lacks the required run properties ({missing_params_msg})', debug_mode, instance_name)
+                    self.send_slack_msg(run_id, f'Error - Run lacks the required run properties ({missing_params_msg})', self.slack_issues_channel, debug_mode, instance_name)
 
                     # continue processing the remaining runs
                     continue
@@ -609,7 +592,7 @@ class APSVizSupervisor:
                 self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
 
                 # notify Slack
-                self.send_slack_status_msg(run_id, f'{job_prov} run accepted.', debug_mode, run['run_data']['instancename'])
+                self.send_slack_msg(run_id, f'{job_prov} run accepted.', self.slack_status_channel, debug_mode, run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
         """
@@ -630,7 +613,7 @@ class APSVizSupervisor:
             self.pause_mode = pause_mode
 
             # let everyone know pause mode was toggled
-            self.send_slack_status_msg(None, f'Application is now {"paused" if pause_mode else "active"}.')
+            self.send_slack_msg(None, f'Application is now {"paused" if pause_mode else "active"}.', self.slack_status_channel)
 
         # get all the new runs if system is not in pause mode
         if not pause_mode:
