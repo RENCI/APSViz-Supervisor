@@ -601,7 +601,7 @@ class APSVizSupervisor:
         checks to see if we are in pause mode. if the system isn't, get new runs.
 
         :param runs: the run parameters
-        :return: returnsdict of newly discovered runs
+        :return: returns dict of newly discovered runs
         """
         # init the return value
         runs = None
