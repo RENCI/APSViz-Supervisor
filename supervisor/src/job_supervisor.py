@@ -393,7 +393,7 @@ class APSVizSupervisor:
             elif job_status.startswith('Failed'):
                 self.logger.error(f"Job has failed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
             elif job_status.startswith('Complete'):
-                self.logger.debug(f"Job has completed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                self.logger.info(f"Job has completed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
 
             # if the job was found
             if job_found:

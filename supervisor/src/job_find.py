@@ -57,7 +57,7 @@ class JobFind:
         # return the config data
         return data
 
-    def find_job_info(self, run) -> (int, str):
+    def find_job_info(self, run) -> (bool, str, str):
         # load the baseline cluster params
         job_details = run[run['job-type']]['job-config']['job-details']
         job_name = run[run['job-type']]['run-config']['JOB_NAME']
@@ -78,9 +78,10 @@ class JobFind:
         core_api = client.CoreV1Api()
 
         # init the status storage
-        job_status = ''
         job_found = False
+        job_status = ''
         pod_status: str = ''
+        container_count = 0
 
         # get the job run information
         jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
@@ -120,6 +121,7 @@ class JobFind:
                         job_status = 'Timeout'
                         break
 
+                # if the job is complete
                 if job_status.startswith('Complete'):
                     # get the container status
                     for pod in pods.items:
@@ -127,8 +129,23 @@ class JobFind:
                             # grab the status
                             pod_status = str(pod.status.phase)
 
-                            # no need to continue if we got the state
-                            break
+                            # was this a failure
+                            if pod_status.startswith('Succeeded'):
+                                # loop through the container statuses in the pod
+                                for status in pod.status.container_statuses:
+                                    # did the container succeed
+                                    if status.state.terminated.reason.startswith('Completed'):
+                                        container_count += 1
+
+                                # did the containers all succeed too
+                                if container_count == run[run['job-type']]['total_containers']:
+                                    pod_status = 'Succeeded'
+                                else:
+                                    self.logger.error(f"{job_name} did not have the expected ({run[run['job-type']]['total_containers']}) number of completed containers ({container_count}).")
+                                    pod_status = 'Failed'
+
+                                # no need to continue if we got a successful state
+                                break
 
                 # no need to continue if the job was found and interrogated
                 break

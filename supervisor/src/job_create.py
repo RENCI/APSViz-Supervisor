@@ -210,6 +210,9 @@ class JobCreate:
             # add the container to the list
             containers.append(container)
 
+        # save the number of containers in this job/pod for status checking later
+        run[run['job-type']]['total_containers'] = len(containers)
+
         # create a security context for the pod
         # security_context = client.V1PodSecurityContext(run_as_user=1000, fs_group=2000, run_as_group=3000)
 
