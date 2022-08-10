@@ -497,7 +497,7 @@ class APSVizSupervisor:
         self.logger.info(final_msg)
 
         # send the message to Slack if not in debug mode and not running locally
-        if not debug_mode and self.system in ['Dev', 'Prod']:
+        if not debug_mode and self.system in ['Dev', 'Prod', 'AWS/EKS']:
             # determine the client based on the channel
             if channel == self.slack_status_channel:
                 client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
