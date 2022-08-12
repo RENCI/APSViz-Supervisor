@@ -67,7 +67,9 @@ class JobCreate:
             {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
             {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
             {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
-            {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}
+            {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'},
+            {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
+            {'name': 'no_proxy', 'key': 'no-proxy-hosts'}
         ]
 
     # @staticmethod
@@ -138,10 +140,6 @@ class JobCreate:
                                       {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'},
                                       {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}
                                       ])
-
-        # don't use the renci proxy on certain websites
-        secret_env_params.extend([{'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-                                  {'name': 'no_proxy', 'key': 'no-proxy-hosts'}])
 
         # get all the env params into an array
         for item in secret_env_params:
