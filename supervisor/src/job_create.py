@@ -139,10 +139,9 @@ class JobCreate:
                                       {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}
                                       ])
 
-        # # obs mod should not proxy the legacy thredds server
-        # if run['job-type'] == JobType.obs_mod_ast:
-        #     secret_env_params.extend([{'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-        #                               {'name': 'no_proxy', 'key': 'no-proxy-hosts'}])
+        # don't use the renci proxy on certain websites
+        secret_env_params.extend([{'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
+                                  {'name': 'no_proxy', 'key': 'no-proxy-hosts'}])
 
         # get all the env params into an array
         for item in secret_env_params:
