@@ -28,7 +28,8 @@ jobs:
       - name: Build/Push the image to the registry
         uses: docker/build-push-action@v1
         with:
-          registry: ${{ env.REGISTRY }}${{ env.NAME }}
+          registry: ${{ env.REGISTRY }}
           username: ${{ env.USER }}
           password: ${{ env.PW }}
+          image: ${{ env.NAME }}
           tags: latest,${{ steps.get_version.outputs.VERSION }}
