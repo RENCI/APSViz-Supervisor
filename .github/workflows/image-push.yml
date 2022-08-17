@@ -5,7 +5,7 @@ on:
     branches: ['master']
 
 env:
-  REGISTRY: containers.renci.org  # ${{ secrets.REGISTRY}}
+  REGISTRY: containers.renci.org/eds  # ${{ secrets.REGISTRY}}
   NAME: apsviz-supervisor  # ${{ secrets.NAME }}
   USER: ${{ secrets.USER }}
   PW: ${{ secrets.PW }}
@@ -41,5 +41,4 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.USER }}
           password: ${{ env.PW }}
-          image: ${{ env.NAME }}
           tags: latest ${{ steps.get_version.outputs.VERSION }}
