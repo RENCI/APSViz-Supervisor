@@ -5,8 +5,8 @@ on:
     branches: ['master']
 
 env:
-  REGISTRY: ${{ secrets.REGISTRY}}
-  NAME: ${{ secrets.NAME }}
+  REGISTRY: containers.renci.org  # ${{ secrets.REGISTRY}}
+  NAME: apsviz-supervisor  # ${{ secrets.NAME }}
   USER: ${{ secrets.USER }}
   PW: ${{ secrets.PW }}
 
@@ -25,6 +25,11 @@ jobs:
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
+      - name: output tag name
+        run: |
+          echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
+          echo "Tag name from github.ref_name: ${{  github.ref_name }}"
+
       - name: Build/Push the image to the registry
         uses: docker/build-push-action@v1
         with:
@@ -32,4 +37,4 @@ jobs:
           username: ${{ env.USER }}
           password: ${{ env.PW }}
           image: ${{ env.NAME }}
-          tags: latest,${{ steps.get_version.outputs.VERSION }}
+          tags: latest ${{ steps.get_version.outputs.VERSION }}
