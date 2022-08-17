@@ -25,15 +25,12 @@ jobs:
         id: get_version
         run: |
           echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-#          echo "REF: ${GITHUB_REF}"
-#          echo "version: ${GITHUB_REF/refs\/tags\//}"
           
-      - name: context
-        run:  echo "$GITHUB_CONTEXT"
-        shell: bash
-        env:
-         GITHUB_CONTEXT: ${{ toJson(github) }}
-
+#      - name: context
+#        run:  echo "$GITHUB_CONTEXT"
+#        shell: bash
+#        env:
+#         GITHUB_CONTEXT: ${{ toJson(github) }}
 
       - name: Build/Push the image to the registry
         uses: docker/build-push-action@v1
@@ -42,4 +39,4 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.USER }}
           password: ${{ env.PW }}
-          tags: latest,v0.1.16
+          tags: latest
