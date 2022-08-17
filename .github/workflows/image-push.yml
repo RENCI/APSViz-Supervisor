@@ -35,7 +35,7 @@ jobs:
           repo: https://github.com/RENCI/APSVIZ-Supervisor.git
 
       - name debugger
-        run: |
+        run:
           echo "tag name: ${{ steps.tag_name.outputs.tag }}"
           
 #      - name: Dump github context
