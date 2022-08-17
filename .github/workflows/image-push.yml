@@ -2,7 +2,7 @@ name: Create and publish the APSVIZ k8s Supervisor Docker image tagged with "lat
 
 on:
   push:
-    branches: ['release']
+    branches: ['master']
 
 env:
   REGISTRY: ${{ secrets.REGISTRY}}
