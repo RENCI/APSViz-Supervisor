@@ -36,7 +36,7 @@ jobs:
 
       - name debugger
         run: |
-          echo "tag name: ${{ steps.tag_name.outputs.tag }}"
+          echo "tag name = ${{ steps.tag_name.outputs.tag }}"
           
 #      - name: Dump github context
 #        run:   echo "$GITHUB_CONTEXT"
