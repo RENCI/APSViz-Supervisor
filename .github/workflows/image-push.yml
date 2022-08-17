@@ -25,8 +25,8 @@ jobs:
         id: get_version
         run: |
           echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-          echo "REF: ${GITHUB_REF}"
-          echo "version: ${GITHUB_REF/refs\/tags\//}"
+#          echo "REF: ${GITHUB_REF}"
+#          echo "version: ${GITHUB_REF/refs\/tags\//}"
           
       - name: context
         run:  echo "$GITHUB_CONTEXT"
@@ -42,4 +42,4 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.USER }}
           password: ${{ env.PW }}
-          tags: latest  # ,${{ steps.get_version.outputs.VERSION }}
+          tags: latest ,${{ steps.get_version.outputs.VERSION }}
