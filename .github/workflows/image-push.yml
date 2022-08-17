@@ -28,11 +28,21 @@ jobs:
           echo "REF: ${GITHUB_REF}"
           echo "version: ${GITHUB_REF/refs\/tags\//}"
 
-      - name: Dump github context
-        run:   echo "$GITHUB_CONTEXT"
-        shell: bash
-        env:
-         GITHUB_CONTEXT: ${{ toJson(github) }}
+      - name: get tag name
+        - id: tag_name
+        - uses: tdemin/find-latest-tag@v1
+          with:
+            repo: https://github.com/RENCI/APSVIZ-Supervisor.git
+
+      - name debugger
+        run: |
+          echo "tag name: ${{ steps.tag_name.outputs.tag }}"
+          
+#      - name: Dump github context
+#        run:   echo "$GITHUB_CONTEXT"
+#        shell: bash
+#        env:
+#         GITHUB_CONTEXT: ${{ toJson(github) }}
 
 
       - name: Build/Push the image to the registry
@@ -41,4 +51,4 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.USER }}
           password: ${{ env.PW }}
-          tags: latest ${{ steps.get_version.outputs.VERSION }}
+          tags: latest  # ,${{ steps.get_version.outputs.VERSION }}
