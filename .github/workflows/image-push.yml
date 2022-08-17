@@ -39,4 +39,4 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.USER }}
           password: ${{ env.PW }}
-          tags: latest
+          tags: ${{ steps.get_version.outputs.VERSION }}
