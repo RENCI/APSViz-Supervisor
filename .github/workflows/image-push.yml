@@ -1,8 +1,8 @@
 name: Create and publish the APSVIZ k8s Supervisor Docker image tagged with "latest" and version number
 
 on:
-  push:
-    branches: ['master']
+    release:
+        types: [published]
 
 env:
   REGISTRY: containers.renci.org/eds  # ${{ secrets.REGISTRY}}
