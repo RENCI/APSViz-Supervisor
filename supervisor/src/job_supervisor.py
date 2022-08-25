@@ -128,7 +128,8 @@ class APSVizSupervisor:
                         status_prov = run['status_prov'].lower()
 
                         # get the type of run
-                        run_type = ('APS' if status_prov.find('hazus-singleton') == -1 else 'HAZUS-SINGLETON')
+                        # no longer used - run_type = ('APS' if status_prov.find('hazus-singleton') == -1 else 'HAZUS-SINGLETON')
+                        run_type = 'APS'
 
                         # add a comment on overall pass/fail
                         if run['status_prov'].find('Error') == -1:
@@ -266,34 +267,34 @@ class APSVizSupervisor:
         elif run['job-type'] == JobType.hazus:
             command_line_params = [run['downloadurl']]
 
-        # is this a hazus-singleton job array
-        elif run['job-type'] == JobType.hazus_singleton:
-            command_line_params = [run['downloadurl']]
+        # is this a hazus-singleton job array - no longer used
+        # elif run['job-type'] == JobType.hazus_singleton:
+        #     command_line_params = [run['downloadurl']]
 
-        # is this an obs_mod job array
-        elif run['job-type'] == JobType.obs_mod:
-            thredds_url = run['downloadurl'] + '/fort.63.nc'
-            thredds_url = thredds_url.replace('fileServer', 'dodsC')
+        # is this an obs_mod job array - no longer used
+        # elif run['job-type'] == JobType.obs_mod:
+        #     thredds_url = run['downloadurl'] + '/fort.63.nc'
+        #     thredds_url = thredds_url.replace('fileServer', 'dodsC')
+        #
+        #     # create the additional command line parameters
+        #     command_line_params = ['--instanceId', str(run['id']),
+        #                            '--inputURL', thredds_url, '--grid', run['gridname'],
+        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
+        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
 
-            # create the additional command line parameters
-            command_line_params = ['--instanceId', str(run['id']),
-                                   '--inputURL', thredds_url, '--grid', run['gridname'],
-                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
+        # is this a geo tiff job array - no longer used
+        # elif run['job-type'] == JobType.run_geo_tiff:
+        #     command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
+        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+        #                            '--inputFile']
 
-        # is this a geo tiff job array
-        elif run['job-type'] == JobType.run_geo_tiff:
-            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--inputFile']
-
-        # is this a mbtiles zoom 0-10 job array
-        elif run['job-type'] == JobType.compute_mbtiles_0_10:
-            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/tiff',
-                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--inputFile']
+        # is this a mbtiles zoom 0-10 job array - no longer used
+        # elif run['job-type'] == JobType.compute_mbtiles_0_10:
+        #     command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/tiff',
+        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+        #                            '--inputFile']
 
         # is this an adcirc2cog_tiff job array
         elif run['job-type'] == JobType.adcirc2cog_tiff:
@@ -577,9 +578,10 @@ class APSVizSupervisor:
                 elif run['run_data']['supervisor_job_status'].startswith('debug'):
                     job_prov = 'New debug'
                     job_type = JobType.staging
-                elif run['run_data']['supervisor_job_status'].startswith('hazus'):
-                    job_prov = 'New HAZUS-SINGLETON'
-                    job_type = JobType.hazus_singleton
+                # no longer used
+                # elif run['run_data']['supervisor_job_status'].startswith('hazus'):
+                #     job_prov = 'New HAZUS-SINGLETON'
+                #     job_type = JobType.hazus_singleton
                 elif run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
                     job_type = JobType.staging
