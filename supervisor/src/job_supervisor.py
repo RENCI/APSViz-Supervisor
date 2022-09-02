@@ -318,8 +318,7 @@ class APSVizSupervisor:
                                    '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'],
                                    '--tarMeta', str(run['id'])]
 
-        # is this an obs mod ast job array
-        # ./ execute_APSVIZ_pipeline.sh
+        # is this an obs mod ast job
         elif run['job-type'] == JobType.obs_mod_ast:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
@@ -329,6 +328,14 @@ class APSVizSupervisor:
                                    run['gridname'],
                                    self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
                                    str(run['id'])]
+
+        # is this an ast run harvester job
+        elif run['job-type'] == JobType.ast_run_harvester:
+            thredds_url = run['downloadurl'] + '/fort.63.nc'
+            thredds_url = thredds_url.replace('fileServer', 'dodsC')
+
+            # create the additional command line parameters
+            command_line_params = [thredds_url, self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH']]
 
         # is this an adcirc time to cog converter job array
         elif run['job-type'] == JobType.adcirctime_to_cog:
