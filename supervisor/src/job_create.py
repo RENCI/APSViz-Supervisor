@@ -133,7 +133,7 @@ class JobCreate:
         secret_env_params = self.secret_env_params.copy()
 
         # load geo can't use the http_proxy values
-        # TODO: change this to something configurable
+        # TODO: change this to something configurable on the fly. DB param?
         if run['job-type'] != JobType.load_geo_server:
             # add the proxy values to the env param list
             secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'},
@@ -217,9 +217,6 @@ class JobCreate:
         # save the number of containers in this job/pod for status checking later
         run[run['job-type']]['total_containers'] = len(containers)
 
-        # create a security context for the pod
-        # security_context = client.V1PodSecurityContext(run_as_user=1000, fs_group=2000, run_as_group=3000)
-
         # if there was a node selector found use it
         if run[run['job-type']]['run-config']['NODE_TYPE']:
             # separate the tag and type
@@ -233,7 +230,7 @@ class JobCreate:
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector)  # , security_context=security_context
+            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector)
         )
 
         # create the specification of job deployment
