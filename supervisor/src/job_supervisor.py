@@ -54,8 +54,7 @@ class APSVizSupervisor:
         # counter for current runs
         self.run_count = 0
 
-        # get the log level and directory from the environment.
-        # level comes from the container dockerfile, path comes from the k8s secrets
+        # get the log level and directory from the environment (k8s secrets).
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
         log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
 
@@ -88,8 +87,7 @@ class APSVizSupervisor:
         # get the data looking like we are used to
         config_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
 
-        # fix the arrays for each job def.
-        # they come in as a string
+        # fix the arrays for each job def. they come in as a string
         for item in config_data.items():
             item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
             item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
@@ -267,35 +265,6 @@ class APSVizSupervisor:
         elif run['job-type'] == JobType.hazus:
             command_line_params = [run['downloadurl']]
 
-        # is this a hazus-singleton job array - no longer used
-        # elif run['job-type'] == JobType.hazus_singleton:
-        #     command_line_params = [run['downloadurl']]
-
-        # is this an obs_mod job array - no longer used
-        # elif run['job-type'] == JobType.obs_mod:
-        #     thredds_url = run['downloadurl'] + '/fort.63.nc'
-        #     thredds_url = thredds_url.replace('fileServer', 'dodsC')
-        #
-        #     # create the additional command line parameters
-        #     command_line_params = ['--instanceId', str(run['id']),
-        #                            '--inputURL', thredds_url, '--grid', run['gridname'],
-        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
-
-        # is this a geo tiff job array - no longer used
-        # elif run['job-type'] == JobType.run_geo_tiff:
-        #     command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--inputFile']
-
-        # is this a mbtiles zoom 0-10 job array - no longer used
-        # elif run['job-type'] == JobType.compute_mbtiles_0_10:
-        #     command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/tiff',
-        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--inputFile']
-
         # is this an adcirc2cog_tiff job array
         elif run['job-type'] == JobType.adcirc2cog_tiff:
             command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
@@ -356,8 +325,6 @@ class APSVizSupervisor:
         # init the activity flag
         no_activity: bool = True
 
-        # is this a staging job
-        # if run['job-type'] == JobType.staging:
         # work the current state
         if run['status'] == JobStatus.new:
             # set the activity flag
@@ -393,7 +360,7 @@ class APSVizSupervisor:
             # find the job, get the status
             job_found, job_status, pod_status = self.k8s_find.find_job_info(run)
 
-            # if the job status is empty report it and continue
+            # check the job staus, report any issues
             if not job_found:
                 self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
             elif job_status.startswith('Timeout'):
@@ -572,7 +539,7 @@ class APSVizSupervisor:
                 # because they both affect messaging and logging.
                 missing_params_msg, instance_name, debug_mode = self.check_input_params(run['run_data'])
 
-                # if there is a message something is missing
+                # check the run params to see if there is something missing
                 if len(missing_params_msg) > 0:
                     # update the run status everywhere
                     self.pg_db.update_job_status(run_id, f'Error - Run lacks the required run properties ({missing_params_msg}).')
@@ -581,19 +548,16 @@ class APSVizSupervisor:
 
                     # continue processing the remaining runs
                     continue
-                # get the run params.
-                elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                    job_prov = 'New debug'
-                    job_type = JobType.staging
-                # no longer used
-                # elif run['run_data']['supervisor_job_status'].startswith('hazus'):
-                #     job_prov = 'New HAZUS-SINGLETON'
-                #     job_type = JobType.hazus_singleton
+                # if this is a new run
                 elif run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
                     job_type = JobType.staging
+                # if we are in debug mode
+                elif run['run_data']['supervisor_job_status'].startswith('debug'):
+                    job_prov = 'New debug'
+                    job_type = JobType.staging
+                # this must be an existing run. ignore the entry as it is not in a legit "start" state.
                 else:
-                    # this is not a new run. ignore the entry as it is not in a legit "start" state.
                     continue
 
                 # add the new run to the list
