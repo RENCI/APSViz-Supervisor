@@ -46,6 +46,7 @@ class JobCreate:
 
         # declare the secret environment variables
         self.secret_env_params: list = [
+            {'name': 'LOG_LEVEL', 'key': 'log-level'},
             {'name': 'LOG_PATH', 'key': 'log-path'},
             {'name': 'ASGS_DB_HOST', 'key': 'asgs-host'},
             {'name': 'ASGS_DB_PORT', 'key': 'asgs-port'},
