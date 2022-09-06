@@ -33,8 +33,6 @@ class JobFind:
         if not os.path.exists(log_path):
             os.mkdir(log_path)
 
-        self.job_timeout = self.k8s_config.get("JOB_TIMEOUT")
-
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", level=log_level, line_format='medium', log_file_path=log_path)
 
@@ -117,64 +115,6 @@ class JobFind:
                     elif job.status.succeeded:
                         pod_status = 'Succeeded'
                         job_status = 'Complete'
-
-                    # TODO: the handling of insufficient resources seems to work without all the pod/container checking.
-                    # commenting out for now until i see a container in a pod fail to see what happens and how to address it.
-                    # it is my hope that the job restart policy will handle most if not all situations.
-
-                    # # see how long this has been waiting to start (in seconds)
-                    # time_diff = (dt.datetime.now() - run[run['job-type']]['job-start'])
-                    #
-                    # # if this has been inactive for some period of time (presumably waiting for resources)
-                    # # if time_diff.total_seconds() > self.job_timeout:
-                    # #     self.logger.error(f'Job timeout. Waited {time_diff.total_seconds()} seconds for {job_name}')
-                    # #
-                    # #     # set the status
-                    # #     job_status = 'Timeout'
-                    # #
-                    # #     # no need to continue
-                    # #     break
-                    #
-                    # # init a list for the jobs' pods
-                    # job_pods: list = []
-                    #
-                    # # get the pods associated to this job
-                    # for pod in pods.items:
-                    #     # find the pods for this job
-                    #     if pod.metadata.name.startswith(run[run['job-type']]['run-config']["JOB_NAME"]):
-                    #         job_pods.append(pod)
-                    #
-                    # # go through the pods for this job and find one that may have succeeded
-                    # for pod in job_pods:
-                    #     # grab the status
-                    #     pod_status = str(pod.status.phase)
-                    #     self.logger.debug(f"pod name: {pod.metadata.name}, pod status: {pod_status}, job name: {job_name}")
-                    #
-                    #     # if there is a pod still working in this job wait for it to finish
-                    #     if pod_status.startswith('Pending') or pod_status.startswith("Running"):
-                    #         job_status = 'Running'
-                    #         break
-                    #
-                    #     # loop through the container statuses in the pod. if we get
-                    #     for status in pod.status.container_statuses:
-                    #         if hasattr(status.state.terminated, 'reason'):
-                    #             self.logger.debug(f"job name: {job_name}, pod name: {pod.metadata.name}, container status: {status.state.terminated.reason}")
-                    #
-                    #         # did the container succeed
-                    #         if hasattr(status.state.terminated, 'reason') and status.state.terminated.reason.startswith('Completed'):
-                    #             container_count += 1
-                    #
-                    #     # if the run is complete (or failed) then we should have found all the number of containers
-                    #     # succeeded match the number requested
-                    #     if container_count > 0:
-                    #         # did the containers all succeed too
-                    #         if container_count == run[run['job-type']]['total_containers']:
-                    #             pod_status = 'Succeeded'
-                    #             job_status = 'Complete'
-                    #         else:
-                    #             self.logger.error(f"{job_name} did not have the expected ({run[run['job-type']]['total_containers']}) number of completed containers ({container_count}).")
-                    #             pod_status = 'Failed'
-                    #
 
                     # no need to continue if the job was found and interrogated
                     break
