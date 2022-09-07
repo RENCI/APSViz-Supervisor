@@ -12,7 +12,7 @@ import datetime as dt
 from json import load
 from kubernetes import client, config
 from common.logger import LoggingUtil
-from common.job_enums import JobType
+from common.job_enums import JobType, JobStatus
 
 
 class JobCreate:
@@ -240,7 +240,7 @@ class JobCreate:
         job_spec = client.V1JobSpec(
             template=template,
             backoff_limit=self.backoffLimit,
-            ttl_seconds_after_finished=600
+            ttl_seconds_after_finished=86400
             )
 
         # instantiate the job object
@@ -313,10 +313,10 @@ class JobCreate:
         :param run: the run configuration details
         :return:
         """
-        # if this is a debug run keep the jobs available for interrogation
+        # if this is a debug run or if an error was detected keep the jobs available for interrogation
         # note: a duplicate name collision on the next run could occur
         # if the jobs are not removed before the same run is restarted.
-        if not run['debug']:
+        if not run['debug'] and run['status'] != JobStatus.error:
             job_data = run[run['job-type']]['job-config']
             job_details = job_data['job-details']
             run_details = run[run['job-type']]['run-config']
