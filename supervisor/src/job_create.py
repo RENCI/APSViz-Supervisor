@@ -272,7 +272,7 @@ class JobCreate:
         # init the return storage
         job_id: str = ''
 
-        if not run['fake-job']:
+        if not run['fake-jobs']:
             try:
                 # create the job
                 api_instance.create_namespaced_job(
