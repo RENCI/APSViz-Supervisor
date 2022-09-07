@@ -60,7 +60,7 @@ class JobFind:
         job_name = run[run['job-type']]['run-config']['JOB_NAME']
 
         # if this is not a fake job
-        if not run['fake-job']:
+        if not run['fake-jobs']:
             # load the k8s configuration
             try:
                 # first try to get the config if this is running on the cluster
