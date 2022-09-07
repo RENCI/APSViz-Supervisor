@@ -43,4 +43,3 @@ class JobType(str, Enum):
     error = 'error',
     other_1 = 'TBD',
     complete = 'complete'
-
