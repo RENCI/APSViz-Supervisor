@@ -30,8 +30,9 @@ class APSVizSupervisor:
         self.run_list = []
 
         # set DB the polling values
-        self.POLL_SHORT_SLEEP = 2  # TODO: 30
-        self.POLL_LONG_SLEEP = 120
+        self.POLL_SHORT_SLEEP = 10
+        self.POLL_LONG_SLEEP = 60
+        self.MAX_NO_ACTIVITY_COUNT = 60
 
         # load the run configuration params
         self.k8s_config: dict = {}
@@ -52,7 +53,7 @@ class APSVizSupervisor:
         self.pause_mode = True
 
         # create a job mode
-        self.fake_job = True
+        self.fake_job = False
 
         # counter for current runs
         self.run_count = 0
@@ -147,13 +148,10 @@ class APSVizSupervisor:
                         self.logger.info(f"{run['id']} complete.")
 
                         # remove the run
-                        if not run['fake-run']:
-                            self.run_list.remove(run)
+                        self.run_list.remove(run)
 
-                            # continue processing
-                            continue
-                        else:
-                            break
+                        # continue processing
+                        continue
                     # or an error
                     elif run['job-type'] == JobType.error:
                         # if this was a final staging run that failed force complete
@@ -233,12 +231,12 @@ class APSVizSupervisor:
                 no_activity_counter = 0
 
             # check for something to do after a period of time
-            if no_activity_counter >= 10:
+            if no_activity_counter >= self.MAX_NO_ACTIVITY_COUNT:
                 # set the sleep timeout
                 sleep_timeout = self.POLL_LONG_SLEEP
 
                 # try again at this poll rate
-                no_activity_counter = 9
+                no_activity_counter = self.MAX_NO_ACTIVITY_COUNT - 1
             else:
                 # set the sleep timeout
                 sleep_timeout = self.POLL_SHORT_SLEEP
@@ -369,6 +367,10 @@ class APSVizSupervisor:
                     run['status'] = JobStatus.error
 
                     self.logger.info(f"Job was not created. Run ID: {run['id']}, Job ID: {run[job_type]['job-config']['job_id']}, Job type: {job_type}")
+
+                # if the next job is complete there is no reason to keep adding more jobs
+                if self.k8s_config[job_type.value]['NEXT_JOB_TYPE'] == JobType.complete.value:
+                    break
         # if the job is running check the status
         elif run['status'] == JobStatus.running and run['status'] != JobStatus.error:
             # set the activity flag
@@ -415,8 +417,9 @@ class APSVizSupervisor:
                         # prepare for next stage
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
 
-                        #if run[run['job-type']]
-                        run['status'] = JobStatus.new
+                        # if the job type is not in the run then let it be created
+                        if run['job-type'] not in run:
+                            run['status'] = JobStatus.new
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
@@ -583,7 +586,7 @@ class APSVizSupervisor:
                     continue
 
                 # add the new run to the list
-                self.run_list.append({'id': run_id, 'debug': debug_mode, 'fake-job': self.fake_job, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                self.run_list.append({'id': run_id, 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                 # update the run status in the DB
                 self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
