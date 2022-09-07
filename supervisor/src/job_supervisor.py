@@ -418,8 +418,16 @@ class APSVizSupervisor:
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
 
                         # if the job type is not in the run then let it be created
-                        if run['job-type'] not in run:
+                        if run['job-type'] not in run or run['job-type'] == JobType.staging:
+                            # this bit is mostly for troubleshooting when the steps have been set into a
+                            # loop back to staging. if so, remove all other job types that may have run
+                            for i in run.copy():
+                                if type(i) is JobType and i is not JobType.staging:
+                                    run.pop(i)
+
+                            # set the job to new
                             run['status'] = JobStatus.new
+
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
