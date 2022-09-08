@@ -30,8 +30,9 @@ class APSVizSupervisor:
         self.run_list = []
 
         # set DB the polling values
-        self.POLL_SHORT_SLEEP = 30
-        self.POLL_LONG_SLEEP = 120
+        self.POLL_SHORT_SLEEP = 10
+        self.POLL_LONG_SLEEP = 60
+        self.MAX_NO_ACTIVITY_COUNT = 60
 
         # load the run configuration params
         self.k8s_config: dict = {}
@@ -51,11 +52,13 @@ class APSVizSupervisor:
         # flag for pause mode
         self.pause_mode = True
 
+        # create a job mode
+        self.fake_job = False
+
         # counter for current runs
         self.run_count = 0
 
-        # get the log level and directory from the environment.
-        # level comes from the container dockerfile, path comes from the k8s secrets
+        # get the log level and directory from the environment (k8s secrets).
         log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
         log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
 
@@ -85,14 +88,14 @@ class APSVizSupervisor:
         # get all the job parameter definitions
         db_data = self.pg_db.get_job_defs()
 
-        # get the data looking like we are used to
+        # get the data looking like something we are used to
         config_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
 
-        # fix the arrays for each job def.
-        # they come in as a string
+        # fix the arrays for each job def. they come in as a string
         for item in config_data.items():
             item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
             item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
+            item[1]['PARALLEL'] = [JobType(x) for x in json.loads(item[1]['PARALLEL'])] if item[1]['PARALLEL'] is not None else None
 
         # return the config data
         return config_data
@@ -228,12 +231,12 @@ class APSVizSupervisor:
                 no_activity_counter = 0
 
             # check for something to do after a period of time
-            if no_activity_counter >= 10:
+            if no_activity_counter >= self.MAX_NO_ACTIVITY_COUNT:
                 # set the sleep timeout
                 sleep_timeout = self.POLL_LONG_SLEEP
 
                 # try again at this poll rate
-                no_activity_counter = 9
+                no_activity_counter = self.MAX_NO_ACTIVITY_COUNT - 1
             else:
                 # set the sleep timeout
                 sleep_timeout = self.POLL_SHORT_SLEEP
@@ -243,7 +246,7 @@ class APSVizSupervisor:
             # wait for the next check for something to do
             time.sleep(sleep_timeout)
 
-    def get_base_command_line(self, run) -> (list, bool):
+    def get_base_command_line(self, run: dict, job_type: JobType) -> (list, bool):
         """
         gets the command lines for each run type
         note: use this to keep a pod running after command_line and command_matrix for the job have been set to '[""]' in the DB
@@ -252,6 +255,7 @@ class APSVizSupervisor:
             update public."ASGS_Mon_supervisor_config" set command_line='[""]', command_matrix='[""]' where id=;
 
         :param run: the run parameters
+        :param job_type:
         :return: a list of the command line parameters
         """
         # init the returns
@@ -259,91 +263,63 @@ class APSVizSupervisor:
         extend_output_path = False
 
         # is this a staging job array
-        if run['job-type'] == JobType.staging:
+        if job_type == JobType.staging:
             command_line_params = ['--inputURL', run['downloadurl'], '--outputDir']
             extend_output_path = True
 
         # is this a hazus job array
-        elif run['job-type'] == JobType.hazus:
+        elif job_type == JobType.hazus:
             command_line_params = [run['downloadurl']]
 
-        # is this a hazus-singleton job array - no longer used
-        # elif run['job-type'] == JobType.hazus_singleton:
-        #     command_line_params = [run['downloadurl']]
-
-        # is this an obs_mod job array - no longer used
-        # elif run['job-type'] == JobType.obs_mod:
-        #     thredds_url = run['downloadurl'] + '/fort.63.nc'
-        #     thredds_url = thredds_url.replace('fileServer', 'dodsC')
-        #
-        #     # create the additional command line parameters
-        #     command_line_params = ['--instanceId', str(run['id']),
-        #                            '--inputURL', thredds_url, '--grid', run['gridname'],
-        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'] + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
-        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH']]
-
-        # is this a geo tiff job array - no longer used
-        # elif run['job-type'] == JobType.run_geo_tiff:
-        #     command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--inputFile']
-
-        # is this a mbtiles zoom 0-10 job array - no longer used
-        # elif run['job-type'] == JobType.compute_mbtiles_0_10:
-        #     command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/tiff',
-        #                            '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
-        #                            '--inputFile']
-
         # is this an adcirc2cog_tiff job array
-        elif run['job-type'] == JobType.adcirc2cog_tiff:
-            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
+        elif job_type == JobType.adcirc2cog_tiff:
+            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
+                                   '--outputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
                                    '--inputFile']
 
         # is this a geotiff2cog job array
-        elif run['job-type'] == JobType.geotiff2cog:
-            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo',
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+        elif job_type == JobType.geotiff2cog:
+            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo',
+                                   '--finalDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type]['SUB_PATH'],
                                    '--inputParam']
 
         # is this a geo server load job array
-        elif run['job-type'] == JobType.load_geo_server:
+        elif job_type == JobType.load_geo_server:
             command_line_params = ['--instanceId', str(run['id'])]
 
         # is this a final staging job array
-        elif run['job-type'] == JobType.final_staging:
-            command_line_params = ['--inputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--outputDir', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH'],
+        elif job_type == JobType.final_staging:
+            command_line_params = ['--inputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
+                                   '--outputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + self.k8s_config[job_type]['SUB_PATH'],
                                    '--tarMeta', str(run['id'])]
 
         # is this an obs mod ast job
-        elif run['job-type'] == JobType.obs_mod_ast:
+        elif job_type == JobType.obs_mod_ast:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
             # create the additional command line parameters
             command_line_params = [thredds_url,
                                    run['gridname'],
-                                   self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['ADDITIONAL_PATH'],
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type]['ADDITIONAL_PATH'],
                                    str(run['id'])]
 
         # is this an ast run harvester job
-        elif run['job-type'] == JobType.ast_run_harvester:
+        elif job_type == JobType.ast_run_harvester:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
             # create the additional command line parameters
-            command_line_params = [thredds_url, self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + self.k8s_config[run['job-type']]['SUB_PATH']]
+            command_line_params = [thredds_url, self.k8s_config[job_type]['DATA_MOUNT_PATH'] + self.k8s_config[job_type]['SUB_PATH']]
 
         # is this an adcirc time to cog converter job array
-        elif run['job-type'] == JobType.adcirctime_to_cog:
-            command_line_params = ['--inputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-                                   '--outputDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[run['job-type']]['SUB_PATH'],
-                                   '--finalDIR', self.k8s_config[run['job-type']]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[run['job-type']]['SUB_PATH'],
+        elif job_type == JobType.adcirctime_to_cog:
+            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
+                                   '--outputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
+                                   '--finalDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type]['SUB_PATH'],
                                    '--inputFile']
 
+        # return the command line and extend the path flag
         return command_line_params, extend_output_path
 
     def handle_run(self, run) -> bool:
@@ -356,36 +332,46 @@ class APSVizSupervisor:
         # init the activity flag
         no_activity: bool = True
 
-        # is this a staging job
-        # if run['job-type'] == JobType.staging:
         # work the current state
         if run['status'] == JobStatus.new:
             # set the activity flag
             no_activity = False
 
-            # get the data by the download url
-            command_line_params, extend_output_path = self.get_base_command_line(run)
+            # create a list of jobs to create
+            job_type_list: list = [run['job-type']]
 
-            # create the job configuration for a new run
-            self.k8s_create_job_obj(run, command_line_params, extend_output_path)
+            # append any parallel jobs if they exist
+            if self.k8s_config[run['job-type']]['PARALLEL']:
+                job_type_list.extend(self.k8s_config[run['job-type']]['PARALLEL'])
 
-            # execute the k8s job run
-            job_id = self.k8s_create.execute(run)
+            for job_type in job_type_list:
+                # get the data by the download url
+                command_line_params, extend_output_path = self.get_base_command_line(run, job_type)
 
-            # did we not get a job_id
-            if job_id is not None:
-                # set the current status
-                run['status'] = JobStatus.running
-                run['status_prov'] += f", {run['job-type'].value} running"
-                self.pg_db.update_job_status(run['id'], run['status_prov'])
+                # create a new run configuration for the step
+                self.k8s_create_run_config(run, job_type, command_line_params, extend_output_path)
 
-                self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
-            else:
-                # set the error status
-                run['status'] = JobStatus.error
+                # execute the k8s job run
+                job_id = self.k8s_create.execute(run, job_type)
 
-                self.logger.info(f"Job was not created. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                # did we not get a job_id
+                if job_id is not None:
+                    # set the current status
+                    run['status'] = JobStatus.running
+                    run['status_prov'] += f", {job_type.value} running"
+                    self.pg_db.update_job_status(run['id'], run['status_prov'])
 
+                    self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[job_type]['job-config']['job_id']}, Job type: {job_type}")
+                else:
+                    # set the error status
+                    run['status'] = JobStatus.error
+
+                    self.logger.info(f"Job was not created. Run ID: {run['id']}, Job ID: {run[job_type]['job-config']['job_id']}, Job type: {job_type}")
+
+                # if the next job is complete there is no reason to keep adding more jobs
+                if self.k8s_config[job_type.value]['NEXT_JOB_TYPE'] == JobType.complete.value:
+                    break
+        # if the job is running check the status
         elif run['status'] == JobStatus.running and run['status'] != JobStatus.error:
             # set the activity flag
             no_activity = False
@@ -393,7 +379,7 @@ class APSVizSupervisor:
             # find the job, get the status
             job_found, job_status, pod_status = self.k8s_find.find_job_info(run)
 
-            # if the job status is empty report it and continue
+            # check the job status, report any issues
             if not job_found:
                 self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
             elif job_status.startswith('Timeout'):
@@ -430,7 +416,18 @@ class APSVizSupervisor:
 
                         # prepare for next stage
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
-                        run['status'] = JobStatus.new
+
+                        # if the job type is not in the run then let it be created
+                        if run['job-type'] not in run or run['job-type'] == JobType.staging:
+                            # this bit is mostly for troubleshooting when the steps have been set into a
+                            # loop back to staging. if so, remove all other job types that may have run
+                            for i in run.copy():
+                                if type(i) is JobType and i is not JobType.staging:
+                                    run.pop(i)
+
+                            # set the job to new
+                            run['status'] = JobStatus.new
+
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
@@ -447,7 +444,7 @@ class APSVizSupervisor:
                 # set error condition
                 run['status'] = JobStatus.error
 
-        # send out the error status on error
+        # send out the error status if an error was detected
         if run['status'] == JobStatus.error:
             # self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", self.slack_status_channel, run['debug'], run['instance_name'])
             run['job-type'] = JobType.error
@@ -455,31 +452,34 @@ class APSVizSupervisor:
         # return to the caller
         return no_activity
 
-    def k8s_create_job_obj(self, run: dict, command_line_params: list, extend_output_path: bool = False):
+    def k8s_create_run_config(self, run: dict, job_type: JobType, command_line_params: list, extend_output_path: bool = False):
         """
-        Creates the details for a job from the database
+        Creates the configuration details for a job from the database
+
+        :param run:
+        :param job_type:
+        :param command_line_params:
+        :param extend_output_path:
 
         :return: nothing
         """
-        # create a new configuration if this is a new run
-        if run['status'] == JobStatus.new:
-            # get the config
-            config = self.get_config()[run['job-type']]
+        # get the config
+        config = self.get_config()[job_type]
 
-            # load the config with the info from the config file
-            config['JOB_NAME'] += str(run['id']).lower()
-            config['DATA_VOLUME_NAME'] += str(run['id']).lower()
-            config['COMMAND_LINE'].extend(command_line_params)
+        # load the config with the info from the config file
+        config['JOB_NAME'] += str(run['id']).lower()
+        config['DATA_VOLUME_NAME'] += str(run['id']).lower()
+        config['COMMAND_LINE'].extend(command_line_params)
 
-            # tack on any additional paths if requested
-            if extend_output_path:
-                config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
-                config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
+        # tack on any additional paths if requested
+        if extend_output_path:
+            config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
+            config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
 
-            self.logger.debug(f"Job command line. Run ID: {run['id']}, Job type: {run['job-type']}, Command line: {config['COMMAND_LINE']}")
+        self.logger.debug(f"Job command line. Run ID: {run['id']}, Job type: {job_type}, Command line: {config['COMMAND_LINE']}")
 
-            # save these params in the run info
-            run[run['job-type']] = {'run-config': config}
+        # save these params in the run info
+        run[job_type] = {'run-config': config}
 
     def send_slack_msg(self, run_id, msg, channel, debug_mode=False, instance_name=None):
         """
@@ -572,7 +572,7 @@ class APSVizSupervisor:
                 # because they both affect messaging and logging.
                 missing_params_msg, instance_name, debug_mode = self.check_input_params(run['run_data'])
 
-                # if there is a message something is missing
+                # check the run params to see if there is something missing
                 if len(missing_params_msg) > 0:
                     # update the run status everywhere
                     self.pg_db.update_job_status(run_id, f'Error - Run lacks the required run properties ({missing_params_msg}).')
@@ -581,23 +581,20 @@ class APSVizSupervisor:
 
                     # continue processing the remaining runs
                     continue
-                # get the run params.
-                elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                    job_prov = 'New debug'
-                    job_type = JobType.staging
-                # no longer used
-                # elif run['run_data']['supervisor_job_status'].startswith('hazus'):
-                #     job_prov = 'New HAZUS-SINGLETON'
-                #     job_type = JobType.hazus_singleton
+                # if this is a new run
                 elif run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
                     job_type = JobType.staging
+                # if we are in debug mode
+                elif run['run_data']['supervisor_job_status'].startswith('debug'):
+                    job_prov = 'New debug'
+                    job_type = JobType.staging
+                # ignore the entry as it is not in a legit "start" state. this may just be an existing or completed run.
                 else:
-                    # this is not a new run. ignore the entry as it is not in a legit "start" state.
                     continue
 
                 # add the new run to the list
-                self.run_list.append({'id': run_id, 'debug': debug_mode, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                self.run_list.append({'id': run_id, 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                 # update the run status in the DB
                 self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")

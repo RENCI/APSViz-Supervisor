@@ -33,10 +33,6 @@ class JobType(str, Enum):
     """
     staging = 'staging',
     hazus = 'hazus',
-    # hazus_singleton = 'hazus-singleton',
-    # obs_mod = 'obs-mod',
-    # run_geo_tiff = 'run-geo-tiff',
-    # compute_mbtiles_0_10 = 'compute-mbtiles-0-10',
     load_geo_server = 'load-geo-server',
     final_staging = 'final-staging',
     adcirc2cog_tiff = 'adcirc2cog-tiff',
@@ -47,4 +43,3 @@ class JobType(str, Enum):
     error = 'error',
     other_1 = 'TBD',
     complete = 'complete'
-

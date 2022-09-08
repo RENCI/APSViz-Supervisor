@@ -74,20 +74,23 @@ class JobCreate:
         ]
 
     # @staticmethod
-    def create_job_object(self, run, job_details):
+    def create_job_object(self, run, job_type, job_details):
         """
         creates a k8s job description object
 
         :return: client.V1Job, the job description object
         """
 
+        # get a reference to the job type
+        run_job = run[job_type]
+
         # save the start time of the job
-        run[run['job-type']]['job-start'] = dt.datetime.now()
+        run_job['job-start'] = dt.datetime.now()
 
         # configure the data volume mount for the container
         data_volume_mount = client.V1VolumeMount(
-            name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
-            mount_path=run[run['job-type']]['run-config']['DATA_MOUNT_PATH'])
+            name=run_job['run-config']['DATA_VOLUME_NAME'],
+            mount_path=run_job['run-config']['DATA_MOUNT_PATH'])
 
         # configure a persistent claim for the data
         data_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
@@ -95,7 +98,7 @@ class JobCreate:
 
         # configure the data volume claim
         data_volume = client.V1Volume(
-            name=run[run['job-type']]['run-config']['DATA_VOLUME_NAME'],
+            name=run_job['run-config']['DATA_VOLUME_NAME'],
             persistent_volume_claim=data_persistent_volume_claim)
 
         # declare the volume mounts
@@ -103,9 +106,9 @@ class JobCreate:
         volume_mounts = [data_volume_mount]
 
         # if there is a desire to mount the file server PV
-        if run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME']:
-            volume_names = run[run['job-type']]['run-config']['FILESVR_VOLUME_NAME'].split(',')
-            mount_paths = run[run['job-type']]['run-config']['FILESVR_MOUNT_PATH'].split(',')
+        if run_job['run-config']['FILESVR_VOLUME_NAME']:
+            volume_names = run_job['run-config']['FILESVR_VOLUME_NAME'].split(',')
+            mount_paths = run_job['run-config']['FILESVR_MOUNT_PATH'].split(',')
 
             for index, value in enumerate(volume_names):
                 # configure the data volume mount for the container
@@ -133,8 +136,8 @@ class JobCreate:
         secret_env_params = self.secret_env_params.copy()
 
         # load geo can't use the http_proxy values
-        # TODO: change this to something configurable
-        if run['job-type'] != JobType.load_geo_server:
+        # TODO: change this to something configurable on the fly. DB param?
+        if job_type != JobType.load_geo_server:
             # add the proxy values to the env param list
             secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'},
                                       {'name': 'https_proxy', 'key': 'http-proxy-url'},
@@ -153,22 +156,22 @@ class JobCreate:
         restart_policy = 'Never'
 
         # add on the resources
-        for idx, item in enumerate(run[run['job-type']]['run-config']['COMMAND_MATRIX']):
+        for idx, item in enumerate(run_job['run-config']['COMMAND_MATRIX']):
             # get the base command line
-            new_cmd_list: list = run[run['job-type']]['run-config']['COMMAND_LINE'].copy()
+            new_cmd_list: list = run_job['run-config']['COMMAND_LINE'].copy()
 
             # add the command matrix value
             new_cmd_list.extend(item)
 
             # this is done to make the memory limit "self.limit_multiplier" greater than what is requested
-            memory_val_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if x.isdigit())
-            memory_unit_txt = ''.join(x for x in run[run['job-type']]['run-config']['MEMORY'] if not x.isdigit())
+            memory_val_txt = ''.join(x for x in run_job['run-config']['MEMORY'] if x.isdigit())
+            memory_unit_txt = ''.join(x for x in run_job['run-config']['MEMORY'] if not x.isdigit())
             memory_limit_val = int(memory_val_txt) + int((int(memory_val_txt) * self.limit_multiplier))
             memory_limit = f'{memory_limit_val}{memory_unit_txt}'
 
             # use what is defined in the DB if it exists
-            if run[run['job-type']]['run-config']['CPUS']:
-                cpus = run[run['job-type']]['run-config']['CPUS']
+            if run_job['run-config']['CPUS']:
+                cpus = run_job['run-config']['CPUS']
             # this should never happen if the DB is set up properly
             else:
                 cpus = '250m'
@@ -182,10 +185,10 @@ class JobCreate:
             cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
 
             # set this to "Never" when troubleshooting pod issues
-            restart_policy = run[run['job-type']]['run-config']['RESTART_POLICY']
+            restart_policy = run_job['run-config']['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'}, 'requests': {'cpu': cpus, 'memory': run[run['job-type']]['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
+            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'}, 'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
 
             # if the command line has a '--cpu' in it replace the "~" value with the cpu amount specified when the cpu value is > .5 cpus
             if '--cpu' in new_cmd_list and int(cpu_val_txt)/1000 > .5:
@@ -202,8 +205,8 @@ class JobCreate:
 
             # configure the pod template container
             container = client.V1Container(
-                name=run[run['job-type']]['run-config']['JOB_NAME'] + '-' + str(idx),
-                image=run[run['job-type']]['run-config']['IMAGE'],
+                name=run_job['run-config']['JOB_NAME'] + '-' + str(idx),
+                image=run_job['run-config']['IMAGE'],
                 command=new_cmd_list,
                 volume_mounts=volume_mounts,
                 image_pull_policy='IfNotPresent',
@@ -215,15 +218,12 @@ class JobCreate:
             containers.append(container)
 
         # save the number of containers in this job/pod for status checking later
-        run[run['job-type']]['total_containers'] = len(containers)
-
-        # create a security context for the pod
-        # security_context = client.V1PodSecurityContext(run_as_user=1000, fs_group=2000, run_as_group=3000)
+        run_job['total_containers'] = len(containers)
 
         # if there was a node selector found use it
-        if run[run['job-type']]['run-config']['NODE_TYPE']:
+        if run_job['run-config']['NODE_TYPE']:
             # separate the tag and type
-            params = run[run['job-type']]['run-config']['NODE_TYPE'].split(':')
+            params = run_job['run-config']['NODE_TYPE'].split(':')
 
             # set the node selector
             node_selector = {params[0]: params[1]}
@@ -232,8 +232,8 @@ class JobCreate:
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(
-            metadata=client.V1ObjectMeta(labels={"app": run[run['job-type']]['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector)  # , security_context=security_context
+            metadata=client.V1ObjectMeta(labels={"app": run_job['run-config']['JOB_NAME']}),
+            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector)
         )
 
         # create the specification of job deployment
@@ -247,56 +247,60 @@ class JobCreate:
         job = client.V1Job(
             api_version="batch/v1",
             kind="Job",
-            metadata=client.V1ObjectMeta(name=run[run['job-type']]['run-config']['JOB_NAME']),
+            metadata=client.V1ObjectMeta(name=run_job['run-config']['JOB_NAME']),
             spec=job_spec
         )
 
         # save these params onto the run info
-        run[run['job-type']]['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
+        run_job['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
 
-    def create_job(self, run) -> object:
+    def create_job(self, run, job_type) -> object:
         """
         creates the k8s job
 
         :param run: the run details
+        :param job_type:
         :return: str the job id
         """
         # create the API hooks
         api_instance = client.BatchV1Api()
 
-        job_data = run[run['job-type']]['job-config']
+        job_data = run[job_type]['job-config']
         job_details = job_data['job-details']
-        run_details = run[run['job-type']]['run-config']
-
-        try:
-            # create the job
-            api_instance.create_namespaced_job(
-                body=job_data['job'],
-                namespace=job_details['NAMESPACE'])
-        except client.ApiException as ae:
-            self.logger.error(f"Error creating job: {run_details['JOB_NAME']}")
-            return None
+        run_details = run[job_type]['run-config']
 
         # init the return storage
         job_id: str = ''
 
-        # wait a period of time for the next check
-        time.sleep(job_data['job-details']['CREATE_SLEEP'])
+        if not run['fake-jobs']:
+            try:
+                # create the job
+                api_instance.create_namespaced_job(
+                    body=job_data['job'],
+                    namespace=job_details['NAMESPACE'])
+            except client.ApiException as ae:
+                self.logger.error(f"Error creating job: {run_details['JOB_NAME']}")
+                return None
 
-        # get the job run information
-        jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
+            # wait a period of time for the next check
+            time.sleep(job_data['job-details']['CREATE_SLEEP'])
 
-        # for each item returned
-        for job in jobs.items:
-            # is this the one that was launched
-            if 'app' in job.metadata.labels and job.metadata.labels['app'] == run_details['JOB_NAME']:
-                self.logger.debug(f"Found new job: {run_details['JOB_NAME']}, controller-uid: {job.metadata.labels['controller-uid']}, status: {job.status.active}")
+            # get the job run information
+            jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
 
-                # save job id
-                job_id = str(job.metadata.labels["controller-uid"])
+            # for each item returned
+            for job in jobs.items:
+                # is this the one that was launched
+                if 'app' in job.metadata.labels and job.metadata.labels['app'] == run_details['JOB_NAME']:
+                    self.logger.debug(f"Found new job: {run_details['JOB_NAME']}, controller-uid: {job.metadata.labels['controller-uid']}, status: {job.status.active}")
 
-                # no need to continue looking
-                break
+                    # save job id
+                    job_id = str(job.metadata.labels["controller-uid"])
+
+                    # no need to continue looking
+                    break
+        else:
+            job_id = 'fake-job-' + job_type
 
         # return the job controller uid
         return job_id
@@ -361,7 +365,7 @@ class JobCreate:
         # return the config data
         return data
 
-    def execute(self, run):
+    def execute(self, run, job_type):
         """
         Executes the k8s job run
 
@@ -386,13 +390,13 @@ class JobCreate:
                 raise Exception("Could not configure kubernetes python client")
 
         # create the job object
-        self.create_job_object(run, job_details)
+        self.create_job_object(run, job_type, job_details)
 
         # create and launch the job
-        job_id = self.create_job(run)
+        job_id = self.create_job(run, job_type)
 
         # save these params onto the run info
-        run[run['job-type']]['job-config']['job_id'] = job_id
+        run[job_type]['job-config']['job_id'] = job_id
 
         # return to the caller
         return job_id
