@@ -30,7 +30,13 @@ jobs:
           registry: containers.renci.org
           username: ${{ secrets.USER }}
           password: ${{ secrets.PW }}
-
+      
+      # get the tag for the image
+      - name: Get the version
+        id: get_version
+        run: |
+          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      
       # build and push the image. The docker v3 action automatically handles the git checkout.
       - name: Build/Push the image to the registry
         uses: docker/build-push-action@v3
@@ -38,4 +44,4 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}:latest
-            ${{ env.REGISTRY }}:${{ env.GITHUB_REF_NAME }}
+            ${{ env.REGISTRY }}:${{ steps.get_version.outputs.VERSION }}
