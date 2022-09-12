@@ -212,7 +212,7 @@ class JobCreate:
                 image=run_job['run-config']['IMAGE'],
                 command=new_cmd_list,
                 volume_mounts=volume_mounts,
-                image_pull_policy='IfNotPresent',
+                image_pull_policy='Always',
                 env=secret_envs,
                 resources=resources
                 )
