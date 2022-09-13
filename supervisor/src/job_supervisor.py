@@ -264,7 +264,7 @@ class APSVizSupervisor:
 
         # is this a staging job array
         if job_type == JobType.staging:
-            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['isHurricane'], '--outputDir']
+            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['stormname'], '--outputDir']
             extend_output_path = True
 
         # is this a hazus job array
@@ -291,7 +291,6 @@ class APSVizSupervisor:
         elif job_type == JobType.final_staging:
             command_line_params = ['--inputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
                                    '--outputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + self.k8s_config[job_type]['SUB_PATH'],
-                                   '--isHurricane', run['isHurricane'],
                                    '--tarMeta', str(run['id'])]
 
         # is this an obs mod ast job
@@ -545,10 +544,8 @@ class APSVizSupervisor:
             run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl'].replace('http://apsviz-thredds', 'https://apsviz-thredds')
 
         # check to see if this is a hurricane
-        if 'stormname' in run_info:
-            run_info['isHurricane'] = 'True'
-        else:
-            run_info['isHurricane'] = 'False'
+        if 'stormname' not in run_info:
+            run_info['stormname'] = 'None'
 
         # loop through the params and return the ones that are missing
         return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode
@@ -601,7 +598,7 @@ class APSVizSupervisor:
                     continue
 
                 # add the new run to the list
-                self.run_list.append({'id': run_id, 'isHurricane': run['run_data']['isHurricane'], 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                self.run_list.append({'id': run_id, 'stormname': run['run_data']['stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                 # update the run status in the DB
                 self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
