@@ -44,6 +44,9 @@ class JobCreate:
         # set the job backoff limit
         self.backoffLimit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
 
+        # get the time to live seconds after a finished job gets auto removed
+        self.jobTimeout = self.k8s_config.get("JOB_TIMEOUT")
+
         # declare the secret environment variables
         self.secret_env_params: list = [
             {'name': 'LOG_LEVEL', 'key': 'log-level'},
@@ -209,7 +212,7 @@ class JobCreate:
                 image=run_job['run-config']['IMAGE'],
                 command=new_cmd_list,
                 volume_mounts=volume_mounts,
-                image_pull_policy='IfNotPresent',
+                image_pull_policy='Always',
                 env=secret_envs,
                 resources=resources
                 )
@@ -240,7 +243,7 @@ class JobCreate:
         job_spec = client.V1JobSpec(
             template=template,
             backoff_limit=self.backoffLimit,
-            ttl_seconds_after_finished=86400
+            ttl_seconds_after_finished=self.jobTimeout
             )
 
         # instantiate the job object
@@ -314,8 +317,8 @@ class JobCreate:
         :return:
         """
         # if this is a debug run or if an error was detected keep the jobs available for interrogation
-        # note: a duplicate name collision on the next run could occur
-        # if the jobs are not removed before the same run is restarted.
+        # note: a duplicate name collision on the next run could occur if the jobs are not removed
+        # before the same run is restarted.
         if not run['debug'] and run['status'] != JobStatus.error:
             job_data = run[run['job-type']]['job-config']
             job_details = job_data['job-details']
