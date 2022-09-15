@@ -4,6 +4,11 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
+"""
+    Directory Size Diff (dsd.py) - program to check file system for dir/file size
+    changes by doing before/after comparisons using the "du -k" command every second.
+"""
+
 import sys
 import os
 import signal
@@ -11,11 +16,6 @@ import difflib
 import subprocess
 from datetime import datetime
 from time import sleep
-
-#####################
-# Directory Size Diff (dsd.py) - program to check file system for dir/file size changes by doing before/after comparisons using the "du -k" command every second.
-# note: you may have to install the following packages:
-#####################
 
 # get the files that will have data to compare
 base_name = os.path.join(os.path.dirname(__file__), str('base-df.txt'))
@@ -38,7 +38,7 @@ def sig_handler(signum, frame):
     if os.path.isfile(latest_name):
         os.remove(latest_name)
 
-    print("\nDone")
+    print(f"\nDone - signum: {signum}, frame: {frame}")
     sys.exit(0)
 
 
@@ -52,9 +52,9 @@ def run(path):
 
     :param path - The directory to watch
     """
-    with open(base_name, "w+") as base_fh:
+    with open(base_name, "w+", encoding='utf-8') as base_fh:
         # run the "du -k <path>" command for the base-line data
-        subprocess.run(["du -k -h -BK", path], stdout=base_fh, stderr=base_fh, shell=True)
+        subprocess.run(["du -k -h -BK", path], stdout=base_fh, stderr=base_fh, shell=True, check=True)
 
         # reset to the start of the file
         base_fh.seek(0)
@@ -65,9 +65,9 @@ def run(path):
         # until <ctrl> + c
         while True:
             # open a file for the latest data
-            with open(latest_name, "w+") as latest_fh:
+            with open(latest_name, "w+", encoding='utf-8') as latest_fh:
                 # run the "du -k <path>" command for the current data
-                subprocess.run(["du -k -h -BK", path], stdout=latest_fh, stderr=latest_fh, shell=True)
+                subprocess.run(["du -k -h -BK", path], stdout=latest_fh, stderr=latest_fh, shell=True, check=True)
 
                 # reset to the start of the file
                 latest_fh.seek(0)
@@ -109,11 +109,10 @@ def run(path):
 
 
 if __name__ == '__main__':
-    """
-    Main entry point
-    
-    Args expected --path: Path to the directory to be watched.
-    """
+    ###
+    # Main entry point
+    # Args expected --path: Path to the directory to be watched.
+    ###
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description=run.__doc__)
