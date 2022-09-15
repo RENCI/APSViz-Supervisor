@@ -4,26 +4,24 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
+"""
+    Class for database functionalities
+"""
+
 import os
-import psycopg2
-import logging
 import time
+import psycopg2
 from common.logger import LoggingUtil
 
 
 class PGUtils:
+    """
+        methods for database functionalities
+    """
+
     def __init__(self):
-        # get the log level and directory from the environment.
-        # level comes from the container dockerfile, path comes from the k8s secrets
-        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
-
-        # create the dir if it does not exist
-        if not os.path.exists(log_path):
-            os.mkdir(log_path)
-
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.pg_utils", level=log_level, line_format='medium', log_file_path=log_path)
+        self.logger = LoggingUtil.init_logging("APSVIZ.pg_utils", line_format='medium')
 
         # get configuration params from the pods secrets
         username = os.environ.get('ASGS_DB_USERNAME')
@@ -56,8 +54,8 @@ class PGUtils:
             # if there is a connection, close it
             if self.conn is not None:
                 self.conn.close()
-        except Exception as e:
-            self.logger.error(f'Error detected closing cursor or connection. {e}')
+        except Exception:
+            self.logger.exception('Error detected closing cursor or connection.')
 
     def get_db_connection(self):
         """
@@ -91,16 +89,16 @@ class PGUtils:
 
                     # is the connection ok now?
                     if good_conn:
-                        self.logger.error(f'DB Connection Established.')
+                        self.logger.error('DB Connection Established.')
                         # ok to continue
                         return
                 else:
                     # ok to continue
                     return
-            except (Exception, psycopg2.DatabaseError):
+            except Exception:
                 good_conn = False
 
-            self.logger.error(f'DB Connection failed. Retrying...')
+            self.logger.error('DB Connection failed. Retrying...')
             time.sleep(5)
 
     def check_db_connection(self) -> bool:
@@ -163,8 +161,8 @@ class PGUtils:
                 # get the one and only record of json
                 ret_val = ret_val[0]
 
-        except Exception as e:
-            self.logger.error(f'Error detected executing SQL: {sql_stmt}. {e}')
+        except Exception:
+            self.logger.exception("Error detected executing SQL: %s.", sql_stmt)
 
         # return to the caller
         return ret_val

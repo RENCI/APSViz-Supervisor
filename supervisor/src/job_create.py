@@ -4,15 +4,17 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
+"""
+    Methods to create a k8s job
+"""
+
 import time
-import os
-import logging
 import datetime as dt
 
-from json import load
 from kubernetes import client, config
 from common.logger import LoggingUtil
 from common.job_enums import JobType, JobStatus
+from common.utils import Utils
 
 
 class JobCreate:
@@ -25,58 +27,40 @@ class JobCreate:
         inits the class
         """
         # load the run configuration params
-        self.k8s_config: dict = self.get_config()
-
-        # get the log level and directory from the environment
-        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
-
-        # create the dir if it does not exist
-        if not os.path.exists(log_path):
-            os.mkdir(log_path)
+        self.k8s_config: dict = Utils.get_config()
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", line_format='medium')
 
         # set the resource limit multiplier
         self.limit_multiplier = float(self.k8s_config.get("JOB_LIMIT_MULTIPLIER"))
 
         # set the job backoff limit
-        self.backoffLimit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
+        self.back_off_limit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
 
         # get the time to live seconds after a finished job gets auto removed
-        self.jobTimeout = self.k8s_config.get("JOB_TIMEOUT")
+        self.job_timeout = self.k8s_config.get("JOB_TIMEOUT")
 
         # declare the secret environment variables
-        self.secret_env_params: list = [
-            {'name': 'LOG_LEVEL', 'key': 'log-level'},
-            {'name': 'LOG_PATH', 'key': 'log-path'},
-            {'name': 'ASGS_DB_HOST', 'key': 'asgs-host'},
-            {'name': 'ASGS_DB_PORT', 'key': 'asgs-port'},
-            {'name': 'ASGS_DB_USERNAME', 'key': 'asgs-username'},
-            {'name': 'ASGS_DB_PASSWORD', 'key': 'asgs-password'},
-            {'name': 'ASGS_DB_DATABASE', 'key': 'asgs-database'},
-            {'name': 'APSVIZ_DB_USERNAME', 'key': 'apsviz-username'},
-            {'name': 'APSVIZ_DB_PASSWORD', 'key': 'apsviz-password'},
-            {'name': 'APSVIZ_DB_DATABASE', 'key': 'apsviz-database'},
-            {'name': 'GEOSERVER_USER', 'key': 'geo-username'},
-            {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'},
-            {'name': 'GEOSERVER_URL', 'key': 'geo-url'},
-            {'name': 'GEOSERVER_URL_EXT', 'key': 'geo-url-ext'},
-            {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
-            {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
-            {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
-            {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
-            {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
-            {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
-            {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
-            {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
-            {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'},
-            {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-            {'name': 'no_proxy', 'key': 'no-proxy-hosts'}
-        ]
+        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
+                                        {'name': 'ASGS_DB_HOST', 'key': 'asgs-host'}, {'name': 'ASGS_DB_PORT', 'key': 'asgs-port'},
+                                        {'name': 'ASGS_DB_USERNAME', 'key': 'asgs-username'}, {'name': 'ASGS_DB_PASSWORD', 'key': 'asgs-password'},
+                                        {'name': 'ASGS_DB_DATABASE', 'key': 'asgs-database'},
+                                        {'name': 'APSVIZ_DB_USERNAME', 'key': 'apsviz-username'},
+                                        {'name': 'APSVIZ_DB_PASSWORD', 'key': 'apsviz-password'},
+                                        {'name': 'APSVIZ_DB_DATABASE', 'key': 'apsviz-database'}, {'name': 'GEOSERVER_USER', 'key': 'geo-username'},
+                                        {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'}, {'name': 'GEOSERVER_URL', 'key': 'geo-url'},
+                                        {'name': 'GEOSERVER_URL_EXT', 'key': 'geo-url-ext'}, {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
+                                        {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
+                                        {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
+                                        {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
+                                        {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
+                                        {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
+                                        {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
+                                        {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
+                                        {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}, {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
+                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'}]
 
-    # @staticmethod
     def create_job_object(self, run, job_type, job_details):
         """
         creates a k8s job description object
@@ -90,67 +74,36 @@ class JobCreate:
         # save the start time of the job
         run_job['job-start'] = dt.datetime.now()
 
-        # configure the data volume mount for the container
-        data_volume_mount = client.V1VolumeMount(
-            name=run_job['run-config']['DATA_VOLUME_NAME'],
-            mount_path=run_job['run-config']['DATA_MOUNT_PATH'])
-
-        # configure a persistent claim for the data
-        data_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
-            claim_name=f'{job_details["DATA_PVC_CLAIM"]}')
-
-        # configure the data volume claim
-        data_volume = client.V1Volume(
-            name=run_job['run-config']['DATA_VOLUME_NAME'],
-            persistent_volume_claim=data_persistent_volume_claim)
-
         # declare the volume mounts
-        volumes = [data_volume]
-        volume_mounts = [data_volume_mount]
+        volumes = [client.V1Volume(name=run_job['run-config']['DATA_VOLUME_NAME'],
+                                   persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=f'{job_details["DATA_PVC_CLAIM"]}'))]
+        volume_mounts = [client.V1VolumeMount(name=run_job['run-config']['DATA_VOLUME_NAME'], mount_path=run_job['run-config']['DATA_MOUNT_PATH'])]
 
         # if there is a desire to mount the file server PV
         if run_job['run-config']['FILESVR_VOLUME_NAME']:
-            volume_names = run_job['run-config']['FILESVR_VOLUME_NAME'].split(',')
             mount_paths = run_job['run-config']['FILESVR_MOUNT_PATH'].split(',')
 
-            for index, value in enumerate(volume_names):
-                # configure the data volume mount for the container
-                filesvr_volume_mount = client.V1VolumeMount(
-                    name=volume_names[index],
-                    mount_path=mount_paths[index])
-
-                # configure a persistent claim for the data
-                filesvr_persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
-                    claim_name=f"{volume_names[index]}")
-
-                # configure the data volume claim
-                filesvr_volume = client.V1Volume(
-                    name=volume_names[index],
-                    persistent_volume_claim=filesvr_persistent_volume_claim)
-
-                # add this to the mounted volumes list
-                volumes.append(filesvr_volume)
-                volume_mounts.append(filesvr_volume_mount)
+            for index, name in enumerate(run_job['run-config']['FILESVR_VOLUME_NAME'].split(',')):
+                # build the mounted volumes list
+                volumes.append(client.V1Volume(name=name, persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=name)))
+                volume_mounts.append(client.V1VolumeMount(name=name, mount_path=mount_paths[index]))
 
         # declare an array for the env declarations
         secret_envs = []
 
-        # duplicate the evn param list
+        # duplicate the environment param list
         secret_env_params = self.secret_env_params.copy()
 
         # load geo can't use the http_proxy values
-        # TODO: change this to something configurable on the fly. DB param?
-        if job_type != JobType.load_geo_server:
+        if job_type != JobType.LOAD_GEO_SERVER:
             # add the proxy values to the env param list
-            secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'},
-                                      {'name': 'https_proxy', 'key': 'http-proxy-url'},
-                                      {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'},
-                                      {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}
-                                      ])
+            secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'https_proxy', 'key': 'http-proxy-url'},
+                                      {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}, {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}])
 
         # get all the env params into an array
         for item in secret_env_params:
-            secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(name='eds-keys', key=item['key']))))
+            secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
+                secret_key_ref=client.V1SecretKeySelector(name='eds-keys', key=item['key']))))
 
         # init a list for all the containers in this job
         containers: list = []
@@ -191,11 +144,12 @@ class JobCreate:
             restart_policy = run_job['run-config']['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'}, 'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
+            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'},
+                         'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
 
             # if the command line has a '--cpu' in it replace the "~" value with the cpu amount specified when the cpu value is > .5 cpus
-            if '--cpu' in new_cmd_list and int(cpu_val_txt)/1000 > .5:
-                new_cmd_list = list(map(lambda val: val.replace("~", f"{int(int(cpu_val_txt)/1000)}"), new_cmd_list))
+            if '--cpu' in new_cmd_list and int(cpu_val_txt) / 1000 > .5:
+                new_cmd_list = list(map(lambda val: val.replace("~", f"{int(int(cpu_val_txt) / 1000)}"), new_cmd_list))
 
             # remove any empty elements. this becomes important when setting the pod into a loop
             # see get_base_command_line() in the supervisor code
@@ -204,18 +158,12 @@ class JobCreate:
 
             # output the command line for debug runs
             if run['debug'] is True:
-                self.logger.info(f'command line: {" ".join(new_cmd_list)}')
+                self.logger.info('command line: %s', " ".join(new_cmd_list))
 
             # configure the pod template container
-            container = client.V1Container(
-                name=run_job['run-config']['JOB_NAME'] + '-' + str(idx),
-                image=run_job['run-config']['IMAGE'],
-                command=new_cmd_list,
-                volume_mounts=volume_mounts,
-                image_pull_policy='Always',
-                env=secret_envs,
-                resources=resources
-                )
+            container = client.V1Container(name=run_job['run-config']['JOB_NAME'] + '-' + str(idx), image=run_job['run-config']['IMAGE'],
+                                           command=new_cmd_list, volume_mounts=volume_mounts, image_pull_policy='Always', env=secret_envs,
+                                           resources=resources)
 
             # add the container to the list
             containers.append(container)
@@ -234,25 +182,15 @@ class JobCreate:
             node_selector = None
 
         # create and configure a spec section for the container
-        template = client.V1PodTemplateSpec(
-            metadata=client.V1ObjectMeta(labels={"app": run_job['run-config']['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector)
-        )
+        template = client.V1PodTemplateSpec(metadata=client.V1ObjectMeta(labels={"app": run_job['run-config']['JOB_NAME']}),
+                                            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes,
+                                                                  node_selector=node_selector))
 
         # create the specification of job deployment
-        job_spec = client.V1JobSpec(
-            template=template,
-            backoff_limit=self.backoffLimit,
-            ttl_seconds_after_finished=self.jobTimeout
-            )
+        job_spec = client.V1JobSpec(template=template, backoff_limit=self.back_off_limit, ttl_seconds_after_finished=self.job_timeout)
 
         # instantiate the job object
-        job = client.V1Job(
-            api_version="batch/v1",
-            kind="Job",
-            metadata=client.V1ObjectMeta(name=run_job['run-config']['JOB_NAME']),
-            spec=job_spec
-        )
+        job = client.V1Job(api_version="batch/v1", kind="Job", metadata=client.V1ObjectMeta(name=run_job['run-config']['JOB_NAME']), spec=job_spec)
 
         # save these params onto the run info
         run_job['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
@@ -278,11 +216,9 @@ class JobCreate:
         if not run['fake-jobs']:
             try:
                 # create the job
-                api_instance.create_namespaced_job(
-                    body=job_data['job'],
-                    namespace=job_details['NAMESPACE'])
-            except client.ApiException as ae:
-                self.logger.error(f"Error creating job: {run_details['JOB_NAME']}")
+                api_instance.create_namespaced_job(body=job_data['job'], namespace=job_details['NAMESPACE'])
+            except client.ApiException:
+                self.logger.exception("Error creating job: %s", run_details['JOB_NAME'])
                 return None
 
             # wait a period of time for the next check
@@ -295,7 +231,8 @@ class JobCreate:
             for job in jobs.items:
                 # is this the one that was launched
                 if 'app' in job.metadata.labels and job.metadata.labels['app'] == run_details['JOB_NAME']:
-                    self.logger.debug(f"Found new job: {run_details['JOB_NAME']}, controller-uid: {job.metadata.labels['controller-uid']}, status: {job.status.active}")
+                    self.logger.debug("Found new job: %s, controller-uid: %s, status: %s", run_details['JOB_NAME'],
+                                      job.metadata.labels['controller-uid'], job.status.active)
 
                     # save job id
                     job_id = str(job.metadata.labels["controller-uid"])
@@ -319,7 +256,7 @@ class JobCreate:
         # if this is a debug run or if an error was detected keep the jobs available for interrogation
         # note: a duplicate name collision on the next run could occur if the jobs are not removed
         # before the same run is restarted.
-        if not run['debug'] and run['status'] != JobStatus.error:
+        if not run['debug'] and run['status'] != JobStatus.ERROR:
             job_data = run[run['job-type']]['job-config']
             job_details = job_data['job-details']
             run_details = run[run['job-type']]['run-config']
@@ -329,44 +266,22 @@ class JobCreate:
 
             try:
                 # remove the job
-                api_response = api_instance.delete_namespaced_job(
-                    name=run_details['JOB_NAME'],
-                    namespace=job_details['NAMESPACE'],
-                    body=client.V1DeleteOptions(
-                        propagation_policy='Foreground',
-                        grace_period_seconds=5))
+                api_response = api_instance.delete_namespaced_job(name=run_details['JOB_NAME'], namespace=job_details['NAMESPACE'],
+                                                                  body=client.V1DeleteOptions(propagation_policy='Foreground',
+                                                                                              grace_period_seconds=5))
 
                 # set the return value
                 ret_val = api_response.status
 
             # trap any k8s call errors
-            except (client.exceptions.ApiException, Exception) as e:
+            except Exception:
                 ret_val = "Job delete error, job may no longer exist."
-                self.logger.error(f'{ret_val}: {e}')
+                self.logger.exception("%s", ret_val)
         else:
             ret_val = 'success'
 
         # return the final status of the job
         return ret_val
-
-    @staticmethod
-    def get_config() -> dict:
-        """
-        gets the run configuration
-
-        :return: Dict, baseline run params
-        """
-
-        # get the config file path/name
-        config_name = os.path.join(os.path.dirname(__file__), '..', 'base_config.json')
-
-        # open the config file
-        with open(config_name, 'r') as json_file:
-            # load the config items into a dict
-            data: dict = load(json_file)
-
-        # return the config data
-        return data
 
     def execute(self, run, job_type):
         """
@@ -385,12 +300,12 @@ class JobCreate:
         try:
             # first try to get the config if this is running on the cluster
             config.load_incluster_config()
-        except config.ConfigException:
+        except Exception:
             try:
                 # else get the local config. this local config must match the cluster name in your k8s config
                 config.load_kube_config(context=job_details['CLUSTER'])
-            except config.ConfigException:
-                raise Exception("Could not configure kubernetes python client")
+            except config.ConfigException as exc:
+                raise Exception("Could not configure kubernetes python client") from exc
 
         # create the job object
         self.create_job_object(run, job_type, job_details)

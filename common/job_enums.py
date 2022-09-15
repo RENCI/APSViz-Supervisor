@@ -4,6 +4,10 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
+"""
+    Class enums for the project
+"""
+
 from enum import Enum
 
 
@@ -12,34 +16,34 @@ class JobStatus(int, Enum):
     Class that stores the job status constants
     """
     # new run status indicator
-    new = 1
+    NEW = 1
 
     # the run is currently active indicator
-    running = 2
+    RUNNING = 2
 
     # the run is complete indicator
-    complete = 3
+    COMPLETE = 3
 
     # something non-fatal happened in the process indicator
-    warning = 9999
+    WARNING = 9999
 
     # something fatal happened in the process indicator
-    error = -1
+    ERROR = -1
 
 
 class JobType(str, Enum):
     """
     Class that stores the job type name constants
     """
-    staging = 'staging',
-    hazus = 'hazus',
-    load_geo_server = 'load-geo-server',
-    final_staging = 'final-staging',
-    adcirc2cog_tiff = 'adcirc2cog-tiff',
-    geotiff2cog = 'geotiff2cog',
-    obs_mod_ast = 'obs-mod-ast',
-    adcirctime_to_cog = 'adcirctime-to-cog',
-    ast_run_harvester = 'ast-run-harvester'
-    error = 'error',
-    other_1 = 'TBD',
-    complete = 'complete'
+    STAGING = 'staging'
+    HAZUS = 'hazus'
+    LOAD_GEO_SERVER = 'load-geo-server'
+    FINAL_STAGING = 'final-staging'
+    ADCIRC2COG_TIFF = 'adcirc2cog-tiff'
+    GEOTIFF2COG = 'geotiff2cog'
+    OBS_MOD_AST = 'obs-mod-ast'
+    ADCIRCTIME_TO_COG = 'adcirctime-to-cog'
+    AST_RUN_HARVESTER = 'ast-run-harvester'
+    ERROR = 'error'
+    OTHER_1 = 'TBD'
+    COMPLETE = 'complete'

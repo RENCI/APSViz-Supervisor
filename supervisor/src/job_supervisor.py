@@ -4,22 +4,28 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
+"""
+    This module creates and workflows APSViz processes as defined in the database.
+
+    Author: Phil Owen, RENCI.org
+"""
+
 import time
 import os
-import logging
 import json
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
-from postgres.src.pg_utils import PGUtils
+from common.pg_utils import PGUtils
 from common.logger import LoggingUtil
 from common.job_enums import JobType, JobStatus
 
 
 class APSVizSupervisor:
     """
-    Class for the APSViz supervisor. this tool runs processes as defined in the database.
+    Class for the APSViz supervisor
+
     """
 
     def __init__(self):
@@ -30,9 +36,9 @@ class APSVizSupervisor:
         self.run_list = []
 
         # set DB the polling values
-        self.POLL_SHORT_SLEEP = 10
-        self.POLL_LONG_SLEEP = 60
-        self.MAX_NO_ACTIVITY_COUNT = 60
+        self.poll_short_sleep = 10
+        self.poll_long_sleep = 60
+        self.max_no_activity_count = 60
 
         # load the run configuration params
         self.k8s_config: dict = {}
@@ -58,26 +64,18 @@ class APSVizSupervisor:
         # counter for current runs
         self.run_count = 0
 
-        # get the log level and directory from the environment (k8s secrets).
-        log_level: int = int(os.getenv('LOG_LEVEL', logging.INFO))
-        log_path: str = os.getenv('LOG_PATH', os.path.dirname(__file__))
-
-        # create the log dir if it does not exist
-        if not os.path.exists(log_path):
-            os.mkdir(log_path)
-
         # get the environment this instance is running on
         self.system = os.getenv('SYSTEM', 'System name not set')
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", level=log_level, line_format='medium', log_file_path=log_path)
+        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", line_format='medium')
 
         # init the Slack channels
         self.slack_status_channel = os.getenv('SLACK_STATUS_CHANNEL')
         self.slack_issues_channel = os.getenv('SLACK_ISSUES_CHANNEL')
 
         # declare ready
-        self.logger.info(f'K8s Supervisor ({self.system}) has started...')
+        self.logger.info('K8s Supervisor (%s) has started...', self.system)
 
     def get_config(self) -> dict:
         """
@@ -123,64 +121,23 @@ class APSVizSupervisor:
                 # catch cleanup exceptions
                 try:
                     # skip this job if it is complete
-                    if run['job-type'] == JobType.complete:
-                        run['status_prov'] += ', Run complete'
-                        self.pg_db.update_job_status(run['id'], run['status_prov'])
-
-                        # make sure the provenance is lowercase
-                        status_prov = run['status_prov'].lower()
-
-                        # get the type of run
-                        # no longer used - run_type = ('APS' if status_prov.find('hazus-singleton') == -1 else 'HAZUS-SINGLETON')
-                        run_type = 'APS'
-
-                        # add a comment on overall pass/fail
-                        if run['status_prov'].find('Error') == -1:
-                            msg = f'*{run_type} run completed successfully* :100:'
-                        else:
-                            msg = f"*{run_type} run completed unsuccessfully* :boom:"
-                            self.send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", self.slack_issues_channel, run['debug'], run['instance_name'])
-
-                        # send the message
-                        self.send_slack_msg(run['id'], msg, self.slack_status_channel, run['debug'], run['instance_name'])
-
-                        # send something to log to indicate complete
-                        self.logger.info(f"{run['id']} complete.")
-
-                        # remove the run
-                        self.run_list.remove(run)
+                    if run['job-type'] == JobType.COMPLETE:
+                        self.handle_job_complete(run)
 
                         # continue processing
                         continue
+
                     # or an error
-                    elif run['job-type'] == JobType.error:
-                        # if this was a final staging run that failed force complete
-                        if 'final-staging' in run:
-                            self.logger.error(f"Error detected in final staging for run id: {run['id']}")
-                            run['status_prov'] += ', Error detected in final staging. An incomplete cleanup may have occurred'
-
-                            # set error conditions
-                            run['job-type'] = JobType.complete
-                            run['status'] = JobStatus.error
-                        # else try to clean up
-                        else:
-                            self.logger.error(f"Error detected: About to clean up of intermediate files. Run id: {run['id']}")
-                            run['status_prov'] += ', Error detected'
-
-                            # set the type to clean up
-                            run['job-type'] = JobType.final_staging
-                            run['status'] = JobStatus.new
-
-                        # report the issue
-                        self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    if run['job-type'] == JobType.ERROR:
+                        self.handle_job_error(run)
 
                         # continue processing runs
                         continue
-                except Exception as e_main:
+                except Exception:
                     # report the exception
-                    self.logger.exception(f"Cleanup exception detected, id: {run['id']}")
+                    self.logger.exception("Cleanup exception detected, id: %s", run['id'])
 
-                    msg = f'Exception {e_main} caught. Terminating run.'
+                    msg = 'Exception caught. Terminating run.'
 
                     # send the message
                     self.send_slack_msg(run['id'], msg, self.slack_issues_channel, run['debug'], run['instance_name'])
@@ -195,9 +152,9 @@ class APSVizSupervisor:
                 try:
                     # handle the run
                     no_activity = self.handle_run(run)
-                except Exception as e:
+                except Exception:
                     # report the exception
-                    self.logger.exception(f"Run handler exception detected, id: {run['id']}")
+                    self.logger.exception("Run handler exception detected, id: %s", run['id'])
 
                     # prepare the DB status
                     run['status_prov'] += ', Run handler error detected'
@@ -208,11 +165,12 @@ class APSVizSupervisor:
 
                     # if there was a job error
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error(f"Error failed job. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}, job delete status: {job_del_status}")
+                        self.logger.error("Error failed job. Run ID: %s, Job type: %s, job delete status: %s", run['id'], run['job-type'],
+                                          job_del_status)
 
                     # set error conditions
-                    run['job-type'] = JobType.error
-                    run['status'] = JobStatus.error
+                    run['job-type'] = JobType.ERROR
+                    run['status'] = JobStatus.ERROR
 
                     # continue processing runs
                     continue
@@ -221,7 +179,8 @@ class APSVizSupervisor:
             if self.run_count != len(self.run_list):
                 # save the new run count
                 self.run_count = len(self.run_list)
-                self.logger.info(f'There {"are" if self.run_count != 1 else "is"} {self.run_count} run{"s" if self.run_count != 1 else ""} in progress.')
+                msg = f'There {"are" if self.run_count != 1 else "is"} {self.run_count} run{"s" if self.run_count != 1 else ""} in progress.'
+                self.logger.info(msg)
 
             # was there any activity
             if no_activity:
@@ -231,28 +190,86 @@ class APSVizSupervisor:
                 no_activity_counter = 0
 
             # check for something to do after a period of time
-            if no_activity_counter >= self.MAX_NO_ACTIVITY_COUNT:
+            if no_activity_counter >= self.max_no_activity_count:
                 # set the sleep timeout
-                sleep_timeout = self.POLL_LONG_SLEEP
+                sleep_timeout = self.poll_long_sleep
 
                 # try again at this poll rate
-                no_activity_counter = self.MAX_NO_ACTIVITY_COUNT - 1
+                no_activity_counter = self.max_no_activity_count - 1
             else:
                 # set the sleep timeout
-                sleep_timeout = self.POLL_SHORT_SLEEP
+                sleep_timeout = self.poll_short_sleep
 
-            self.logger.debug(f"All active run checks complete. Sleeping for {sleep_timeout / 60} minutes.")
+            self.logger.debug("All active run checks complete. Sleeping for %s minutes.", sleep_timeout / 60)
 
             # wait for the next check for something to do
             time.sleep(sleep_timeout)
 
+    def handle_job_error(self, run):
+        """
+        handles the job state when it is marked as in error
+
+        :param run:
+        :return:
+        """
+        # if this was a final staging run that failed force complete
+        if 'final-staging' in run:
+            self.logger.error("Error detected in final staging for run id: %s", run['id'])
+            run['status_prov'] += ", Error detected in final staging. An incomplete cleanup may have occurred"
+
+            # set error conditions
+            run['job-type'] = JobType.COMPLETE
+            run['status'] = JobStatus.ERROR
+        # else try to clean up
+        else:
+            self.logger.error("Error detected: About to clean up of intermediate files. Run id: %s", run['id'])
+            run['status_prov'] += ', Error detected'
+
+            # set the type to clean up
+            run['job-type'] = JobType.FINAL_STAGING
+            run['status'] = JobStatus.NEW
+
+        # report the issue
+        self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+    def handle_job_complete(self, run):
+        """
+        handles the job state when it is marked complete
+
+        :param run:
+        :return:
+        """
+        run['status_prov'] += ', Run complete'
+        self.pg_db.update_job_status(run['id'], run['status_prov'])
+
+        # init the type of run
+        run_type = 'APS'
+
+        # add a comment on overall pass/fail
+        if run['status_prov'].find('Error') == -1:
+            msg = f'*{run_type} run completed successfully* :100:'
+        else:
+            msg = f"*{run_type} run completed unsuccessfully* :boom:"
+            self.send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", self.slack_issues_channel, run['debug'],
+                                run['instance_name'])
+        # send the message
+        self.send_slack_msg(run['id'], msg, self.slack_status_channel, run['debug'], run['instance_name'])
+
+        # send something to log to indicate complete
+        self.logger.info("%s complete.", run['id'])
+
+        # remove the run
+        self.run_list.remove(run)
+
     def get_base_command_line(self, run: dict, job_type: JobType) -> (list, bool):
         """
         gets the command lines for each run type
-        note: use this to keep a pod running after command_line and command_matrix for the job have been set to '[""]' in the DB
-            also note that the supervisor should be terminated prior to killing the job to avoid data directory removal (if that matters)
-            command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
-            update public."ASGS_Mon_supervisor_config" set command_line='[""]', command_matrix='[""]' where id=;
+        note: use this to keep a pod running after command_line and command_matrix for the job have
+        been set to '[""]' in the DB also note that the supervisor should be terminated prior to
+        killing the job to avoid data directory removal (if that matters)
+        command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
+        update public."ASGS_Mon_supervisor_config" set command_line='[""]', command_matrix='[""]'
+        where id=;
 
         :param run: the run parameters
         :param job_type:
@@ -263,49 +280,49 @@ class APSVizSupervisor:
         extend_output_path = False
 
         # is this a staging job array
-        if job_type == JobType.staging:
+        if job_type == JobType.STAGING:
             command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['stormname'], '--outputDir']
             extend_output_path = True
 
         # is this a hazus job array
-        elif job_type == JobType.hazus:
+        elif job_type == JobType.HAZUS:
             command_line_params = [run['downloadurl']]
 
         # is this an adcirc2cog_tiff job array
-        elif job_type == JobType.adcirc2cog_tiff:
-            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-                                   '--outputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
+        elif job_type == JobType.ADCIRC2COG_TIFF:
+            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input', '--outputDIR',
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
                                    '--inputFile']
 
         # is this a geotiff2cog job array
-        elif job_type == JobType.geotiff2cog:
-            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo',
-                                   '--finalDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type]['SUB_PATH'],
-                                   '--inputParam']
+        elif job_type == JobType.GEOTIFF2COG:
+            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo', '--finalDIR',
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type][
+                                       'SUB_PATH'], '--inputParam']
 
         # is this a geo server load job array
-        elif job_type == JobType.load_geo_server:
+        elif job_type == JobType.LOAD_GEO_SERVER:
             command_line_params = ['--instanceId', str(run['id'])]
 
         # is this a final staging job array
-        elif job_type == JobType.final_staging:
-            command_line_params = ['--inputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
-                                   '--outputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + self.k8s_config[job_type]['SUB_PATH'],
-                                   '--tarMeta', str(run['id'])]
+        elif job_type == JobType.FINAL_STAGING:
+            command_line_params = ['--inputDir',
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
+                                   '--outputDir', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + self.k8s_config[job_type]['SUB_PATH'], '--tarMeta',
+                                   str(run['id'])]
 
         # is this an obs mod ast job
-        elif job_type == JobType.obs_mod_ast:
+        elif job_type == JobType.OBS_MOD_AST:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
             # create the additional command line parameters
-            command_line_params = [thredds_url,
-                                   run['gridname'],
-                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type]['ADDITIONAL_PATH'],
-                                   str(run['id'])]
+            command_line_params = [thredds_url, run['gridname'],
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type][
+                                       'ADDITIONAL_PATH'], str(run['id'])]
 
         # is this an ast run harvester job
-        elif job_type == JobType.ast_run_harvester:
+        elif job_type == JobType.AST_RUN_HARVESTER:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
@@ -313,11 +330,12 @@ class APSVizSupervisor:
             command_line_params = [thredds_url, self.k8s_config[job_type]['DATA_MOUNT_PATH'] + self.k8s_config[job_type]['SUB_PATH']]
 
         # is this an adcirc time to cog converter job array
-        elif job_type == JobType.adcirctime_to_cog:
-            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input',
-                                   '--outputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
-                                   '--finalDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type]['SUB_PATH'],
-                                   '--inputFile']
+        elif job_type == JobType.ADCIRCTIME_TO_COG:
+            command_line_params = ['--inputDIR', self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input', '--outputDIR',
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + self.k8s_config[job_type]['SUB_PATH'],
+                                   '--finalDIR',
+                                   self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + self.k8s_config[job_type][
+                                       'SUB_PATH'], '--inputFile']
 
         # return the command line and extend the path flag
         return command_line_params, extend_output_path
@@ -333,7 +351,7 @@ class APSVizSupervisor:
         no_activity: bool = True
 
         # work the current state
-        if run['status'] == JobStatus.new:
+        if run['status'] == JobStatus.NEW:
             # set the activity flag
             no_activity = False
 
@@ -357,22 +375,23 @@ class APSVizSupervisor:
                 # did we not get a job_id
                 if job_id is not None:
                     # set the current status
-                    run['status'] = JobStatus.running
+                    run['status'] = JobStatus.RUNNING
                     run['status_prov'] += f", {job_type.value} running"
                     self.pg_db.update_job_status(run['id'], run['status_prov'])
 
-                    self.logger.info(f"Job created. Run ID: {run['id']}, Job ID: {run[job_type]['job-config']['job_id']}, Job type: {job_type}")
+                    self.logger.info("Job created. Run ID: %s, Job type: %s", run['id'], job_type)
                 else:
                     # set the error status
-                    run['status'] = JobStatus.error
+                    run['status'] = JobStatus.ERROR
 
-                    self.logger.info(f"Job was not created. Run ID: {run['id']}, Job ID: {run[job_type]['job-config']['job_id']}, Job type: {job_type}")
+                    self.logger.info("Job was not created. Run ID: %s, Job type: %s", run['id'], job_type)
 
                 # if the next job is complete there is no reason to keep adding more jobs
-                if self.k8s_config[job_type.value]['NEXT_JOB_TYPE'] == JobType.complete.value:
+                if self.k8s_config[job_type.value]['NEXT_JOB_TYPE'] == JobType.COMPLETE.value:
                     break
+
         # if the job is running check the status
-        elif run['status'] == JobStatus.running and run['status'] != JobStatus.error:
+        if run['status'] == JobStatus.RUNNING and run['status'] != JobStatus.ERROR:
             # set the activity flag
             no_activity = False
 
@@ -381,13 +400,13 @@ class APSVizSupervisor:
 
             # check the job status, report any issues
             if not job_found:
-                self.logger.error(f"Job not found. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                self.logger.error("Job not found. Run ID: %s, Job type: %s", run['id'], run['job-type'])
             elif job_status.startswith('Timeout'):
-                self.logger.error(f"Job has timed out. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                self.logger.error("Job has timed out. Run ID: %s, Job type: %s", run['id'], run['job-type'])
             elif job_status.startswith('Failed'):
-                self.logger.error(f"Job has failed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                self.logger.error("Job has failed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
             elif job_status.startswith('Complete'):
-                self.logger.info(f"Job has completed. Run ID: {run['id']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, Job type: {run['job-type']}")
+                self.logger.info("Job has completed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
 
             # if the job was found
             if job_found:
@@ -397,7 +416,7 @@ class APSVizSupervisor:
                     job_del_status = self.k8s_create.delete_job(run)
 
                     # set error conditions
-                    run['status'] = JobStatus.error
+                    run['status'] = JobStatus.ERROR
                 # did the job and pod succeed
                 elif job_status.startswith('Complete') and not pod_status.startswith('Failed'):
                     # remove the job and get the final run status
@@ -405,10 +424,11 @@ class APSVizSupervisor:
 
                     # was there an error on the job
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error(f"Error failed job: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
+                        self.logger.error("Error failed job. Run status %s. Run ID: %s, Job type: %s, job delete status: %s, pod status: %s",
+                                          run['status'], run['id'], run['job-type'], job_del_status, pod_status)
 
                         # set error conditions
-                        run['status'] = JobStatus.error
+                        run['status'] = JobStatus.ERROR
                     else:
                         # complete this job and setup for the next job
                         run['status_prov'] += f", {run['job-type'].value} complete"
@@ -418,15 +438,16 @@ class APSVizSupervisor:
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
 
                         # if the job type is not in the run then let it be created
-                        if run['job-type'] not in run or run['job-type'] == JobType.staging:
-                            # this bit is mostly for troubleshooting when the steps have been set into a
-                            # loop back to staging. if so, remove all other job types that may have run
+                        if run['job-type'] not in run or run['job-type'] == JobType.STAGING:
+                            # this bit is mostly for troubleshooting when the steps have been set
+                            # into a loop back to staging. if so, remove all other job types that
+                            # may have run
                             for i in run.copy():
-                                if type(i) is JobType and i is not JobType.staging:
+                                if isinstance(i, JobType) and i is not JobType.STAGING:
                                     run.pop(i)
 
                             # set the job to new
-                            run['status'] = JobStatus.new
+                            run['status'] = JobStatus.NEW
 
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
@@ -434,20 +455,21 @@ class APSVizSupervisor:
                     job_del_status = self.k8s_create.delete_job(run)
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error(f"Error failed job and/or pod: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}, job delete status: {job_del_status}, pod status: {pod_status}.")
+                        self.logger.error(
+                            "Error failed job and/or pod. Run status: %s. Run ID: %s, Job type: %s, job delete status: %s, pod status: %s.",
+                            run['status'], run['id'], run['job-type'], job_del_status, pod_status)
 
                     # set error conditions
-                    run['status'] = JobStatus.error
+                    run['status'] = JobStatus.ERROR
             else:
-                self.logger.error(f"Error job not found: Run status {run['status']}. Run ID: {run['id']}, Job type: {run['job-type']}, Job ID: {run[run['job-type']]['job-config']['job_id']}")
+                self.logger.error("Error job not found: Run status: %s, Run ID: %s, Job type: %s", run['status'], run['id'], run['job-type'])
 
                 # set error condition
-                run['status'] = JobStatus.error
+                run['status'] = JobStatus.ERROR
 
         # send out the error status if an error was detected
-        if run['status'] == JobStatus.error:
-            # self.send_slack_msg(run['id'], f"failed in {run['job-type']}.", self.slack_status_channel, run['debug'], run['instance_name'])
-            run['job-type'] = JobType.error
+        if run['status'] == JobStatus.ERROR:
+            run['job-type'] = JobType.ERROR
 
         # return to the caller
         return no_activity
@@ -476,7 +498,7 @@ class APSVizSupervisor:
             config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
             config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
 
-        self.logger.debug(f"Job command line. Run ID: {run['id']}, Job type: {job_type}, Command line: {config['COMMAND_LINE']}")
+        self.logger.debug("Job command line. Run ID: %s, Job type: %s, Command line: %s", run['id'], job_type, config['COMMAND_LINE'])
 
         # save these params in the run info
         run[job_type] = {'run-config': config}
@@ -515,9 +537,9 @@ class APSVizSupervisor:
             try:
                 # send the message
                 client.chat_postMessage(channel=channel, text=final_msg)
-            except SlackApiError as e:
+            except SlackApiError:
                 # log the error
-                self.logger.exception(f'Slack {channel} messaging failed. msg: {final_msg}')
+                self.logger.exception('Slack %s messaging failed. msg: %s', channel, final_msg)
 
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
@@ -532,20 +554,17 @@ class APSVizSupervisor:
         else:
             instance_name = None
 
-        # should we set debug mode
-        if 'supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'):
-            debug_mode = True
-        else:
-            debug_mode = False
-
         # if there is a special k8s download url in the data use it.
         if 'post.opendap.renci_tds-k8.downloadurl' in run_info:
-            # use only the service name and save it for the run. also forcing the apsviz thredds url to be https:
+            # use the service name and save it for the run. force the apsviz thredds url -> https:
             run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl'].replace('http://apsviz-thredds', 'https://apsviz-thredds')
 
-        # check to see if this is a hurricane
+        # if this not a hurricane make sure this is set for command lines later
         if 'stormname' not in run_info:
             run_info['stormname'] = 'None'
+
+        # interrogate and set debug mode
+        debug_mode = ('supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'))
 
         # loop through the params and return the ones that are missing
         return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode
@@ -579,26 +598,33 @@ class APSVizSupervisor:
                 # check the run params to see if there is something missing
                 if len(missing_params_msg) > 0:
                     # update the run status everywhere
-                    self.pg_db.update_job_status(run_id, f'Error - Run lacks the required run properties ({missing_params_msg}).')
-                    self.logger.error(f"Error - Run lacks the required run properties ({missing_params_msg}): {run_id}")
-                    self.send_slack_msg(run_id, f'Error - Run lacks the required run properties ({missing_params_msg})', self.slack_issues_channel, debug_mode, instance_name)
+                    self.pg_db.update_job_status(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}).")
+                    self.logger.error("Error - Run lacks the required run properties (%s): %s", missing_params_msg, run_id)
+                    self.send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})", self.slack_issues_channel,
+                                        debug_mode, instance_name)
 
                     # continue processing the remaining runs
                     continue
+
                 # if this is a new run
-                elif run['run_data']['supervisor_job_status'].startswith('new'):
+                if run['run_data']['supervisor_job_status'].startswith('new'):
                     job_prov = 'New APS'
-                    job_type = JobType.staging
+                    job_type = JobType.STAGING
                 # if we are in debug mode
                 elif run['run_data']['supervisor_job_status'].startswith('debug'):
                     job_prov = 'New debug'
-                    job_type = JobType.staging
-                # ignore the entry as it is not in a legit "start" state. this may just be an existing or completed run.
+                    job_type = JobType.STAGING
+                # ignore the entry as it is not in a legit "start" state. this may just
+                # be an existing or completed run.
                 else:
+                    self.logger.info("Error - Unrecognized run command %s for %s", run['run_data']['supervisor_job_status'], run_id)
                     continue
 
                 # add the new run to the list
-                self.run_list.append({'id': run_id, 'stormname': run['run_data']['stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type, 'status': JobStatus.new, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                self.run_list.append(
+                    {'id': run_id, 'stormname': run['run_data']['stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type,
+                     'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
+                     'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                 # update the run status in the DB
                 self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")

@@ -4,6 +4,10 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
+"""
+    Main entry point for application
+"""
+
 from supervisor.src.job_supervisor import APSVizSupervisor
 
 # create the supervisor
