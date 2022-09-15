@@ -5,11 +5,11 @@
 # SPDX-License-Identifier: MIT
 
 common/__pycache__/
-postgres/src/APSVIZ.pg_utils.log
 postgres/src/__pycache__/
 supervisor/src/__pycache__/
-supervisor/src/logs/
-supervisor/base_config.json
-supervisor/src/APSVIZ.APSVizSupervisor.log
-supervisor/src/APSVIZ.JobCreate.log
-supervisor/src/APSVIZ.JobFind.log
+/common/base_config.json
+
+/common/APSVIZ.APSVizSupervisor.log
+/common/APSVIZ.JobCreate.log
+/common/APSVIZ.JobFind.log
+/common/APSVIZ.pg_utils.log
