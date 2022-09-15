@@ -1,7 +1,6 @@
 [MASTER]
 max-line-length=150
-disable=broad-except
+disable=broad-except,too-many-locals,too-many-instance-attributes,too-many-statements,too-many-nested-blocks,too-many-branches,cell-var-from-loop
 init-hook='import sys; sys.path.append("./")'
 max-args=7
 min-public-methods=0
-
