@@ -86,14 +86,19 @@ class APSVizSupervisor:
         # get all the job parameter definitions
         db_data = self.pg_db.get_job_defs()
 
-        # get the data looking like something we are used to
-        config_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
+        # init the return
+        config_data = None
 
-        # fix the arrays for each job def. they come in as a string
-        for item in config_data.items():
-            item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
-            item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
-            item[1]['PARALLEL'] = [JobType(x) for x in json.loads(item[1]['PARALLEL'])] if item[1]['PARALLEL'] is not None else None
+        # make sure we got something
+        if db_data != 1:
+            # get the data looking like something we are used to
+            config_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
+
+            # fix the arrays for each job def. they come in as a string
+            for item in config_data.items():
+                item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
+                item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
+                item[1]['PARALLEL'] = [JobType(x) for x in json.loads(item[1]['PARALLEL'])] if item[1]['PARALLEL'] is not None else None
 
         # return the config data
         return config_data
@@ -581,56 +586,58 @@ class APSVizSupervisor:
         # get the latest job definitions
         self.k8s_config = self.get_config()
 
-        # check to see if we are in pause mode
-        runs = self.check_pause_status(runs)
+        # make sure we got the config to continue
+        if self.k8s_config is not None:
+            # check to see if we are in pause mode
+            runs = self.check_pause_status(runs)
 
-        # did we find anything to do
-        if runs is not None:
-            # add this run to the list
-            for run in runs:
-                # save the run id that was provided by the DB run.properties data
-                run_id = run['run_id']
+            # did we find anything to do
+            if runs is not None:
+                # add this run to the list
+                for run in runs:
+                    # save the run id that was provided by the DB run.properties data
+                    run_id = run['run_id']
 
-                # make sure all the needed params are available. instance name and debug mode are handled here
-                # because they both affect messaging and logging.
-                missing_params_msg, instance_name, debug_mode = self.check_input_params(run['run_data'])
+                    # make sure all the needed params are available. instance name and debug mode are handled here
+                    # because they both affect messaging and logging.
+                    missing_params_msg, instance_name, debug_mode = self.check_input_params(run['run_data'])
 
-                # check the run params to see if there is something missing
-                if len(missing_params_msg) > 0:
-                    # update the run status everywhere
-                    self.pg_db.update_job_status(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}).")
-                    self.logger.error("Error - Run lacks the required run properties (%s): %s", missing_params_msg, run_id)
-                    self.send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})", self.slack_issues_channel,
-                                        debug_mode, instance_name)
+                    # check the run params to see if there is something missing
+                    if len(missing_params_msg) > 0:
+                        # update the run status everywhere
+                        self.pg_db.update_job_status(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}).")
+                        self.logger.error("Error - Run lacks the required run properties (%s): %s", missing_params_msg, run_id)
+                        self.send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})",
+                                            self.slack_issues_channel, debug_mode, instance_name)
 
-                    # continue processing the remaining runs
-                    continue
+                        # continue processing the remaining runs
+                        continue
 
-                # if this is a new run
-                if run['run_data']['supervisor_job_status'].startswith('new'):
-                    job_prov = 'New APS'
-                    job_type = JobType.STAGING
-                # if we are in debug mode
-                elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                    job_prov = 'New debug'
-                    job_type = JobType.STAGING
-                # ignore the entry as it is not in a legit "start" state. this may just
-                # be an existing or completed run.
-                else:
-                    self.logger.info("Error - Unrecognized run command %s for %s", run['run_data']['supervisor_job_status'], run_id)
-                    continue
+                    # if this is a new run
+                    if run['run_data']['supervisor_job_status'].startswith('new'):
+                        job_prov = 'New APS'
+                        job_type = JobType.STAGING
+                    # if we are in debug mode
+                    elif run['run_data']['supervisor_job_status'].startswith('debug'):
+                        job_prov = 'New debug'
+                        job_type = JobType.STAGING
+                    # ignore the entry as it is not in a legit "start" state. this may just
+                    # be an existing or completed run.
+                    else:
+                        self.logger.info("Error - Unrecognized run command %s for %s", run['run_data']['supervisor_job_status'], run_id)
+                        continue
 
-                # add the new run to the list
-                self.run_list.append(
-                    {'id': run_id, 'stormname': run['run_data']['stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job, 'job-type': job_type,
-                     'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
-                     'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                    # add the new run to the list
+                    self.run_list.append({'id': run_id, 'stormname': run['run_data']['stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job,
+                                          'job-type': job_type, 'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted',
+                                          'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'],
+                                          'instance_name': run['run_data']['instancename']})
 
-                # update the run status in the DB
-                self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
+                    # update the run status in the DB
+                    self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
 
-                # notify Slack
-                self.send_slack_msg(run_id, f'{job_prov} run accepted.', self.slack_status_channel, debug_mode, run['run_data']['instancename'])
+                    # notify Slack
+                    self.send_slack_msg(run_id, f'{job_prov} run accepted.', self.slack_status_channel, debug_mode, run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
         """
