@@ -624,7 +624,7 @@ class APSVizSupervisor:
                         continue
 
                     # add the new run to the list
-                    self.run_list.append({'id': run_id, 'stormname': run['run_data']['stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job,
+                    self.run_list.append({'id': run_id, 'forcing.stormname': run['run_data']['forcing.stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job,
                                           'job-type': job_type, 'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted',
                                           'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'],
                                           'instance_name': run['run_data']['instancename']})
