@@ -53,7 +53,7 @@ class APSVizSupervisor:
         self.pg_db = PGUtils()
 
         # init the run params to look for list
-        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename']
+        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
 
         # flag for pause mode
         self.pause_mode = True
@@ -286,7 +286,7 @@ class APSVizSupervisor:
 
         # is this a staging job array
         if job_type == JobType.STAGING:
-            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['stormname'], '--outputDir']
+            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['forcing.stormname'], '--outputDir']
             extend_output_path = True
 
         # is this a hazus job array
@@ -563,10 +563,6 @@ class APSVizSupervisor:
         if 'post.opendap.renci_tds-k8.downloadurl' in run_info:
             # use the service name and save it for the run. force the apsviz thredds url -> https:
             run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl'].replace('http://apsviz-thredds', 'https://apsviz-thredds')
-
-        # if this not a hurricane make sure this is set for command lines later
-        if 'stormname' not in run_info:
-            run_info['stormname'] = 'None'
 
         # interrogate and set debug mode
         debug_mode = ('supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'))
