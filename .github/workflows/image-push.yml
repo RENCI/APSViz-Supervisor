@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v1
 
       # install pylint and run it on the code
-      - name: Python Pylin GitHub Action
+      - name: Python Pylint GitHub Action
         uses: fylein/python-pylint-github-action@v1
         with:
           args: pip3 install -r requirements.txt && pylint --rcfile=.pylintrc --recursive=y ./
