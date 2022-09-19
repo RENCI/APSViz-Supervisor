@@ -15,3 +15,5 @@ jobs:
           path: "./*.py" # Glob pattern for files to lint
           fail: true # Fail the action if pylint errors are found
           pr-message: true # Send a PR message if pylint errors are found
+          rcfile: .pylintrc
+          recursive: y
