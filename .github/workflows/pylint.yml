@@ -1,7 +1,12 @@
-on: workflow_dispatch
+name: PyLint codebase
 
+on:
+  push:
+    branches:
+    - master
+    -
 jobs:
-  example:
+  run_pylint:
     runs-on: ubuntu-latest
     name: Executes pylint
     steps:
@@ -12,4 +17,3 @@ jobs:
         uses: fylein/python-pylint-github-action@v1
         with:
           args: pip3 install -r requirements.txt && pylint --rcfile=.pylintrc --recursive=y ./
- 
