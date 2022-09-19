@@ -8,7 +8,7 @@ on:
 jobs:
   run_pylint:
     runs-on: ubuntu-latest
-    name: Executes pylint
+    name: Execute pylint
     steps:
       - name: Checkout
         uses: actions/checkout@v1
