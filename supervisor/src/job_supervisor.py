@@ -89,8 +89,8 @@ class APSVizSupervisor:
         # init the return
         config_data = None
 
-        # make sure we got something
-        if not isinstance(db_data, int):
+        # make sure we got a list of config data items
+        if isinstance(db_data, list):
             # get the data looking like something we are used to
             config_data = {list(x)[0]: x.get(list(x)[0]) for x in db_data}
 

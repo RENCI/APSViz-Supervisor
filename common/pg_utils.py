@@ -164,6 +164,9 @@ class PGUtils:
         except Exception:
             self.logger.exception("Error detected executing SQL: %s.", sql_stmt)
 
+            # set the error code
+            ret_val = -1
+
         # return to the caller
         return ret_val
 
