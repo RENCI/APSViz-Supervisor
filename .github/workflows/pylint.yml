@@ -1,4 +1,4 @@
-name: PyLint codebase
+name: PyLint the codebase
 
 on:
   push:
