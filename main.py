@@ -13,5 +13,13 @@ from supervisor.src.job_supervisor import APSVizSupervisor
 # create the supervisor
 supervisor = APSVizSupervisor()
 
-# initiate the polling for work
-supervisor.run()
+try:
+
+    # initiate the polling for work
+    supervisor.run()
+except Exception:
+    # let everyone know the application is shutting down
+    supervisor.send_slack_msg(None, f'K8s Supervisor ({supervisor.system}) application is shutting down.', supervisor.slack_status_channel)
+
+    # log the reason for the shutdown
+    supervisor.logger.error('K8s Supervisor (%s) is shutting down...', supervisor.system)
