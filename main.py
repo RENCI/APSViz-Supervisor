@@ -22,4 +22,5 @@ except Exception:
     supervisor.logger.error('K8s Supervisor (%s) is shutting down...', supervisor.system)
 
 # let everyone know the application is shutting down
-supervisor.send_slack_msg(None, f'K8s Supervisor ({supervisor.system}) application is shutting down.', supervisor.slack_status_channel)
+supervisor.send_slack_msg(None, f'K8s Supervisor ({supervisor.system}) application is shutting down.', supervisor.slack_channels[
+    'slack_status_channel'])
