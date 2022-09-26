@@ -147,10 +147,6 @@ class JobCreate:
             resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'},
                          'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
 
-            # if the command line has a '--cpu' in it replace the "~" value with the cpu amount specified when the cpu value is > .5 cpus
-            if '--cpu' in new_cmd_list and int(cpu_val_txt) / 1000 > .5:
-                new_cmd_list = list(map(lambda val: val.replace("~", f"{int(int(cpu_val_txt) / 1000)}"), new_cmd_list))
-
             # remove any empty elements. this becomes important when setting the pod into a loop
             # see get_base_command_line() in the supervisor code
             if '' in new_cmd_list:
@@ -160,13 +156,10 @@ class JobCreate:
             if run['debug'] is True:
                 self.logger.info('command line: %s', " ".join(new_cmd_list))
 
-            # configure the pod template container
-            container = client.V1Container(name=run_job['run-config']['JOB_NAME'] + '-' + str(idx), image=run_job['run-config']['IMAGE'],
-                                           command=new_cmd_list, volume_mounts=volume_mounts, image_pull_policy='Always', env=secret_envs,
-                                           resources=resources)
-
             # add the container to the list
-            containers.append(container)
+            containers.append(client.V1Container(name=run_job['run-config']['JOB_NAME'] + '-' + str(idx), image=run_job['run-config']['IMAGE'],
+                                                 command=new_cmd_list, volume_mounts=volume_mounts, image_pull_policy='Always', env=secret_envs,
+                                                 resources=resources))
 
         # save the number of containers in this job/pod for status checking later
         run_job['total_containers'] = len(containers)
