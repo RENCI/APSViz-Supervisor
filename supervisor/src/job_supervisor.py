@@ -35,34 +35,20 @@ class APSVizSupervisor:
         # the list of pending runs. this stores all job details of the run
         self.run_list = []
 
-        # set DB the polling values
-        self.poll_short_sleep = 10
-        self.poll_long_sleep = 60
-        self.max_no_activity_count = 60
+        # set the polling parameter values
+        self.polling_params = {'poll_short_sleep': 10, 'poll_long_sleep': 60, 'max_no_activity_count': 60, 'run_count': 0}
 
         # load the run configuration params
         self.k8s_config: dict = {}
 
-        # create a job creator object
-        self.k8s_create = JobCreate()
-
-        # create a job status finder object
-        self.k8s_find = JobFind()
-
-        # create the postgres access object
-        self.pg_db = PGUtils()
+        # utility objects
+        self.util_objs: dict = {'k8s_create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGUtils()}
 
         # init the run params to look for list
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
 
-        # flag for pause mode
-        self.pause_mode = True
-
-        # create a job mode
-        self.fake_job = False
-
-        # counter for current runs
-        self.run_count = 0
+        # debug options
+        self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
 
         # get the environment this instance is running on
         self.system = os.getenv('SYSTEM', 'System name not set')
@@ -71,8 +57,8 @@ class APSVizSupervisor:
         self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", line_format='medium')
 
         # init the Slack channels
-        self.slack_status_channel = os.getenv('SLACK_STATUS_CHANNEL')
-        self.slack_issues_channel = os.getenv('SLACK_ISSUES_CHANNEL')
+        self.slack_channels: dict = {'slack_status_channel': os.getenv('SLACK_STATUS_CHANNEL'),
+                                     'slack_issues_channel': os.getenv('SLACK_ISSUES_CHANNEL')}
 
         # declare ready
         self.logger.info('K8s Supervisor (%s) has started...', self.system)
@@ -84,7 +70,7 @@ class APSVizSupervisor:
         :return: Dict, baseline run params
         """
         # get all the job parameter definitions
-        db_data = self.pg_db.get_job_defs()
+        db_data = self.util_objs['pg_db'].get_job_defs()
 
         # init the return
         config_data = None
@@ -145,7 +131,7 @@ class APSVizSupervisor:
                     msg = 'Exception caught. Terminating run.'
 
                     # send the message
-                    self.send_slack_msg(run['id'], msg, self.slack_issues_channel, run['debug'], run['instance_name'])
+                    self.send_slack_msg(run['id'], msg, self.slack_channels['slack_issues_channel'], run['debug'], run['instance_name'])
 
                     # remove the run
                     self.run_list.remove(run)
@@ -163,10 +149,10 @@ class APSVizSupervisor:
 
                     # prepare the DB status
                     run['status_prov'] += ', Run handler error detected'
-                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
                     # delete the k8s job if it exists
-                    job_del_status = self.k8s_create.delete_job(run)
+                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
 
                     # if there was a job error
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
@@ -181,10 +167,11 @@ class APSVizSupervisor:
                     continue
 
             # output the current number of runs in progress if there are any
-            if self.run_count != len(self.run_list):
+            if self.polling_params["run_count"] != len(self.run_list):
                 # save the new run count
-                self.run_count = len(self.run_list)
-                msg = f'There {"are" if self.run_count != 1 else "is"} {self.run_count} run{"s" if self.run_count != 1 else ""} in progress.'
+                self.polling_params['run_count'] = len(self.run_list)
+                msg = f'There {"are" if self.polling_params["run_count"] != 1 else "is"} {self.polling_params["run_count"]} ' \
+                      f'run{"s" if self.polling_params["run_count"] != 1 else ""} in progress.'
                 self.logger.info(msg)
 
             # was there any activity
@@ -195,15 +182,15 @@ class APSVizSupervisor:
                 no_activity_counter = 0
 
             # check for something to do after a period of time
-            if no_activity_counter >= self.max_no_activity_count:
+            if no_activity_counter >= self.polling_params['max_no_activity_count']:
                 # set the sleep timeout
-                sleep_timeout = self.poll_long_sleep
+                sleep_timeout = self.polling_params['poll_long_sleep']
 
                 # try again at this poll rate
-                no_activity_counter = self.max_no_activity_count - 1
+                no_activity_counter = self.polling_params['max_no_activity_count'] - 1
             else:
                 # set the sleep timeout
-                sleep_timeout = self.poll_short_sleep
+                sleep_timeout = self.polling_params['poll_short_sleep']
 
             self.logger.debug("All active run checks complete. Sleeping for %s minutes.", sleep_timeout / 60)
 
@@ -235,7 +222,7 @@ class APSVizSupervisor:
             run['status'] = JobStatus.NEW
 
         # report the issue
-        self.pg_db.update_job_status(run['id'], run['status_prov'])
+        self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
     def handle_job_complete(self, run):
         """
@@ -245,7 +232,7 @@ class APSVizSupervisor:
         :return:
         """
         run['status_prov'] += ', Run complete'
-        self.pg_db.update_job_status(run['id'], run['status_prov'])
+        self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # init the type of run
         run_type = 'APS'
@@ -255,10 +242,10 @@ class APSVizSupervisor:
             msg = f'*{run_type} run completed successfully* :100:'
         else:
             msg = f"*{run_type} run completed unsuccessfully* :boom:"
-            self.send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", self.slack_issues_channel, run['debug'],
+            self.send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", self.slack_channels['slack_issues_channel'], run['debug'],
                                 run['instance_name'])
         # send the message
-        self.send_slack_msg(run['id'], msg, self.slack_status_channel, run['debug'], run['instance_name'])
+        self.send_slack_msg(run['id'], msg, self.slack_channels['slack_status_channel'], run['debug'], run['instance_name'])
 
         # send something to log to indicate complete
         self.logger.info("%s complete.", run['id'])
@@ -375,14 +362,14 @@ class APSVizSupervisor:
                 self.k8s_create_run_config(run, job_type, command_line_params, extend_output_path)
 
                 # execute the k8s job run
-                job_id = self.k8s_create.execute(run, job_type)
+                job_id = self.util_objs['k8s_create'].execute(run, job_type)
 
                 # did we not get a job_id
                 if job_id is not None:
                     # set the current status
                     run['status'] = JobStatus.RUNNING
                     run['status_prov'] += f", {job_type.value} running"
-                    self.pg_db.update_job_status(run['id'], run['status_prov'])
+                    self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
                     self.logger.info("Job created. Run ID: %s, Job type: %s", run['id'], job_type)
                 else:
@@ -401,7 +388,7 @@ class APSVizSupervisor:
             no_activity = False
 
             # find the job, get the status
-            job_found, job_status, pod_status = self.k8s_find.find_job_info(run)
+            job_found, job_status, pod_status = self.util_objs['k8s_find'].find_job_info(run)
 
             # check the job status, report any issues
             if not job_found:
@@ -418,14 +405,14 @@ class APSVizSupervisor:
                 # did the job timeout (presumably waiting for resources) or failed
                 if job_status.startswith('Timeout') or job_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = self.k8s_create.delete_job(run)
+                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
 
                     # set error conditions
                     run['status'] = JobStatus.ERROR
                 # did the job and pod succeed
                 elif job_status.startswith('Complete') and not pod_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = self.k8s_create.delete_job(run)
+                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
 
                     # was there an error on the job
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
@@ -437,7 +424,7 @@ class APSVizSupervisor:
                     else:
                         # complete this job and setup for the next job
                         run['status_prov'] += f", {run['job-type'].value} complete"
-                        self.pg_db.update_job_status(run['id'], run['status_prov'])
+                        self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
                         # prepare for next stage
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
@@ -457,7 +444,7 @@ class APSVizSupervisor:
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = self.k8s_create.delete_job(run)
+                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
                         self.logger.error(
@@ -534,7 +521,7 @@ class APSVizSupervisor:
         # send the message to Slack if not in debug mode and not running locally
         if not debug_mode and self.system in ['Dev', 'Prod', 'AWS/EKS']:
             # determine the client based on the channel
-            if channel == self.slack_status_channel:
+            if channel == self.slack_channels['slack_status_channel']:
                 client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
             else:
                 client = WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
@@ -601,10 +588,10 @@ class APSVizSupervisor:
                     # check the run params to see if there is something missing
                     if len(missing_params_msg) > 0:
                         # update the run status everywhere
-                        self.pg_db.update_job_status(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}).")
+                        self.util_objs['pg_db'].update_job_status(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}).")
                         self.logger.error("Error - Run lacks the required run properties (%s): %s", missing_params_msg, run_id)
                         self.send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})",
-                                            self.slack_issues_channel, debug_mode, instance_name)
+                                            self.slack_channels['slack_issues_channel'], debug_mode, instance_name)
 
                         # continue processing the remaining runs
                         continue
@@ -624,17 +611,17 @@ class APSVizSupervisor:
                         continue
 
                     # add the new run to the list
-                    self.run_list.append(
-                        {'id': run_id, 'forcing.stormname': run['run_data']['forcing.stormname'], 'debug': debug_mode, 'fake-jobs': self.fake_job,
-                         'job-type': job_type, 'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted',
-                         'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'],
-                         'instance_name': run['run_data']['instancename']})
+                    self.run_list.append({'id': run_id, 'forcing.stormname': run['run_data']['forcing.stormname'], 'debug': debug_mode,
+                                          'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
+                                          'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
+                                          'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
 
                     # update the run status in the DB
-                    self.pg_db.update_job_status(run_id, f"{job_prov} run accepted")
+                    self.util_objs['pg_db'].update_job_status(run_id, f"{job_prov} run accepted")
 
                     # notify Slack
-                    self.send_slack_msg(run_id, f'{job_prov} run accepted.', self.slack_status_channel, debug_mode, run['run_data']['instancename'])
+                    self.send_slack_msg(run_id, f'{job_prov} run accepted.', self.slack_channels['slack_status_channel'], debug_mode,
+                                        run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
         """
@@ -650,17 +637,17 @@ class APSVizSupervisor:
         pause_mode = os.path.exists(os.path.join(os.path.dirname(__file__), '../', '../', str('pause')))
 
         # are we toggling pause mode
-        if pause_mode != self.pause_mode:
+        if pause_mode != self.debug_options['pause_mode']:
             # save the new pause mode
-            self.pause_mode = pause_mode
+            self.debug_options['pause_mode'] = pause_mode
 
             # let everyone know pause mode was toggled
-            self.send_slack_msg(None, f'Application is now {"paused" if pause_mode else "active"}.', self.slack_status_channel)
+            self.send_slack_msg(None, f'Application is now {"paused" if pause_mode else "active"}.', self.slack_channels['slack_status_channel'])
 
         # get all the new runs if system is not in pause mode
         if not pause_mode:
             # get the new runs
-            runs = self.pg_db.get_new_runs()
+            runs = self.util_objs['pg_db'].get_new_runs()
 
         # return to the caller
         return runs
