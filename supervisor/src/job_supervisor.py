@@ -207,7 +207,7 @@ class APSVizSupervisor:
         # if this was a final staging run that failed force complete
         if 'final-staging' in run:
             self.logger.error("Error detected in final staging for run id: %s", run['id'])
-            run['status_prov'] += ", Error detected in final staging. An incomplete cleanup may have occurred"
+            run['status_prov'] += ", error detected in final staging. An incomplete cleanup may have occurred"
 
             # set error conditions
             run['job-type'] = JobType.COMPLETE
@@ -215,7 +215,7 @@ class APSVizSupervisor:
         # else try to clean up
         else:
             self.logger.error("Error detected: About to clean up of intermediate files. Run id: %s", run['id'])
-            run['status_prov'] += ', Error detected'
+            run['status_prov'] += ', error detected'
 
             # set the type to clean up
             run['job-type'] = JobType.FINAL_STAGING
@@ -231,14 +231,14 @@ class APSVizSupervisor:
         :param run:
         :return:
         """
-        run['status_prov'] += ', Run complete'
+        run['status_prov'] += ', run complete'
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # init the type of run
         run_type = 'APS'
 
         # add a comment on overall pass/fail
-        if run['status_prov'].find('Error') == -1:
+        if run['status_prov'].find('error') == -1:
             msg = f'*{run_type} run completed successfully* :100:'
         else:
             msg = f"*{run_type} run completed unsuccessfully* :boom:"
@@ -397,6 +397,7 @@ class APSVizSupervisor:
                 self.logger.error("Job has timed out. Run ID: %s, Job type: %s", run['id'], run['job-type'])
             elif job_status.startswith('Failed'):
                 self.logger.error("Job has failed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
+                run['status_prov'] += f", {run['job-type'].value} failed"
             elif job_status.startswith('Complete'):
                 self.logger.info("Job has completed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
 
