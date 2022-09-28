@@ -38,6 +38,9 @@ class JobCreate:
         # set the job backoff limit
         self.back_off_limit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
 
+        # set the ephemeral limit
+        self.ephemeral_limit = self.k8s_config.get("EPHEMERAL_LIMIT")
+
         # get the time to live seconds after a finished job gets auto removed
         self.job_timeout = self.k8s_config.get("JOB_TIMEOUT")
 
@@ -143,8 +146,14 @@ class JobCreate:
             # set this to "Never" when troubleshooting pod issues
             restart_policy = run_job['run-config']['RESTART_POLICY']
 
-            # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': '128Mi'},
+            # get the ephemeral limit
+            if job_type.value in self.ephemeral_limit:
+                ephemeral_limit = self.ephemeral_limit[job_type.value]
+            else:
+                ephemeral_limit = '128Mi'
+
+                # get the baseline set of container resources
+            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
                          'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
 
             # remove any empty elements. this becomes important when setting the pod into a loop
