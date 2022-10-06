@@ -38,9 +38,6 @@ class JobCreate:
         # set the job backoff limit
         self.back_off_limit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
 
-        # set the ephemeral limit
-        self.ephemeral_limit = self.k8s_config.get("EPHEMERAL_LIMIT")
-
         # get the time to live seconds after a finished job gets auto removed
         self.job_timeout = self.k8s_config.get("JOB_TIMEOUT")
 
@@ -90,6 +87,12 @@ class JobCreate:
                 # build the mounted volumes list
                 volumes.append(client.V1Volume(name=name, persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=name)))
                 volume_mounts.append(client.V1VolumeMount(name=name, mount_path=mount_paths[index]))
+
+        # get the ephemeral limit
+        if run_job['run-config']['EPHEMERAL'] is not None:
+            ephemeral_limit = run_job['run-config']['EPHEMERAL']
+        else:
+            ephemeral_limit = '128Mi'
 
         # declare an array for the env declarations
         secret_envs = []
@@ -146,15 +149,9 @@ class JobCreate:
             # set this to "Never" when troubleshooting pod issues
             restart_policy = run_job['run-config']['RESTART_POLICY']
 
-            # get the ephemeral limit
-            if job_type.value in self.ephemeral_limit:
-                ephemeral_limit = self.ephemeral_limit[job_type.value]
-            else:
-                ephemeral_limit = '128Mi'
-
-                # get the baseline set of container resources
+            # get the baseline set of container resources
             resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
-                         'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '50Mi'}}
+                         'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '64Mi'}}
 
             # remove any empty elements. this becomes important when setting the pod into a loop
             # see get_base_command_line() in the supervisor code
