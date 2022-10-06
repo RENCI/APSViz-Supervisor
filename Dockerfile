@@ -5,10 +5,6 @@
 # SPDX-License-Identifier: MIT
 
 # This Dockerfile is used to build the APSVIZ-Supervisor image
-# starts with the python image
-# creates a directory for the repo
-# copies in the APSVIZ-Supervisor repo
-# and runs main which enables the supervisor
 
 # leverage the renci python base image
 FROM python:3.9-slim
