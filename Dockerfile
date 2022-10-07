@@ -7,7 +7,7 @@
 # This Dockerfile is used to build the APSVIZ-Supervisor image
 
 # leverage the renci python base image
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # create a new non-root user and switch to it
 RUN useradd --create-home -u 1000 nru

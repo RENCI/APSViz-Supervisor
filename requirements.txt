@@ -5,5 +5,5 @@
 # SPDX-License-Identifier: MIT
 
 kubernetes==22.6.0
-psycopg2-binary==2.9.3
-slack-sdk==3.18.1
+psycopg2-binary==2.9.4
+slack-sdk==3.19.1
