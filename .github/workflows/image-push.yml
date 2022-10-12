@@ -43,7 +43,6 @@ jobs:
           password: ${{ secrets.PW }}
       
       # get the tag for the image
-      # echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
       - name: Get the version
         id: get_version
         run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
