@@ -89,7 +89,7 @@ class PGUtils:
 
                     # is the connection ok now?
                     if good_conn:
-                        self.logger.error('DB Connection Established.')
+                        self.logger.info('DB Connection Established.')
                         # ok to continue
                         return
                 else:
