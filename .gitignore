@@ -4,10 +4,9 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
-common/__pycache__/
-postgres/src/__pycache__/
-supervisor/src/__pycache__/
-/src/common/base_config.json
+/src/common/__pycache__/
+/src/supervisor/__pycache__/
+
 /src/common/APSVIZ.APSVizSupervisor.log
 /src/common/APSVIZ.JobCreate.log
 /src/common/APSVIZ.JobFind.log
