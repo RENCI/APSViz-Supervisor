@@ -27,7 +27,7 @@ class JobCreate:
         inits the class
         """
         # load the run configuration params
-        self.k8s_config: dict = Utils.get_config()
+        self.k8s_config: dict = Utils.get_base_config()
 
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", line_format='medium')
