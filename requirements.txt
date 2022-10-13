@@ -4,6 +4,6 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
-kubernetes==22.6.0
+kubernetes==24.2.0
 psycopg2-binary==2.9.4
 slack-sdk==3.19.1
