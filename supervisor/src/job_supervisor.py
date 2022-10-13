@@ -13,13 +13,12 @@
 import time
 import os
 import json
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
 from supervisor.src.job_create import JobCreate
 from supervisor.src.job_find import JobFind
 from common.pg_utils import PGUtils
 from common.logger import LoggingUtil
 from common.job_enums import JobType, JobStatus
+from common.utils import Utils
 
 
 class APSVizSupervisor:
@@ -32,6 +31,12 @@ class APSVizSupervisor:
         """
         inits the class
         """
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", line_format='medium')
+
+        # get the environment this instance is running on
+        self.system = os.getenv('SYSTEM', 'System name not set')
+
         # the list of pending runs. this stores all job details of the run
         self.run_list = []
 
@@ -42,7 +47,7 @@ class APSVizSupervisor:
         self.k8s_config: dict = {}
 
         # utility objects
-        self.util_objs: dict = {'k8s_create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGUtils()}
+        self.util_objs: dict = {'k8s_create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGUtils(), 'utils': Utils(self.logger, self.system)}
 
         # init the run params to look for list
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
@@ -50,22 +55,12 @@ class APSVizSupervisor:
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
 
-        # get the environment this instance is running on
-        self.system = os.getenv('SYSTEM', 'System name not set')
-
-        # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", line_format='medium')
-
-        # init the Slack channels
-        self.slack_channels: dict = {'slack_status_channel': os.getenv('SLACK_STATUS_CHANNEL'),
-                                     'slack_issues_channel': os.getenv('SLACK_ISSUES_CHANNEL')}
-
         # declare ready
         self.logger.info('K8s Supervisor (%s) has started...', self.system)
 
-    def get_config(self) -> dict:
+    def get_job_config(self) -> dict:
         """
-        gets the run configuration
+        gets the run's job configuration
 
         :return: Dict, baseline run params
         """
@@ -131,7 +126,7 @@ class APSVizSupervisor:
                     msg = 'Exception caught. Terminating run.'
 
                     # send the message
-                    self.send_slack_msg(run['id'], msg, self.slack_channels['slack_issues_channel'], run['debug'], run['instance_name'])
+                    self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_issues_channel', run['debug'], run['instance_name'])
 
                     # remove the run
                     self.run_list.remove(run)
@@ -242,10 +237,10 @@ class APSVizSupervisor:
             msg = f'*{run_type} run completed successfully* :100:'
         else:
             msg = f"*{run_type} run completed unsuccessfully* :boom:"
-            self.send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", self.slack_channels['slack_issues_channel'], run['debug'],
-                                run['instance_name'])
+            self.util_objs['utils'].send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", 'slack_issues_channel', run['debug'],
+                                                   run['instance_name'])
         # send the message
-        self.send_slack_msg(run['id'], msg, self.slack_channels['slack_status_channel'], run['debug'], run['instance_name'])
+        self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_status_channel', run['debug'], run['instance_name'])
 
         # send something to log to indicate complete
         self.logger.info("%s complete.", run['id'])
@@ -478,8 +473,8 @@ class APSVizSupervisor:
 
         :return: nothing
         """
-        # get the config
-        config = self.get_config()[job_type]
+        # get the job type config
+        config = self.get_job_config()[job_type]
 
         # load the config with the info from the config file
         config['JOB_NAME'] += str(run['id']).lower()
@@ -495,44 +490,6 @@ class APSVizSupervisor:
 
         # save these params in the run info
         run[job_type] = {'run-config': config}
-
-    def send_slack_msg(self, run_id, msg, channel, debug_mode=False, instance_name=None):
-        """
-        sends a msg to the Slack channel
-
-        :param run_id: the ID of the supervisor run
-        :param msg: the msg tpo be sent
-        :param channel: the Slack channel to post the message to
-        :param debug_mode: mode to indicate that this is a
-        :param instance_name: the name of the ASGS instance
-        :return: nothing
-        """
-        # init the final msg
-        final_msg = f"APSViz Supervisor ({self.system}) - "
-
-        # if there was an instance name use it
-        final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
-
-        # add the run id and msg
-        final_msg += msg if run_id is None else f'Run ID: {run_id} {msg}'
-
-        # log the message
-        self.logger.info(final_msg)
-
-        # send the message to Slack if not in debug mode and not running locally
-        if not debug_mode and self.system in ['Dev', 'Prod', 'AWS/EKS']:
-            # determine the client based on the channel
-            if channel == self.slack_channels['slack_status_channel']:
-                client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
-            else:
-                client = WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
-
-            try:
-                # send the message
-                client.chat_postMessage(channel=channel, text=final_msg)
-            except SlackApiError:
-                # log the error
-                self.logger.exception('Slack %s messaging failed. msg: %s', channel, final_msg)
 
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
@@ -568,7 +525,7 @@ class APSVizSupervisor:
         runs = None
 
         # get the latest job definitions
-        self.k8s_config = self.get_config()
+        self.k8s_config = self.get_job_config()
 
         # make sure we got the config to continue
         if self.k8s_config is not None:
@@ -591,8 +548,8 @@ class APSVizSupervisor:
                         # update the run status everywhere
                         self.util_objs['pg_db'].update_job_status(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}).")
                         self.logger.error("Error - Run lacks the required run properties (%s): %s", missing_params_msg, run_id)
-                        self.send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})",
-                                            self.slack_channels['slack_issues_channel'], debug_mode, instance_name)
+                        self.util_objs['utils'].send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})",
+                                                               'slack_issues_channel', debug_mode, instance_name)
 
                         # continue processing the remaining runs
                         continue
@@ -621,8 +578,8 @@ class APSVizSupervisor:
                     self.util_objs['pg_db'].update_job_status(run_id, f"{job_prov} run accepted")
 
                     # notify Slack
-                    self.send_slack_msg(run_id, f'{job_prov} run accepted.', self.slack_channels['slack_status_channel'], debug_mode,
-                                        run['run_data']['instancename'])
+                    self.util_objs['utils'].send_slack_msg(run_id, f'{job_prov} run accepted.', 'slack_status_channel', debug_mode,
+                                                           run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
         """
@@ -643,7 +600,7 @@ class APSVizSupervisor:
             self.debug_options['pause_mode'] = pause_mode
 
             # let everyone know pause mode was toggled
-            self.send_slack_msg(None, f'Application is now {"paused" if pause_mode else "active"}.', self.slack_channels['slack_status_channel'])
+            self.util_objs['utils'].send_slack_msg(None, f'Application is now {"paused" if pause_mode else "active"}.', 'slack_status_channel')
 
         # get all the new runs if system is not in pause mode
         if not pause_mode:
