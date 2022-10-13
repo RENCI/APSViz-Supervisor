@@ -5,7 +5,9 @@
 # SPDX-License-Identifier: MIT
 
 """
-    uitiliyy methods for the project
+    utility methods for the project
+
+    Author: Phil Owen, RENCI.org
 """
 
 import os

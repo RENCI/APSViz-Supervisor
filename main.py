@@ -8,7 +8,7 @@
     Main entry point for the application
 """
 
-from supervisor.src.job_supervisor import APSVizSupervisor
+from src.supervisor.job_supervisor import APSVizSupervisor
 
 # create the supervisor
 supervisor = APSVizSupervisor()

@@ -6,11 +6,13 @@
 
 """
     Contains methods to find and interrogate a k8s job
+
+    Author: Phil Owen, RENCI.org
 """
 
 from kubernetes import client, config
-from common.logger import LoggingUtil
-from common.utils import Utils
+from src.common.logger import LoggingUtil
+from src.common.utils import Utils
 
 
 class JobFind:

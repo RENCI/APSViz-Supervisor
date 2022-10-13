@@ -6,15 +6,17 @@
 
 """
     Methods to create a k8s job
+
+    Author: Phil Owen, RENCI.org
 """
 
 import time
 import datetime as dt
 
 from kubernetes import client, config
-from common.logger import LoggingUtil
-from common.job_enums import JobType, JobStatus
-from common.utils import Utils
+from src.common.logger import LoggingUtil
+from src.common.job_enums import JobType, JobStatus
+from src.common.utils import Utils
 
 
 class JobCreate:

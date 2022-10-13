@@ -7,6 +7,8 @@
 """
     Directory Size Diff (dsd.py) - program to check file system for dir/file size
     changes by doing before/after comparisons using the "du -k" command every second.
+
+    Author: Phil Owen, RENCI.org
 """
 
 import sys

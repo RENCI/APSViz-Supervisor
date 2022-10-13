@@ -13,12 +13,12 @@
 import time
 import os
 import json
-from supervisor.src.job_create import JobCreate
-from supervisor.src.job_find import JobFind
-from common.pg_utils import PGUtils
-from common.logger import LoggingUtil
-from common.job_enums import JobType, JobStatus
-from common.utils import Utils
+from src.supervisor.job_create import JobCreate
+from src.supervisor.job_find import JobFind
+from src.common.pg_utils import PGUtils
+from src.common.logger import LoggingUtil
+from src.common.job_enums import JobType, JobStatus
+from src.common.utils import Utils
 
 
 class APSVizSupervisor:
@@ -47,7 +47,7 @@ class APSVizSupervisor:
         self.k8s_config: dict = {}
 
         # utility objects
-        self.util_objs: dict = {'k8s_create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGUtils(), 'utils': Utils(self.logger, self.system)}
+        self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGUtils(), 'utils': Utils(self.logger, self.system)}
 
         # init the run params to look for list
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
@@ -147,7 +147,7 @@ class APSVizSupervisor:
                     self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
                     # delete the k8s job if it exists
-                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
+                    job_del_status = self.util_objs['create'].delete_job(run)
 
                     # if there was a job error
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
@@ -357,7 +357,7 @@ class APSVizSupervisor:
                 self.k8s_create_run_config(run, job_type, command_line_params, extend_output_path)
 
                 # execute the k8s job run
-                job_id = self.util_objs['k8s_create'].execute(run, job_type)
+                job_id = self.util_objs['create'].execute(run, job_type)
 
                 # did we not get a job_id
                 if job_id is not None:
@@ -401,14 +401,14 @@ class APSVizSupervisor:
                 # did the job timeout (presumably waiting for resources) or failed
                 if job_status.startswith('Timeout') or job_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
+                    job_del_status = self.util_objs['create'].delete_job(run)
 
                     # set error conditions
                     run['status'] = JobStatus.ERROR
                 # did the job and pod succeed
                 elif job_status.startswith('Complete') and not pod_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
+                    job_del_status = self.util_objs['create'].delete_job(run)
 
                     # was there an error on the job
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
@@ -440,7 +440,7 @@ class APSVizSupervisor:
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
-                    job_del_status = self.util_objs['k8s_create'].delete_job(run)
+                    job_del_status = self.util_objs['create'].delete_job(run)
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
                         self.logger.error(

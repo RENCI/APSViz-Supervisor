@@ -7,9 +7,9 @@
 common/__pycache__/
 postgres/src/__pycache__/
 supervisor/src/__pycache__/
-/common/base_config.json
-
-/common/APSVIZ.APSVizSupervisor.log
-/common/APSVIZ.JobCreate.log
-/common/APSVIZ.JobFind.log
-/common/APSVIZ.pg_utils.log
+/src/common/base_config.json
+/src/common/APSVIZ.APSVizSupervisor.log
+/src/common/APSVIZ.JobCreate.log
+/src/common/APSVIZ.JobFind.log
+/src/common/APSVIZ.pg_utils.log
+/src/common/base_config.json

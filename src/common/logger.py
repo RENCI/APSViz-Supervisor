@@ -6,6 +6,8 @@
 
 """
     Logger methods for all components
+
+    Author: Phil Owen, RENCI.org
 """
 
 import os

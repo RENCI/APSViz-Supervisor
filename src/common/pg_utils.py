@@ -6,12 +6,14 @@
 
 """
     Class for database functionalities
+
+    Author: Phil Owen, RENCI.org
 """
 
 import os
 import time
 import psycopg2
-from common.logger import LoggingUtil
+from src.common.logger import LoggingUtil
 
 
 class PGUtils:

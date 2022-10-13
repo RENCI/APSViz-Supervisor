@@ -6,6 +6,8 @@
 
 """
     Class enums for the project
+
+    Author: Phil Owen, RENCI.org
 """
 
 from enum import Enum
