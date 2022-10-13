@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-    Main entry point for application
+    Main entry point for the application
 """
 
 from supervisor.src.job_supervisor import APSVizSupervisor
@@ -14,13 +14,12 @@ from supervisor.src.job_supervisor import APSVizSupervisor
 supervisor = APSVizSupervisor()
 
 try:
-
     # initiate the polling for work
     supervisor.run()
 except Exception:
     # log the reason for the shutdown
-    supervisor.logger.error('K8s Supervisor (%s) is shutting down...', supervisor.system)
+    supervisor.logger.exception('K8s Supervisor (%s) is shutting down...', supervisor.system)
 
 # let everyone know the application is shutting down
-supervisor.send_slack_msg(None, f'K8s Supervisor ({supervisor.system}) application is shutting down.', supervisor.slack_channels[
-    'slack_status_channel'])
+supervisor.util_objs['utils'].send_slack_msg(None, f'K8s Supervisor ({supervisor.system}) application is shutting down.',
+                                             'slack_status_channel')
