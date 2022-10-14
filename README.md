@@ -5,6 +5,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
 SPDX-License-Identifier: LicenseRef-RENCI
 SPDX-License-Identifier: MIT
 -->
+# Badges  
+
+## License
+[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
+[![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
+
+## Commits
+[![GitHub last commit](https://img.shields.io/github/last-commit/google/skia.svg?style=flat)]()
+[![GitHub commit activity the past week, 4 weeks](https://img.shields.io/github/commit-activity/y/eslint/eslint.svg?style=flat)]()
 
 # APSVIZ-k8s
 ## APZViz Supervisor
