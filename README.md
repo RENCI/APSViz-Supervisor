@@ -5,6 +5,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 SPDX-License-Identifier: LicenseRef-RENCI
 SPDX-License-Identifier: MIT
 -->
+## 1. GitHub Stats
+![Your Repository's Stats](https://github-readme-stats.vercel.app/api?username=PhillipsOwen&show_icons=true)
 
 # APSVIZ-k8s
 ## APZViz Supervisor
