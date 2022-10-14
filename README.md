@@ -5,19 +5,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 SPDX-License-Identifier: LicenseRef-RENCI
 SPDX-License-Identifier: MIT
 -->
-# Badges  
 
-## License
-[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
+[![MIT License](https://img.shields.io/badge/License-MIT-red.svg)](https://github.com/RENCI/APSVIZ-Supervisor/blob/master/LICENSE)
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
-
-## Commits
-[![GitHub last commit](https://img.shields.io/github/last-commit/google/skia.svg?style=flat)]()
-[![GitHub commit activity the past week, 4 weeks](https://img.shields.io/github/commit-activity/y/eslint/eslint.svg?style=flat)]()
+[![RENCI License](https://img.shields.io/badge/License-RENCI-blue.svg)](https://renci.org/)
+[![Python](https://img.shields.io/badge/Python-3.10.8-orange)](https://github.com/PyCQA/pylint)
+[![Linting Pylint](https://img.shields.io/badge/Linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
 
 # APSVIZ-k8s
 ## APZViz Supervisor
-A tool used to create jobs that launch various APSViz processes within a Kubernetes cluster.
-
-
-
+A tool that creates and launches various APSViz kubernetes jobs to create image products for the APSViz TerriaMap UI.
