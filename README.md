@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 ## License
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
-[![RENCI License](https://www.renci.org)  
+[![RENCI License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://www.renci.org)
 
 # APSVIZ-k8s
 ## APZViz Supervisor
