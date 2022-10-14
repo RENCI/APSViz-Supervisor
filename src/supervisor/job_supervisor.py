@@ -273,8 +273,7 @@ class APSVizSupervisor:
 
         # is this a hazus job array
         elif job_type == JobType.HAZUS:
-            command_line_params = [run['downloadurl']]  # TODO: restore when ready, self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run[
-            # 'id'])
+            command_line_params = [run['downloadurl']]  # restore when ready, self.k8s_config[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])
 
         # is this an adcirc2cog_tiff job array
         elif job_type == JobType.ADCIRC2COG_TIFF:
