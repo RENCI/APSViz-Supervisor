@@ -13,5 +13,6 @@ SPDX-License-Identifier: MIT
 [![Linting Pylint](https://img.shields.io/badge/Linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
 [![PyLint the codebase](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/pylint.yml/badge.svg)](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/pylint.yml)
 [![Build and push the Docker image](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/image-push.yml/badge.svg)](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/image-push.yml)
+
 # APSViz Supervisor
 A tool that creates and launches various APSViz kubernetes jobs to create image products for the APSViz TerriaMap UI.
