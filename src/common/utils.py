@@ -59,9 +59,9 @@ class Utils:
         sends a msg to the Slack channel
 
         :param run_id: the ID of the supervisor run
-        :param msg: the msg tpo be sent
+        :param msg: the msg to be sent
         :param channel: the Slack channel to post the message to
-        :param debug_mode: mode to indicate that this is a
+        :param debug_mode: mode to indicate that this is a no-op
         :param instance_name: the name of the ASGS instance
         :return: nothing
         """
