@@ -61,7 +61,11 @@ class JobCreate:
                                         {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
                                         {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
                                         {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}, {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'}]
+                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'},
+                                        {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
+                                        {'name': 'COG_MOSAIC_USERNAME', 'key': 'cog-mosaic-username'},
+                                        {'name': 'COG_MOSAIC_PASSWORD', 'key': 'cog-mosaic-password'},
+                                        {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'}]
 
     def create_job_object(self, run, job_type, job_details):
         """
@@ -81,7 +85,7 @@ class JobCreate:
                                    persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=f'{job_details["DATA_PVC_CLAIM"]}'))]
         volume_mounts = [client.V1VolumeMount(name=run_job['run-config']['DATA_VOLUME_NAME'], mount_path=run_job['run-config']['DATA_MOUNT_PATH'])]
 
-        # if there is a desire to mount the file server PV
+        # if there is a desire to mount other persistent volumes
         if run_job['run-config']['FILESVR_VOLUME_NAME']:
             mount_paths = run_job['run-config']['FILESVR_MOUNT_PATH'].split(',')
 
