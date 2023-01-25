@@ -11,7 +11,6 @@
 """
 
 import time
-import datetime as dt
 
 from kubernetes import client, config
 from src.common.logger import LoggingUtil
@@ -76,9 +75,6 @@ class JobCreate:
 
         # get a reference to the job type
         run_job = run[job_type]
-
-        # save the start time of the job
-        run_job['job-start'] = dt.datetime.now()
 
         # declare the volume mounts
         volumes = [client.V1Volume(name=run_job['run-config']['DATA_VOLUME_NAME'],
