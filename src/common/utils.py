@@ -11,9 +11,11 @@
 """
 
 import os
+import datetime as dt
 from json import load
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+
 
 class Utils:
     """
@@ -91,3 +93,20 @@ class Utils:
             except SlackApiError:
                 # log the error
                 self.logger.exception('Slack %s messaging failed. msg: %s', self.slack_channels[channel], final_msg)
+
+    @staticmethod
+    def get_time_delta(run) -> str:
+        """
+        sets the duration of a job in the run configuration.
+
+        :param run:
+        :return:
+        """
+        # get the time difference
+        delta = dt.datetime.now() - run['run-start']
+
+        # get it into minutes and seconds
+        minutes = divmod(delta.seconds, 60)
+
+        # return the duration to the caller
+        return f'in {minutes[0]} minutes, {minutes[1]} seconds'
