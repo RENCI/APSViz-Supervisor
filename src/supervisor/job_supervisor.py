@@ -228,7 +228,11 @@ class APSVizSupervisor:
         :param run:
         :return:
         """
-        run['status_prov'] += f', run complete {Utils.get_time_delta(run)}'
+        # get the run duration
+        duration = Utils.get_time_delta(run)
+
+        # update the run provenance in the DB
+        run['status_prov'] += f', run complete {duration}'
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # init the type of run
@@ -236,9 +240,9 @@ class APSVizSupervisor:
 
         # add a comment on overall pass/fail
         if run['status_prov'].find('error') == -1:
-            msg = f'*{run_type} run completed successfully {Utils.get_time_delta(run)}* :100:'
+            msg = f'*{run_type} run completed successfully {duration}* :100:'
         else:
-            msg = f"*{run_type} run completed unsuccessfully {Utils.get_time_delta(run)}* :boom:"
+            msg = f"*{run_type} run completed unsuccessfully {duration}* :boom:"
             self.util_objs['utils'].send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", 'slack_issues_channel', run['debug'],
                                                    run['instance_name'])
         # send the message
