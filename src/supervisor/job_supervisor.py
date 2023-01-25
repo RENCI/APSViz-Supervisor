@@ -13,6 +13,8 @@
 import time
 import os
 import json
+import datetime as dt
+
 from src.supervisor.job_create import JobCreate
 from src.supervisor.job_find import JobFind
 from src.common.pg_utils import PGUtils
@@ -226,7 +228,7 @@ class APSVizSupervisor:
         :param run:
         :return:
         """
-        run['status_prov'] += ', run complete'
+        run['status_prov'] += f', run complete {Utils.get_time_delta(run)}'
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # init the type of run
@@ -234,15 +236,15 @@ class APSVizSupervisor:
 
         # add a comment on overall pass/fail
         if run['status_prov'].find('error') == -1:
-            msg = f'*{run_type} run completed successfully* :100:'
+            msg = f'*{run_type} run completed successfully {Utils.get_time_delta(run)}* :100:'
         else:
-            msg = f"*{run_type} run completed unsuccessfully* :boom:"
+            msg = f"*{run_type} run completed unsuccessfully {Utils.get_time_delta(run)}* :boom:"
             self.util_objs['utils'].send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", 'slack_issues_channel', run['debug'],
                                                    run['instance_name'])
         # send the message
         self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_status_channel', run['debug'], run['instance_name'])
 
-        # send something to log to indicate complete
+        # send something to the log to indicate complete
         self.logger.info("%s complete.", run['id'])
 
         # remove the run
@@ -572,7 +574,8 @@ class APSVizSupervisor:
                     self.run_list.append({'id': run_id, 'forcing.stormname': run['run_data']['forcing.stormname'], 'debug': debug_mode,
                                           'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
                                           'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
-                                          'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename']})
+                                          'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename'],
+                                          'run-start': dt.datetime.now()})
 
                     # update the run status in the DB
                     self.util_objs['pg_db'].update_job_status(run_id, f"{job_prov} run accepted")
