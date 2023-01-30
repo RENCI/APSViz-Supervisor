@@ -95,7 +95,7 @@ class Utils:
                 self.logger.exception('Slack %s messaging failed. msg: %s', self.slack_channels[channel], final_msg)
 
     @staticmethod
-    def get_time_delta(run) -> str:
+    def get_run_time_delta(run) -> str:
         """
         sets the duration of a job in the run configuration.
 
@@ -110,3 +110,26 @@ class Utils:
 
         # return the duration to the caller
         return f'in {minutes[0]} minutes, {minutes[1]} seconds'
+
+    def check_last_run_time(self, last_run_time):
+        # get the time difference
+        delta = dt.datetime.now() - last_run_time
+
+        # get it into hours and minutes
+        hours = divmod(delta.seconds, 3600)
+
+        # if we reach 8 hours send a Slack message
+        if hours[0] == 8:
+            msg = f'The Supervisor application has not seen any new runs in 8 hours.'
+
+            # send the Slack message to the issues channel
+            self.send_slack_msg(None, msg, 'slack_issues_channel', debug_mode=False, instance_name=None)
+
+            # log the event
+            self.logger.exception(msg)
+
+            # reset the clock
+            last_run_time = dt.datetime.now()
+
+        # return the last run time
+        return last_run_time
