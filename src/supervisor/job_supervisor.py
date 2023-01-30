@@ -57,6 +57,9 @@ class APSVizSupervisor:
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
 
+        # save the last time a run completed
+        self.last_run_time = dt.datetime.now()
+
         # declare ready
         self.logger.info('K8s Supervisor (%s) has started...', self.system)
 
@@ -175,6 +178,10 @@ class APSVizSupervisor:
             if no_activity:
                 # increment the counter
                 no_activity_counter += 1
+
+                # check to see if it has been too long for a run
+                self.last_run_time = self.util_objs['utils'].check_last_run_time(self.last_run_time)
+
             else:
                 no_activity_counter = 0
 
@@ -229,7 +236,7 @@ class APSVizSupervisor:
         :return:
         """
         # get the run duration
-        duration = Utils.get_time_delta(run)
+        duration = Utils.get_run_time_delta(run)
 
         # update the run provenance in the DB
         run['status_prov'] += f', run complete {duration}'
