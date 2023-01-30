@@ -37,14 +37,16 @@ class Utils:
         self.slack_channels: dict = {'slack_status_channel': os.getenv('SLACK_STATUS_CHANNEL'),
                                      'slack_issues_channel': os.getenv('SLACK_ISSUES_CHANNEL')}
 
+        # get the config data
+        self.k8s_config: dict = Utils.get_base_config()
+
     @staticmethod
     def get_base_config() -> dict:
         """
-        gets the run configuration
+        gets the baseline run configuration
 
         :return: Dict, baseline run params
         """
-
         # get the config file path/name
         config_name = os.path.join(os.path.dirname(__file__), 'base_config.json')
 
@@ -111,22 +113,29 @@ class Utils:
         # return the duration to the caller
         return f'in {minutes[0]} minutes, {minutes[1]} seconds'
 
-    def check_last_run_time(self, last_run_time):
+    def check_last_run_time(self, last_run_time: dt.datetime) -> dt.datetime:
+        """
+        checks to see if we have not had a run in an allotted period of time.
+
+        :param last_run_time:
+        :return:
+        """
         # get the time difference
         delta = dt.datetime.now() - last_run_time
 
         # get it into hours and minutes
-        hours = divmod(delta.seconds, 3600)
+        hours = divmod(delta.seconds, 3600)  # 3600
 
-        # if we reach 8 hours send a Slack message
-        if hours[0] == 8:
-            msg = f'The Supervisor application has not seen any new runs in 8 hours.'
+        # if we reach the magic number of hours send a Slack message
+        if hours[0] >= self.k8s_config.get("SV_INACTIVITY"):
+            # build up the message
+            msg = f'The Supervisor application has not seen any new runs in the last {self.k8s_config.get("SV_INACTIVITY")} hours.'
 
             # send the Slack message to the issues channel
             self.send_slack_msg(None, msg, 'slack_issues_channel', debug_mode=False, instance_name=None)
 
             # log the event
-            self.logger.exception(msg)
+            self.logger.info(msg)
 
             # reset the clock
             last_run_time = dt.datetime.now()
