@@ -28,19 +28,19 @@ class JobCreate:
         inits the class
         """
         # load the run configuration params
-        self.k8s_config: dict = Utils.get_base_config()
+        self.k8s_base_config: dict = Utils.get_base_config()
 
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", line_format='medium')
 
         # set the resource limit multiplier
-        self.limit_multiplier = float(self.k8s_config.get("JOB_LIMIT_MULTIPLIER"))
+        self.limit_multiplier = float(self.k8s_base_config.get("JOB_LIMIT_MULTIPLIER"))
 
         # set the job backoff limit
-        self.back_off_limit = self.k8s_config.get("JOB_BACKOFF_LIMIT")
+        self.back_off_limit = self.k8s_base_config.get("JOB_BACKOFF_LIMIT")
 
         # get the time to live seconds after a finished job gets auto removed
-        self.job_timeout = self.k8s_config.get("JOB_TIMEOUT")
+        self.job_timeout = self.k8s_base_config.get("JOB_TIMEOUT")
 
         # declare the secret environment variables
         self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
@@ -295,7 +295,7 @@ class JobCreate:
         job_id = None
 
         # load the baseline config params
-        job_details = self.k8s_config
+        job_details = self.k8s_base_config
 
         # load the k8s configuration
         try:
