@@ -76,7 +76,7 @@ class Utils:
         final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
 
         # add the run id and msg
-        final_msg += msg if run_id is None else f'Run ID: {run_id} {msg}'
+        final_msg += msg if run_id is None else f'Run ID: {run_id} - {msg}'
 
         # log the message
         self.logger.info(final_msg)
