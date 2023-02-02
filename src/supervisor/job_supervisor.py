@@ -296,7 +296,7 @@ class APSVizSupervisor:
 
         # is this a hazus job array
         elif job_type == JobType.HAZUS:
-            command_line_params = ['--runproperties', run['downloadurl'], '--datadir',
+            command_line_params = ['--downloadurl', run['downloadurl'], '--datadir',
                                    job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
 
         # is this an adcirc2cog_tiff job array
