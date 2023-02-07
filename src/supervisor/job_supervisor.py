@@ -23,7 +23,7 @@ from src.common.job_enums import JobType, JobStatus
 from src.common.utils import Utils
 
 
-class APSVizSupervisor:
+class JobSupervisor:
     """
     Class for the APSViz supervisor
 
@@ -34,7 +34,7 @@ class APSVizSupervisor:
         inits the class
         """
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.APSVizSupervisor", line_format='medium')
+        self.logger = LoggingUtil.init_logging("APSVIZ.JobSupervisor", line_format='medium')
 
         # get the environment this instance is running on
         self.system = os.getenv('SYSTEM', 'System name not set')
