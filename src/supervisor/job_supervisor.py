@@ -61,7 +61,7 @@ class JobSupervisor:
         self.last_run_time = dt.datetime.now()
 
         # declare ready
-        self.logger.info('K8s Supervisor (%s) has started...', self.system)
+        self.logger.info('The APSViz Job Supervisor (%s) has started...', self.system)
 
     def get_job_configs(self) -> dict:
         """

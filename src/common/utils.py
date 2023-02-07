@@ -70,7 +70,7 @@ class Utils:
         :return: nothing
         """
         # init the final msg
-        final_msg = f"APSViz Supervisor ({self.system}) - "
+        final_msg = f"APSViz Job Supervisor ({self.system}) - "
 
         # if there was an instance name use it
         final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
