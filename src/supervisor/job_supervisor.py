@@ -34,7 +34,7 @@ class JobSupervisor:
         inits the class
         """
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobSupervisor", line_format='medium')
+        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", line_format='medium')
 
         # get the environment this instance is running on
         self.system = os.getenv('SYSTEM', 'System name not set')

@@ -25,7 +25,7 @@ class JobFind:
         inits the class
         """
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobFind", line_format='medium')
+        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobFind", line_format='medium')
 
     def find_job_info(self, run) -> (bool, str, str):
         """

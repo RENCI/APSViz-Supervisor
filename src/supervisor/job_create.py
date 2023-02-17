@@ -31,7 +31,7 @@ class JobCreate:
         self.k8s_base_config: dict = Utils.get_base_config()
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.JobCreate", line_format='medium')
+        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobCreate", line_format='medium')
 
         # set the resource limit multiplier
         self.limit_multiplier = float(self.k8s_base_config.get("JOB_LIMIT_MULTIPLIER"))
