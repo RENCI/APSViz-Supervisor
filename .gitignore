@@ -8,8 +8,8 @@
 /src/common/__pycache__/
 /src/supervisor/__pycache__/
 
-/src/common/APSVIZ.JobSupervisor.log
-/src/common/APSVIZ.JobCreate.log
-/src/common/APSVIZ.JobFind.log
-/src/common/APSVIZ.pg_utils.log
 /src/common/base_config.json
+/src/common/APSVIZ.Supervisor.JobCreate.log
+/src/common/APSVIZ.Supervisor.pg_utils.log
+/src/common/APSVIZ.Supervisor.Jobs.log
+/src/common/APSVIZ.Supervisor.JobFind.log
