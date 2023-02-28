@@ -305,8 +305,7 @@ class JobSupervisor:
 
         # is this a hazus job array
         elif job_type == JobType.HAZUS:
-            command_line_params = ['--downloadurl', run['downloadurl'], '--datadir',
-                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
+            command_line_params = ['--downloadurl', run['downloadurl'], '--datadir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
 
         # is this an adcirc2cog_tiff job array
         elif job_type == JobType.ADCIRC2COG_TIFF:
@@ -553,7 +552,8 @@ class JobSupervisor:
             workflow_type = 'ASGS'
 
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, workflow_type
+        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, \
+            workflow_type
 
     def get_incomplete_runs(self):
         """
@@ -614,7 +614,7 @@ class JobSupervisor:
                         # get the first job name into a type
                         job_type = JobType(first_job)
                     else:
-                        self.logger.info("Error - Could not find first job in the %s workflow for run id:", workflow_type, run_id)
+                        self.logger.info("Error - Could not find first job in the %s workflow for run id: %s", workflow_type, run_id)
                         continue
 
                     # add the new run to the list
