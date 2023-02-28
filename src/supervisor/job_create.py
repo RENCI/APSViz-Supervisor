@@ -208,6 +208,7 @@ class JobCreate:
         # create the API hooks
         api_instance = client.BatchV1Api()
 
+        # get references to places in the config to make things more readable
         job_data = run[job_type]['job-config']
         job_details = job_data['job-details']
         run_details = run[job_type]['run-config']
