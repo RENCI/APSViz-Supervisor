@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 
 [MASTER]
-disable=broad-except
+disable=broad-except,broad-exception-raised
 init-hook='import sys; sys.path.append("./")'
 max-line-length=150
 max-args=7
