@@ -13,7 +13,6 @@
 
 from kubernetes import client, config
 from src.common.logger import LoggingUtil
-from src.common.utils import Utils
 
 
 class JobFind:
