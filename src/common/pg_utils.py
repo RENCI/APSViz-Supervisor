@@ -223,3 +223,24 @@ class PGUtils:
 
         # run the SQL
         self.exec_sql(sql)
+
+    def get_first_job(self, workflow_type):
+        """
+        gets the supervisor job order
+
+        :return:
+        """
+        # create the sql
+        sql: str = f"SELECT public.get_supervisor_job_order('{workflow_type}')"
+
+        # get the order of jobs for this workflow type
+        jobs_in_order = self.exec_sql(sql)
+
+        # if we got a list get the first one
+        if isinstance(jobs_in_order, list):
+            ret_val = jobs_in_order[0]['job_name']
+        else:
+            ret_val = None
+
+        # return the first item in the ordered list
+        return ret_val
