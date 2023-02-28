@@ -216,8 +216,16 @@ class JobSupervisor:
         :param run:
         :return:
         """
+        # does this run have a final staging step
+        if 'final-staging' not in self.k8s_job_configs[run['workflow_type']]:
+            self.logger.error("Error detected in a %s workflow, run id: %s", run['workflow_type'], run['id'])
+            run['status_prov'] += f", error detected in a {run['workflow_type']} workflow . No cleanup occurred"
+
+            # set error conditions
+            run['job-type'] = JobType.COMPLETE
+            run['status'] = JobStatus.ERROR
         # if this was a final staging run that failed force complete
-        if 'final-staging' in run:
+        elif 'final-staging' in run:
             self.logger.error("Error detected in final staging for run id: %s", run['id'])
             run['status_prov'] += ", error detected in final staging. An incomplete cleanup may have occurred"
 
@@ -371,7 +379,7 @@ class JobSupervisor:
             job_type_list: list = [run['job-type']]
 
             # append any parallel jobs if they exist
-            if job_configs[run['job-type']]['PARALLEL']:
+            if 'PARALLEL' in job_configs[run['job-type']] and job_configs[run['job-type']]['PARALLEL']:
                 job_type_list.extend(job_configs[run['job-type']]['PARALLEL'])
 
             for job_type in job_type_list:
@@ -589,15 +597,24 @@ class JobSupervisor:
                     # if this is a new run
                     if run['run_data']['supervisor_job_status'].startswith('new'):
                         job_prov = f'New APS ({workflow_type})'
-                        job_type = JobType.STAGING
                     # if we are in debug mode
                     elif run['run_data']['supervisor_job_status'].startswith('debug'):
                         job_prov = f'New debug ({workflow_type})'
-                        job_type = JobType.STAGING
                     # ignore the entry as it is not in a legit "start" state. this may just
                     # be an existing or completed run.
                     else:
                         self.logger.info("Error - Unrecognized run command %s for %s", run['run_data']['supervisor_job_status'], run_id)
+                        continue
+
+                    # get the first job for this workflow type
+                    first_job = self.util_objs['pg_db'].get_first_job(workflow_type)
+
+                    # did we get a job type
+                    if first_job is not None:
+                        # get the first job name into a type
+                        job_type = JobType(first_job)
+                    else:
+                        self.logger.info("Error - Could not find first job in the %s workflow for run id:", workflow_type, run_id)
                         continue
 
                     # add the new run to the list
