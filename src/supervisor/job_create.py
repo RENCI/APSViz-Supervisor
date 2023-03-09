@@ -28,11 +28,14 @@ class JobCreate:
         """
         inits the class
         """
-        # load the run configuration params
-        self.k8s_base_config: dict = Utils.get_base_config()
+        # get the log level and directory from the environment.
+        log_level, log_path = LoggingUtil.prep_for_logging()
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobCreate", line_format='medium')
+        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
+
+        # load the run configuration params
+        self.k8s_base_config: dict = Utils.get_base_config()
 
         # set the resource limit multiplier
         self.limit_multiplier = float(self.k8s_base_config.get("JOB_LIMIT_MULTIPLIER"))
