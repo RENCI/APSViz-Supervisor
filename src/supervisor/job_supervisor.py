@@ -18,7 +18,7 @@ import datetime as dt
 
 from src.supervisor.job_create import JobCreate
 from src.supervisor.job_find import JobFind
-from src.common.pg_utils import PGUtils
+from src.common.pg_impl import PGImplementation
 from src.common.logger import LoggingUtil
 from src.common.job_enums import JobType, JobStatus
 from src.common.utils import Utils
@@ -34,8 +34,11 @@ class JobSupervisor:
         """
         inits the class
         """
+        # get the log level and directory from the environment.
+        log_level, log_path = LoggingUtil.prep_for_logging()
+
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", line_format='medium')
+        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", level=log_level, line_format='medium', log_file_path=log_path)
 
         # get the environment this instance is running on
         self.system = os.getenv('SYSTEM', 'System name not set')
@@ -49,8 +52,13 @@ class JobSupervisor:
         # load the k8s job configuration params
         self.k8s_job_configs: dict = {}
 
+        # specify the DB to get a connection
+        # note the extra comma makes this single item a singleton tuple
+        db_name: tuple = ('asgs',)
+
         # utility objects
-        self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGUtils(), 'utils': Utils(self.logger, self.system)}
+        self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_name),
+                                'utils': Utils(self.logger, self.system)}
 
         # init the run params to look for list
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
