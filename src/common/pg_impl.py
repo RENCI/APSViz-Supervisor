@@ -1,0 +1,114 @@
+# SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-RENCI
+# SPDX-License-Identifier: MIT
+
+"""
+    Class for database functionalities
+
+    Author: Phil Owen, RENCI.org
+"""
+from src.common.pg_utils_multi import PGUtilsMultiConnect
+from src.common.logger import LoggingUtil
+
+
+class PGImplementation(PGUtilsMultiConnect):
+    """
+        Class that contains DB calls for the Archiver.
+
+        Note this class inherits from the PGUtilsMultiConnect class
+        which has all the connection and cursor handling.
+    """
+
+    def __init__(self, db_names: tuple):
+        # get the log level and directory from the environment.
+        log_level, log_path = LoggingUtil.prep_for_logging()
+
+        # create a logger
+        self.logger = LoggingUtil.init_logging("APSViz.Supervisor.PGImplementation", level=log_level, line_format='medium', log_file_path=log_path)
+
+        # init the base class
+        PGUtilsMultiConnect.__init__(self, 'APSViz.Supervisor', db_names)
+
+    def __del__(self):
+        """
+        Calls super base class to clean up DB connections and cursors.
+
+        :return:
+        """
+        # clean up connections and cursors
+        PGUtilsMultiConnect.__del__(self)
+
+    def get_job_defs(self):
+        """
+        gets the supervisor job definitions
+
+        :return:
+        """
+
+        # create the sql
+        sql: str = 'SELECT public.get_supervisor_job_defs_json()'
+
+        # get the data
+        return self.exec_sql('asgs', sql)
+
+    def get_new_runs(self):
+        """
+        gets the DB records for new runs
+
+        :return: a json record of newly requested runs
+        """
+
+        # create the sql
+        sql: str = 'SELECT public.get_supervisor_config_items_json()'
+
+        # get the data
+        ret_val = self.exec_sql('asgs', sql)
+
+        # if there were no runs return None
+        if ret_val == -1:
+            ret_val = None
+
+        # return to the caller
+        return ret_val
+
+    def update_job_status(self, run_id, value):
+        """
+        updates the job status
+
+        :param run_id:
+        :param value:
+        :return: nothing
+        """
+
+        # split the run id. run id is in the form <instance id>_<url>
+        run = run_id.split('-')
+
+        # create the sql. ensure the value does not exceed the column size (1024)
+        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}-{run[2]}', 'supervisor_job_status', '{value[:1024]}')"
+
+        # run the SQL
+        self.exec_sql('asgs', sql)
+
+    def get_first_job(self, workflow_type):
+        """
+        gets the supervisor job order
+
+        :return:
+        """
+        # create the sql
+        sql: str = f"SELECT public.get_supervisor_job_order('{workflow_type}')"
+
+        # get the order of jobs for this workflow type
+        jobs_in_order = self.exec_sql('asgs', sql)
+
+        # if we got a list get the first one
+        if isinstance(jobs_in_order, list):
+            ret_val = jobs_in_order[0]['job_name']
+        else:
+            ret_val = None
+
+        # return the first item in the ordered list
+        return ret_val
