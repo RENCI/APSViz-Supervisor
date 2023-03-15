@@ -20,9 +20,8 @@ class LoggingUtil:
     """
     creates and configures a logger
     """
-
     @staticmethod
-    def init_logging(name, level=None, line_format='short', log_file_path=None):
+    def init_logging(name, level=logging.INFO, line_format='short', log_file_path=None):
         """
             Logging utility controlling format and setting initial logging level
         """
@@ -51,6 +50,9 @@ class LoggingUtil:
 
         # set the logging level
         logger.setLevel(level)
+
+        # dont allow message propagation
+        logger.propagate = False
 
         # if there was a file path passed in use it
         if log_file_path is not None:
