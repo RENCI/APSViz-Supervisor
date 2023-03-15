@@ -41,6 +41,7 @@ class JobType(str, Enum):
     STAGING = 'staging'
     HAZUS = 'hazus'
     LOAD_GEO_SERVER = 'load-geo-server'
+    LOAD_GEO_SERVER_S3 = 'load-geo-server-s3'
     FINAL_STAGING = 'final-staging'
     ADCIRC2COG_TIFF = 'adcirc2cog-tiff'
     GEOTIFF2COG = 'geotiff2cog'
