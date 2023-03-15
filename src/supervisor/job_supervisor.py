@@ -330,6 +330,10 @@ class JobSupervisor:
         elif job_type == JobType.LOAD_GEO_SERVER:
             command_line_params = ['--instanceId', str(run['id'])]
 
+        # is this a geo server load s3 job array
+        elif job_type == JobType.LOAD_GEO_SERVER_S3:
+            command_line_params = ['--HECRAS_URL', run['downloadurl']]
+
         # is this a final staging job array
         elif job_type == JobType.FINAL_STAGING:
             command_line_params = ['--inputDir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + job_configs[job_type]['SUB_PATH'],
