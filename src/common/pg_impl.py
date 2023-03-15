@@ -22,15 +22,21 @@ class PGImplementation(PGUtilsMultiConnect):
         which has all the connection and cursor handling.
     """
 
-    def __init__(self, db_names: tuple):
-        # get the log level and directory from the environment.
-        log_level, log_path = LoggingUtil.prep_for_logging()
+    def __init__(self, db_names: tuple, _logger=None, _auto_commit=True):
+        # if a reference to a logger passed in use it
+        if _logger is not None:
+            # get a handle to a logger
+            self.logger = _logger
+        else:
+            # get the log level and directory from the environment.
+            log_level, log_path = LoggingUtil.prep_for_logging()
 
-        # create a logger
-        self.logger = LoggingUtil.init_logging("APSViz.Supervisor.PGImplementation", level=log_level, line_format='medium', log_file_path=log_path)
+            # create a logger
+            self.logger = LoggingUtil.init_logging("APSViz.Supervisor.PGImplementation", level=log_level, line_format='medium',
+                                                   log_file_path=log_path)
 
         # init the base class
-        PGUtilsMultiConnect.__init__(self, 'APSViz.Supervisor', db_names)
+        PGUtilsMultiConnect.__init__(self, 'APSViz.Settings', db_names, _logger=self.logger, _auto_commit=_auto_commit)
 
     def __del__(self):
         """
@@ -52,7 +58,10 @@ class PGImplementation(PGUtilsMultiConnect):
         sql: str = 'SELECT public.get_supervisor_job_defs_json()'
 
         # get the data
-        return self.exec_sql('asgs', sql)
+        ret_val = self.exec_sql('asgs', sql)
+
+        # return the data
+        return ret_val
 
     def get_new_runs(self):
         """
@@ -90,7 +99,11 @@ class PGImplementation(PGUtilsMultiConnect):
         sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}-{run[2]}', 'supervisor_job_status', '{value[:1024]}')"
 
         # run the SQL
-        self.exec_sql('asgs', sql)
+        ret_val = self.exec_sql('asgs', sql)
+
+        # if there were no errors, commit the updates
+        if ret_val > -1:
+            self.commit('asgs')
 
     def get_first_job(self, workflow_type):
         """
