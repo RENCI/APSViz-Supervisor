@@ -120,7 +120,7 @@ class JobCreate:
         secret_env_params = self.secret_env_params.copy()
 
         # load geo can't use the http_proxy values
-        if job_type != JobType.LOAD_GEO_SERVER or job_type != JobType.LOAD_GEO_SERVER_S3:
+        if job_type != JobType.LOAD_GEO_SERVER and job_type != JobType.LOAD_GEO_SERVER_S3:
             # add the proxy values to the env param list
             secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'https_proxy', 'key': 'http-proxy-url'},
                                       {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}, {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}])
