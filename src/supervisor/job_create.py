@@ -77,11 +77,18 @@ class JobCreate:
                                         {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
                                         {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
                                         {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}, {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'},
+                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'}, {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
+                                        {'name': 'COG_MOSAIC_HOST', 'key': 'cog-mosaic-host'},
+                                        {'name': 'COG_MOSAIC_PORT', 'key': 'cog-mosaic-port'},
                                         {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
                                         {'name': 'COG_MOSAIC_USERNAME', 'key': 'cog-mosaic-username'},
                                         {'name': 'COG_MOSAIC_PASSWORD', 'key': 'cog-mosaic-password'},
-                                        {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'}]
+                                        {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'},
+                                        {'name': 'APSVIZ_GAUGES_HOST', 'key': 'apsviz-gauges-host'},
+                                        {'name': 'APSVIZ_GAUGES_PORT', 'key': 'apsviz-gauges-port'},
+                                        {'name': 'APSVIZ_GAUGES_DATABASE', 'key': 'apsviz-gauges-database'},
+                                        {'name': 'APSVIZ_GAUGES_USERNAME', 'key': 'apsviz-gauges-username'},
+                                        {'name': 'APSVIZ_GAUGES_PASSWORD', 'key': 'apsviz-gauges-password'}]
 
     def create_job_object(self, run, job_type, job_details):
         """
