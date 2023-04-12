@@ -86,6 +86,7 @@ class JobSupervisor:
 
         # make sure we got a list of config data items
         if isinstance(db_data, list):
+            # for each step in the workflow
             for workflow_item in db_data:
                 # get the workflow type name
                 workflow_type = list(workflow_item.keys())[0]
@@ -393,6 +394,7 @@ class JobSupervisor:
             if 'PARALLEL' in job_configs[run['job-type']] and job_configs[run['job-type']]['PARALLEL']:
                 job_type_list.extend(job_configs[run['job-type']]['PARALLEL'])
 
+            # create jobs form items in the list
             for job_type in job_type_list:
                 # get the data by the download url
                 command_line_params, extend_output_path = self.get_base_command_line(run, job_type)
