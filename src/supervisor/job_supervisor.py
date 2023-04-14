@@ -268,7 +268,7 @@ class JobSupervisor:
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # init the type of run
-        run_type = 'APS'
+        run_type = f"APS ({run['workflow_type']})"
 
         # add a comment on overall pass/fail
         if run['status_prov'].find('error') == -1:
