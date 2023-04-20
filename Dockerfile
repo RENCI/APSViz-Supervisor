@@ -19,6 +19,12 @@ RUN apt-get clean
 # get some credit
 LABEL maintainer="powen@renci.org"
 
+# get the build argument that has the version
+ARG VERSION=$(VERSION)
+
+# now the the version arg into a ENV param
+ENV VERSION=$(VERSION)
+
 # create a new non-root user and switch to it
 RUN useradd --create-home -u 1000 nru
 USER nru
