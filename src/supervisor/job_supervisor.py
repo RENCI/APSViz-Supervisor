@@ -61,7 +61,7 @@ class JobSupervisor:
 
         # utility objects
         self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_name, _logger=self.logger),
-                                'utils': Utils(self.logger, self.system)}
+                                'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
         self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
@@ -73,7 +73,7 @@ class JobSupervisor:
         self.last_run_time = dt.datetime.now()
 
         # declare ready
-        self.logger.info('The APSViz Job Supervisor (%s) version %s has started...', self.system, self.app_version)
+        self.logger.info('The APSViz Job Supervisor:%s (%s) has started...', self.app_version, self.system)
 
     def get_job_configs(self) -> dict:
         """

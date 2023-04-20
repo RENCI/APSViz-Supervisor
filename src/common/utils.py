@@ -23,7 +23,7 @@ class Utils:
     Methods that are common to components in the project
     """
 
-    def __init__(self, logger, system):
+    def __init__(self, logger, system, app_version):
         """
         Initialization of this class
 
@@ -33,6 +33,9 @@ class Utils:
 
         # assign the system name
         self.system = system
+
+        # assign the system name
+        self.app_version = app_version
 
         # init the Slack channels
         self.slack_channels: dict = {'slack_status_channel': os.getenv('SLACK_STATUS_CHANNEL'),
@@ -71,7 +74,7 @@ class Utils:
         :return: nothing
         """
         # init the final msg
-        final_msg = f"APSViz Job Supervisor ({self.system}) - "
+        final_msg = f"APSViz Job Supervisor:{self.app_version} ({self.system}) - "
 
         # if there was an instance name use it
         final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
