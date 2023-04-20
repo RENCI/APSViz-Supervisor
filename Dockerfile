@@ -20,9 +20,9 @@ RUN apt-get clean
 LABEL maintainer="powen@renci.org"
 
 # get the build argument that has the version
-ARG VERSION=$(VERSION)
+ARG APP_VERSION=$(APP_VERSION)
 
-# now the the version arg into a ENV param
+# now add the version arg value into a ENV param
 ENV APP_VERSION=$VERSION
 
 # create a new non-root user and switch to it

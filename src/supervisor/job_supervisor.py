@@ -34,14 +34,17 @@ class JobSupervisor:
         """
         inits the class
         """
+        # get the app version
+        self.app_version = os.getenv('APP_VERSION', 'Version number not set')
+
+        # get the environment this instance is running on
+        self.system = os.getenv('SYSTEM', 'System name not set')
+
         # get the log level and directory from the environment.
         log_level, log_path = LoggingUtil.prep_for_logging()
 
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", level=log_level, line_format='medium', log_file_path=log_path)
-
-        # get the environment this instance is running on
-        self.system = os.getenv('SYSTEM', 'System name not set')
 
         # the list of pending runs. this stores all job details of the run
         self.run_list = []
@@ -70,7 +73,7 @@ class JobSupervisor:
         self.last_run_time = dt.datetime.now()
 
         # declare ready
-        self.logger.info('The APSViz Job Supervisor (%s) has started...', self.system)
+        self.logger.info('The APSViz Job Supervisor (%s) version %s has started...', self.system, self.app_version)
 
     def get_job_configs(self) -> dict:
         """

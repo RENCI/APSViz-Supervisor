@@ -54,7 +54,7 @@ jobs:
         with:
           push: true
           build-args: |
-            VERSION=${{ steps.get_version.outputs.VERSION }}
+            APP_VERSION=${{ steps.get_version.outputs.VERSION }}
           tags: |
             ${{ env.REGISTRY }}:latest
             ${{ env.REGISTRY }}:${{ steps.get_version.outputs.VERSION }}
