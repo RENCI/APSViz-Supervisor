@@ -23,7 +23,7 @@ LABEL maintainer="powen@renci.org"
 ARG APP_VERSION=$(APP_VERSION)
 
 # now add the version arg value into a ENV param
-ENV APP_VERSION=$VERSION
+ENV APP_VERSION=$APP_VERSION
 
 # create a new non-root user and switch to it
 RUN useradd --create-home -u 1000 nru
