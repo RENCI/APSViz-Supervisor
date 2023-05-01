@@ -32,11 +32,11 @@ class PGImplementation(PGUtilsMultiConnect):
             log_level, log_path = LoggingUtil.prep_for_logging()
 
             # create a logger
-            self.logger = LoggingUtil.init_logging("APSViz.Supervisor.PGImplementation", level=log_level, line_format='medium',
+            self.logger = LoggingUtil.init_logging("APSViz.Supervisor.Jobs.PGImplementation", level=log_level, line_format='medium',
                                                    log_file_path=log_path)
 
         # init the base class
-        PGUtilsMultiConnect.__init__(self, 'APSViz.Settings', db_names, _logger=self.logger, _auto_commit=_auto_commit)
+        PGUtilsMultiConnect.__init__(self, 'APSViz.Supervisor.Jobs.PGImplementation', db_names, _logger=self.logger, _auto_commit=_auto_commit)
 
     def __del__(self):
         """
