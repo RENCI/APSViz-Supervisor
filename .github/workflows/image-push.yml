@@ -29,12 +29,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
 
-      # install pylint and run it on the code
-      - name: Python Pylint GitHub Action
-        uses: fylein/python-pylint-github-action@v1
-        with:
-          args: pip3 install -r requirements.txt && pylint --rcfile=.pylintrc --recursive=y ./
-
       # connect to the renci image registry
       - name: Login to containers.renci.org
         uses: docker/login-action@v2
