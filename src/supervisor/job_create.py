@@ -90,7 +90,8 @@ class JobCreate:
                                         {'name': 'APSVIZ_GAUGES_USERNAME', 'key': 'apsviz-gauges-username'},
                                         {'name': 'APSVIZ_GAUGES_PASSWORD', 'key': 'apsviz-gauges-password'},
                                         {'name': 'PSC_SYNC_URL', 'key': 'psc_sync_url'},
-                                        {'name': 'PSC_SYNC_TOKEN', 'key': 'psc_sync_token'}]
+                                        {'name': 'PSC_SYNC_TOKEN', 'key': 'psc_sync_token'},
+                                        {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'}]
 
     def create_job_object(self, run, job_type, job_details):
         """

@@ -369,6 +369,10 @@ class JobSupervisor:
                                    job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + job_configs[job_type][
                                        'SUB_PATH'], '--inputFile']
 
+        # is this a collaborator data sync job
+        elif job_type == JobType.COLLAB_DATA_SYNC:
+            command_line_params = ['--run_id', str(run['id'])]
+
         # return the command line and extend the path flag
         return command_line_params, extend_output_path
 
