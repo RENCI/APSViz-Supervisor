@@ -48,6 +48,7 @@ class JobType(str, Enum):
     OBS_MOD_AST = 'obs-mod-ast'
     ADCIRCTIME_TO_COG = 'adcirctime-to-cog'
     AST_RUN_HARVESTER = 'ast-run-harvester'
+    COLLAB_DATA_SYNC = 'collab-data-sync'
     ERROR = 'error'
     OTHER_1 = 'TBD'
     COMPLETE = 'complete'
