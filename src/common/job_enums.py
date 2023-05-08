@@ -49,6 +49,7 @@ class JobType(str, Enum):
     ADCIRCTIME_TO_COG = 'adcirctime-to-cog'
     AST_RUN_HARVESTER = 'ast-run-harvester'
     COLLAB_DATA_SYNC = 'collab-data-sync'
+    ADCIRC_TO_KALPANA_COG = 'adcirc-to-kalpana-cog'
     ERROR = 'error'
     OTHER_1 = 'TBD'
     COMPLETE = 'complete'
