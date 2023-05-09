@@ -373,7 +373,7 @@ class JobSupervisor:
         elif job_type == JobType.COLLAB_DATA_SYNC:
             command_line_params = ['--run_id', str(run['id'])]
 
-        # is this a adcirc to kalpana job
+        # is this aN adcirc to kalpana cog job
         elif job_type == JobType.ADCIRC_TO_KALPANA_COG:
             command_line_params = ['--modelRunID', str(run['id'])]
 
