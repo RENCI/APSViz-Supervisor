@@ -374,7 +374,7 @@ class JobSupervisor:
             command_line_params = ['--run_id', str(run['id'])]
 
         # is this a adcirc to kalpana job
-        elif job_type == JobType.COG_TO_KALPANA:
+        elif job_type == JobType.ADCIRC_TO_KALPANA_COG:
             command_line_params = ['--modelRunID', str(run['id'])]
 
         # return the command line and extend the path flag
