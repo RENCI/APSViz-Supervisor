@@ -64,7 +64,8 @@ class JobSupervisor:
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
-        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname']
+        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname',
+                                    'physical_location']
 
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
@@ -371,7 +372,7 @@ class JobSupervisor:
 
         # is this a collaborator data sync job
         elif job_type == JobType.COLLAB_DATA_SYNC:
-            command_line_params = ['--run_id', str(run['id'])]
+            command_line_params = ['--run_id', str(run['id']), '--physical_location', str(run['physical_location'])]
 
         # is this aN adcirc to kalpana cog job
         elif job_type == JobType.ADCIRC_TO_KALPANA_COG:
@@ -576,9 +577,15 @@ class JobSupervisor:
         else:
             workflow_type = 'ASGS'
 
+        # get the physical location of the cluster that initiated the run
+        if 'physical_location' in run_info:
+            physical_location = run_info['physical_location']
+        else:
+            physical_location = ''
+
         # loop through the params and return the ones that are missing
         return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, \
-            workflow_type
+            workflow_type, physical_location
 
     def get_incomplete_runs(self):
         """
@@ -606,7 +613,7 @@ class JobSupervisor:
 
                     # make sure all the needed params are available. instance name and debug mode are handled here
                     # because they both affect messaging and logging.
-                    missing_params_msg, instance_name, debug_mode, workflow_type = self.check_input_params(run['run_data'])
+                    missing_params_msg, instance_name, debug_mode, workflow_type, physical_location = self.check_input_params(run['run_data'])
 
                     # check the run params to see if there is something missing
                     if len(missing_params_msg) > 0:
@@ -648,7 +655,7 @@ class JobSupervisor:
                          'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
                          'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
                          'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename'],
-                         'run-start': dt.datetime.now()})
+                         'run-start': dt.datetime.now(), 'physical_location': physical_location})
 
                     # update the run status in the DB
                     self.util_objs['pg_db'].update_job_status(run_id, f"{job_prov} run accepted")
