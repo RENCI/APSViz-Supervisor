@@ -689,6 +689,9 @@ class JobSupervisor:
                         self.util_objs['utils'].send_slack_msg(run_id, f'{job_prov} run accepted.', 'slack_status_channel', debug_mode,
                                                                run['run_data']['instancename'])
                     else:
+                        # update the run status in the DB
+                        self.util_objs['pg_db'].update_job_status(run_id, f'Rejected duplicate.')
+
                         # notify Slack
                         self.util_objs['utils'].send_slack_msg(run_id, f'Run {run_id} rejected. Duplicate found. :boom:', 'slack_status_channel',
                                                                debug_mode, run['run_data']['instancename'])
