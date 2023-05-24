@@ -690,10 +690,10 @@ class JobSupervisor:
                                                                run['run_data']['instancename'])
                     else:
                         # update the run status in the DB
-                        self.util_objs['pg_db'].update_job_status(run_id, f'Rejected duplicate.')
+                        self.util_objs['pg_db'].update_job_status(run_id, f'Duplicate rejected.')
 
                         # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, f'Run {run_id} rejected. Duplicate found. :boom:', 'slack_status_channel',
+                        self.util_objs['utils'].send_slack_msg(run_id, f'Duplicate rejected. :boom:', 'slack_status_channel',
                                                                debug_mode, run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
