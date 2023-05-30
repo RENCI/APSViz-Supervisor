@@ -174,8 +174,8 @@ class JobSupervisor:
 
                     # if there was a job error
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error("Error failed job. Run ID: %s, Job type: %s, job delete status: %s", run['id'], run['job-type'],
-                                          job_del_status)
+                        self.logger.error("Error failed %s run. Run ID: %s, Job type: %s, job delete status: %s", run['physical_location'], run['id'],
+                                          run['job-type'], job_del_status)
 
                     # set error conditions
                     run['job-type'] = JobType.ERROR
@@ -231,23 +231,23 @@ class JobSupervisor:
         """
         # does this run have a final staging step
         if 'final-staging' not in self.k8s_job_configs[run['workflow_type']]:
-            self.logger.error("Error detected in a %s workflow, run id: %s", run['workflow_type'], run['id'])
-            run['status_prov'] += f", error detected in a {run['workflow_type']} workflow . No cleanup occurred"
+            self.logger.error("Error detected for a %s run of type %s. Run id: %s", run['physical_location'], run['workflow_type'], run['id'])
+            run['status_prov'] += f", error detected in a {run['physical_location']} run of type {run['workflow_type']}. No cleanup occurred."
 
             # set error conditions
             run['job-type'] = JobType.COMPLETE
             run['status'] = JobStatus.ERROR
         # if this was a final staging run that failed force complete
         elif 'final-staging' in run:
-            self.logger.error("Error detected in final staging for run id: %s", run['id'])
-            run['status_prov'] += ", error detected in final staging. An incomplete cleanup may have occurred"
+            self.logger.error("Error detected for a %s run in final staging with run id: %s", run['physical_location'], run['id'])
+            run['status_prov'] += f", error detected for a {run['physical_location']} run in final staging. An incomplete cleanup may have occurred."
 
             # set error conditions
             run['job-type'] = JobType.COMPLETE
             run['status'] = JobStatus.ERROR
         # else try to clean up
         else:
-            self.logger.error("Error detected: About to clean up of intermediate files. Run id: %s", run['id'])
+            self.logger.error(f"Error detected for a {run['physical_location']} run. About to clean up of intermediate files. Run id: %s", run['id'])
             run['status_prov'] += ', error detected'
 
             # set the type to clean up
@@ -276,9 +276,9 @@ class JobSupervisor:
 
         # add a comment on overall pass/fail
         if run['status_prov'].find('error') == -1:
-            msg = f'*{run_type} run completed successfully {duration}* :100:'
+            msg = f"*{run['physical_location']} {run_type} run completed successfully {duration}* :100:"
         else:
-            msg = f"*{run_type} run completed unsuccessfully {duration}* :boom:"
+            msg = f"*{run['physical_location']} {run_type} run completed unsuccessfully {duration}* :boom:"
             self.util_objs['utils'].send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", 'slack_issues_channel', run['debug'],
                                                    run['instance_name'])
         # send the message
@@ -424,12 +424,12 @@ class JobSupervisor:
                     run['status_prov'] += f", {job_type.value} running"
                     self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
-                    self.logger.info("Job created. Run ID: %s, Job type: %s", run['id'], job_type)
+                    self.logger.info("A %s job was created. Run ID: %s, Job type: %s", run['physical_location'], run['id'], job_type)
                 else:
                     # set the error status
                     run['status'] = JobStatus.ERROR
 
-                    self.logger.info("Job was not created. Run ID: %s, Job type: %s", run['id'], job_type)
+                    self.logger.info("A %s job was not created. Run ID: %s, Job type: %s", run['physical_location'], run['id'], job_type)
 
                 # if the next job is complete there is no reason to keep adding more jobs
                 if job_configs[job_type.value]['NEXT_JOB_TYPE'] == JobType.COMPLETE.value:
@@ -445,14 +445,14 @@ class JobSupervisor:
 
             # check the job status, report any issues
             if not job_found:
-                self.logger.error("Job not found. Run ID: %s, Job type: %s", run['id'], run['job-type'])
+                self.logger.error("Error: A %s job not found. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
             elif job_status.startswith('Timeout'):
-                self.logger.error("Job has timed out. Run ID: %s, Job type: %s", run['id'], run['job-type'])
+                self.logger.error("Error: A %s job has timed out. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
             elif job_status.startswith('Failed'):
-                self.logger.error("Job has failed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
+                self.logger.error("Error: A %s job has failed. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
                 run['status_prov'] += f", {run['job-type'].value} failed"
             elif job_status.startswith('Complete'):
-                self.logger.info("Job has completed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
+                self.logger.info("A %s job has completed. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
 
             # if the job was found
             if job_found:
@@ -470,8 +470,9 @@ class JobSupervisor:
 
                     # was there an error on the job
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error("Error failed job. Run status %s. Run ID: %s, Job type: %s, job delete status: %s, pod status: %s",
-                                          run['status'], run['id'], run['job-type'], job_del_status, pod_status)
+                        self.logger.error("Error: A failed %s job detected. Run status %s. Run ID: %s, Job type: %s, job delete status: %s, "
+                                          "pod status: %s", run['physical_location'], run['status'], run['id'], run['job-type'], job_del_status,
+                                          pod_status)
 
                         # set error conditions
                         run['status'] = JobStatus.ERROR
@@ -501,14 +502,15 @@ class JobSupervisor:
                     job_del_status = self.util_objs['create'].delete_job(run)
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error(
-                            "Error failed job and/or pod. Run status: %s. Run ID: %s, Job type: %s, job delete status: %s, pod status: %s.",
-                            run['status'], run['id'], run['job-type'], job_del_status, pod_status)
+                        self.logger.error("Error: A failed %s job and/or pod detected. Run status: %s. Run ID: %s, Job type: %s, job delete status: %s"
+                                          ", pod status: %s.", run['physical_location'], run['status'], run['id'], run['job-type'], job_del_status,
+                                          pod_status)
 
                     # set error conditions
                     run['status'] = JobStatus.ERROR
             else:
-                self.logger.error("Error job not found: Run status: %s, Run ID: %s, Job type: %s", run['status'], run['id'], run['job-type'])
+                self.logger.error("Error: A %s job not found: Run ID: %s, Run status: %s, Job type: %s", run['physical_location'], run['id'],
+                                  run['status'], run['job-type'])
 
                 # set error condition
                 run['status'] = JobStatus.ERROR
@@ -584,8 +586,7 @@ class JobSupervisor:
             physical_location = ''
 
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", \
-            instance_name, debug_mode, workflow_type, physical_location
+        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, workflow_type, physical_location
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -642,25 +643,28 @@ class JobSupervisor:
                         # check the run params to see if there is something missing
                         if len(missing_params_msg) > 0:
                             # update the run status everywhere
-                            self.util_objs['pg_db'].update_job_status(run_id,
-                                                                      f"Error - Run lacks the required run properties ({missing_params_msg}).")
-                            self.logger.error("Error - Run lacks the required run properties (%s): %s", missing_params_msg, run_id)
-                            self.util_objs['utils'].send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg})",
-                                                                   'slack_issues_channel', debug_mode, instance_name)
+                            self.util_objs['pg_db'].update_job_status(run_id, f"Error - Run lacks the required run properties "
+                                                                              f"({missing_params_msg}).")
+                            self.logger.error("Error: A %s run lacks the required run properties (%s): %s", physical_location, missing_params_msg,
+                                              run_id)
+                            self.util_objs['utils'].send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}) "
+                                                                           f"for a {physical_location} run.", 'slack_issues_channel', debug_mode,
+                                                                   instance_name)
 
                             # continue processing the remaining runs
                             continue
 
                         # if this is a new run
                         if run['run_data']['supervisor_job_status'].startswith('new'):
-                            job_prov = f'New APS ({workflow_type})'
+                            job_prov = f'New {physical_location} APS ({workflow_type})'
                         # if we are in debug mode
                         elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                            job_prov = f'New debug ({workflow_type})'
+                            job_prov = f'New debug {physical_location} APS ({workflow_type})'
                         # ignore the entry as it is not in a legit "start" state. this may just
                         # be an existing or completed run.
                         else:
-                            self.logger.info("Error - Unrecognized run command %s for %s", run['run_data']['supervisor_job_status'], run_id)
+                            self.logger.info("Error: Unrecognized %s run command %s for Run ID %s", physical_location,
+                                             run['run_data']['supervisor_job_status'], run_id)
                             continue
 
                         # get the first job for this workflow type
@@ -671,7 +675,8 @@ class JobSupervisor:
                             # get the first job name into a type
                             job_type = JobType(first_job)
                         else:
-                            self.logger.info("Error - Could not find first job in the %s workflow for run id: %s", workflow_type, run_id)
+                            self.logger.info("Error: Could not find the first %s job in the %s workflow for run id: %s", physical_location,
+                                             workflow_type, run_id)
                             continue
 
                         # add the new run to the list
@@ -693,8 +698,8 @@ class JobSupervisor:
                         self.util_objs['pg_db'].update_job_status(run_id, f'Duplicate rejected.')
 
                         # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, f'Duplicate rejected. :boom:', 'slack_status_channel',
-                                                               debug_mode, run['run_data']['instancename'])
+                        self.util_objs['utils'].send_slack_msg(run_id, f'Duplicate rejected. :boom:', 'slack_status_channel', debug_mode,
+                                                               run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
         """
