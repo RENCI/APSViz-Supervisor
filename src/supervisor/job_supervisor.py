@@ -502,8 +502,8 @@ class JobSupervisor:
                     job_del_status = self.util_objs['create'].delete_job(run)
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error("Error: A failed %s job and/or pod detected. Run status: %s. Run ID: %s, Job type: %s, job delete status: %s"
-                                          ", pod status: %s.", run['physical_location'], run['status'], run['id'], run['job-type'], job_del_status,
+                        self.logger.error("Error: A failed %s job and/or pod detected. Run status: %s. Run ID: %s, Job type: %s, job delete status: "
+                                          "%s, pod status: %s.", run['physical_location'], run['status'], run['id'], run['job-type'], job_del_status,
                                           pod_status)
 
                     # set error conditions
@@ -586,7 +586,8 @@ class JobSupervisor:
             physical_location = ''
 
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, workflow_type, physical_location
+        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, \
+            workflow_type, physical_location
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -695,10 +696,10 @@ class JobSupervisor:
                                                                run['run_data']['instancename'])
                     else:
                         # update the run status in the DB
-                        self.util_objs['pg_db'].update_job_status(run_id, f'Duplicate rejected.')
+                        self.util_objs['pg_db'].update_job_status(run_id, 'Duplicate rejected.')
 
                         # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, f'Duplicate rejected. :boom:', 'slack_status_channel', debug_mode,
+                        self.util_objs['utils'].send_slack_msg(run_id, 'Duplicate rejected. :boom:', 'slack_status_channel', debug_mode,
                                                                run['run_data']['instancename'])
 
     def check_pause_status(self, runs) -> dict:
