@@ -13,3 +13,4 @@
 /src/common/APSVIZ.Supervisor.pg_utils.log
 /src/common/APSVIZ.Supervisor.Jobs.log
 /src/common/APSVIZ.Supervisor.JobFind.log
+/src/test/.pytest_cache/
