@@ -374,8 +374,12 @@ class JobSupervisor:
         elif job_type == JobType.COLLAB_DATA_SYNC:
             command_line_params = ['--run_id', str(run['id']), '--physical_location', str(run['physical_location'])]
 
-        # is this aN adcirc to kalpana cog job
+        # is this an adcirc to kalpana cog job
         elif job_type == JobType.ADCIRC_TO_KALPANA_COG:
+            command_line_params = ['--modelRunID', str(run['id'])]
+
+        # is this a timeseries DB ingest job
+        elif job_type == JobType.TIMESERIESDB_INGEST:
             command_line_params = ['--modelRunID', str(run['id'])]
 
         # return the command line and extend the path flag

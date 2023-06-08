@@ -50,6 +50,7 @@ class JobType(str, Enum):
     AST_RUN_HARVESTER = 'ast-run-harvester'
     COLLAB_DATA_SYNC = 'collab-data-sync'
     ADCIRC_TO_KALPANA_COG = 'adcirc-to-kalpana-cog'
+    TIMESERIESDB_INGEST = 'timeseriesdb-ingest'
     ERROR = 'error'
     OTHER_1 = 'TBD'
     COMPLETE = 'complete'
