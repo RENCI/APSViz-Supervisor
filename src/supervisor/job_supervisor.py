@@ -57,10 +57,10 @@ class JobSupervisor:
 
         # specify the DB to get a connection
         # note the extra comma makes this single item a singleton tuple
-        db_name: tuple = ('asgs',)
+        db_names: tuple = ('asgs',)
 
         # utility objects
-        self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_name, _logger=self.logger),
+        self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
@@ -74,7 +74,7 @@ class JobSupervisor:
         self.last_run_time = dt.datetime.now()
 
         # declare ready
-        self.logger.info('The APSViz Job Supervisor:%s (%s) has started...', self.app_version, self.system)
+        self.logger.info('The APSViz Job Supervisor:%s (%s) has initialized...', self.app_version, self.system)
 
     def get_job_configs(self) -> dict:
         """
