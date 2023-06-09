@@ -15,17 +15,22 @@ from src.common.job_enums import JobType
 
 
 def test_command_line():
+    """
+    tests getting the job types and prints out the command lines.
+
+    :return:
+    """
     # get a reference to the
-    sv = JobSupervisor()
+    sv_cmds = JobSupervisor()
 
     # get the latest job definitions
-    sv.k8s_job_configs = sv.get_job_configs()
+    sv_cmds.k8s_job_configs = sv_cmds.get_job_configs()
 
     # for each workflow type
-    for workflow_type in sv.k8s_job_configs:
+    for workflow_type, workflow_steps in sv_cmds.k8s_job_configs.items():
         # for each workflow job step
-        for job_step in sv.k8s_job_configs[workflow_type]:
-            # create a dummy run command
+        for job_step in workflow_steps:
+            # create a dummy run command from the step definition
             run = {'id': '<RUN ID>', 'workflow_type': workflow_type, 'job-type': job_step,
                    'downloadurl': '<TDS URL>', 'physical_location': '<SITE NAME>', 'gridname': '<GRID NAME>',
                    'forcing.stormname': '<STORM_NAME>'}
@@ -34,13 +39,16 @@ def test_command_line():
             job_type = JobType(job_step)
 
             # get the base command
-            base_cmd = sv.get_base_command_line(run, job_type)
+            base_cmd = sv_cmds.get_base_command_line(run, job_type)
 
             # create the full commend line
-            new_cmd_list: list = sv.k8s_job_configs[workflow_type][job_step]['COMMAND_LINE'].copy()
+            new_cmd_list: list = workflow_steps[job_step]['COMMAND_LINE'].copy()
 
             # add the command matrix value
             new_cmd_list.extend(base_cmd[0])
 
+            # make sure the commands were returned
+            assert len(new_cmd_list) > 0
+
             # output for the user
-            print(f'\njob_type: {job_type}\ncmd: {new_cmd_list}\ncommand line: {" ".join([str(x) for x in new_cmd_list])}')
+            print(f'\njob_type: {job_type}\nDB cmd: {new_cmd_list}\nfinal command line: {" ".join([str(x) for x in new_cmd_list])}')
