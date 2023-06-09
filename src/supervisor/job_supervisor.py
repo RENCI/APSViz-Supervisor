@@ -46,20 +46,23 @@ class JobSupervisor:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", level=log_level, line_format='medium', log_file_path=log_path)
 
-        # the list of pending runs. this stores all job details of the run
+        # init the list of pending runs. this stores all job details of the run
         self.run_list = []
 
-        # set the polling parameter values
-        self.polling_params = {'poll_short_sleep': 10, 'poll_long_sleep': 60, 'max_no_activity_count': 60, 'run_count': 0}
+        # load the base configuration params
+        self.k8s_base_config: dict = Utils.get_base_config()
 
-        # load the k8s job configuration params
+        # init the running count of active runs
+        self.run_count = 0
+
+        # init the k8s job configuration storage
         self.k8s_job_configs: dict = {}
 
         # specify the DB to get a connection
         # note the extra comma makes this single item a singleton tuple
         db_names: tuple = ('asgs',)
 
-        # utility objects
+        # assign utility objects
         self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
@@ -70,7 +73,7 @@ class JobSupervisor:
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
 
-        # save the last time a run completed
+        # init the last time a run completed
         self.last_run_time = dt.datetime.now()
 
         # declare ready
@@ -185,11 +188,11 @@ class JobSupervisor:
                     continue
 
             # output the current number of runs in progress if there are any
-            if self.polling_params["run_count"] != len(self.run_list):
+            if self.run_count != len(self.run_list):
                 # save the new run count
-                self.polling_params['run_count'] = len(self.run_list)
-                msg = f'There {"are" if self.polling_params["run_count"] != 1 else "is"} {self.polling_params["run_count"]} ' \
-                      f'run{"s" if self.polling_params["run_count"] != 1 else ""} in progress.'
+                self.run_count = len(self.run_list)
+                msg = f'There {"are" if self.run_count != 1 else "is"} {self.run_count} ' \
+                      f'run{"s" if self.run_count != 1 else ""} in progress.'
                 self.logger.info(msg)
 
             # was there any activity
@@ -207,15 +210,15 @@ class JobSupervisor:
                 self.last_run_time = dt.datetime.now()
 
             # check for something to do after a period of time
-            if no_activity_counter >= self.polling_params['max_no_activity_count']:
+            if no_activity_counter >= self.k8s_base_config.get("MAX_NO_ACTIVITY_COUNT"):
                 # set the sleep timeout
-                sleep_timeout = self.polling_params['poll_long_sleep']
+                sleep_timeout = self.k8s_base_config.get("POLL_LONG_SLEEP")
 
                 # try again at this poll rate
-                no_activity_counter = self.polling_params['max_no_activity_count'] - 1
+                no_activity_counter = self.k8s_base_config.get("MAX_NO_ACTIVITY_COUNT") - 1
             else:
                 # set the sleep timeout
-                sleep_timeout = self.polling_params['poll_short_sleep']
+                sleep_timeout = self.k8s_base_config.get("POLL_SHORT_SLEEP")
 
             self.logger.debug("All active run checks complete. Sleeping for %s minutes.", sleep_timeout / 60)
 
