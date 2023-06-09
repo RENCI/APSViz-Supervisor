@@ -89,6 +89,7 @@ class JobCreate:
                                         {'name': 'APSVIZ_GAUGES_DATABASE', 'key': 'apsviz-gauges-database'},
                                         {'name': 'APSVIZ_GAUGES_USERNAME', 'key': 'apsviz-gauges-username'},
                                         {'name': 'APSVIZ_GAUGES_PASSWORD', 'key': 'apsviz-gauges-password'},
+                                        {'name': 'APSVIZ_GAUGES_ENGINE', 'key': 'apsviz-gauges-engine'},
                                         {'name': 'PSC_SYNC_URL', 'key': 'psc_sync_url'},
                                         {'name': 'PSC_SYNC_TOKEN', 'key': 'psc_sync_token'},
                                         {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'}]
