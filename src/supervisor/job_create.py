@@ -34,7 +34,7 @@ class JobCreate:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
-        # load the run configuration params
+        # load the base configuration params
         self.k8s_base_config: dict = Utils.get_base_config()
 
         # set the resource limit multiplier
