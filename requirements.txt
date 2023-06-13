@@ -9,3 +9,5 @@ kubernetes==26.1.0
 psycopg2-binary==2.9.6
 slack-sdk==3.21.3
 pylint==2.17.4
+pandas==2.0.2
+numpy==1.24.3
