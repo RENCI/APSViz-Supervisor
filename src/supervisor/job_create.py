@@ -92,7 +92,8 @@ class JobCreate:
                                         {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'},
                                         {'name': 'PSC_SYNC_URL', 'key': 'psc_sync_url'},
                                         {'name': 'PSC_SYNC_TOKEN', 'key': 'psc_sync_token'},
-                                        {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'}]
+                                        {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'},
+                                        {'name': 'UI_DATA_URL', 'key': 'ui-data-url'}]
 
     def create_job_object(self, run, job_type, job_details):
         """
