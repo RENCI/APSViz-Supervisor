@@ -67,7 +67,7 @@ class JobSupervisor:
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
-        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormname',
+        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'forcing.stormnumber',
                                     'physical_location']
 
         # debug options
@@ -316,7 +316,7 @@ class JobSupervisor:
 
         # is this a staging job array
         if job_type == JobType.STAGING:
-            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['forcing.stormname'], '--outputDir']
+            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['forcing.stormnumber'], '--outputDir']
             extend_output_path = True
 
         # is this a hazus job array
@@ -688,7 +688,7 @@ class JobSupervisor:
                             continue
 
                         # add the new run to the list
-                        self.run_list.append({'id': run_id, 'workflow_type': workflow_type, 'forcing.stormname': run['run_data']['forcing.stormname'],
+                        self.run_list.append({'id': run_id, 'workflow_type': workflow_type, 'forcing.stormnumber': run['run_data']['forcing.stormnumber'],
                                               'debug': debug_mode, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
                                               'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted',
                                               'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'],

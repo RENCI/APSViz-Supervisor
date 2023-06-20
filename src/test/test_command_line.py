@@ -33,7 +33,7 @@ def test_command_line():
             # create a dummy run command from the step definition
             run = {'id': '<RUN ID>', 'workflow_type': workflow_type, 'job-type': job_step,
                    'downloadurl': '<TDS URL>', 'physical_location': '<SITE NAME>', 'gridname': '<GRID NAME>',
-                   'forcing.stormname': '<STORM_NAME>'}
+                   'forcing.stormnumber': '<STORM_NUMBER>'}
 
             # convert the job step name into a job type enum
             job_type = JobType(job_step)
