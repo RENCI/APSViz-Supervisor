@@ -592,6 +592,10 @@ class JobSupervisor:
         else:
             physical_location = ''
 
+        # if the storm number doesn't exist default it
+        if 'forcing.stormnumber' not in run_info:
+            run_info['forcing.stormnumber'] = 'NA'
+
         # loop through the params and return the ones that are missing
         return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, \
             workflow_type, physical_location
