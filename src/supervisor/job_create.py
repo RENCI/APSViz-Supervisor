@@ -83,7 +83,7 @@ class JobCreate:
                                         {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
                                         {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
                                         {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}, {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'}, {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
+                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'},
                                         {'name': 'COG_MOSAIC_HOST', 'key': 'cog-mosaic-host'},
                                         {'name': 'COG_MOSAIC_PORT', 'key': 'cog-mosaic-port'},
                                         {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
