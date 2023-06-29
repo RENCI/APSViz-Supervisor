@@ -38,13 +38,16 @@ class JobCreate:
         self.k8s_base_config: dict = Utils.get_base_config()
 
         # set the resource limit multiplier
-        self.limit_multiplier = float(self.k8s_base_config.get("JOB_LIMIT_MULTIPLIER"))
+        self.limit_multiplier: float = float(self.k8s_base_config.get("JOB_LIMIT_MULTIPLIER"))
 
         # set the job backoff limit
-        self.back_off_limit = self.k8s_base_config.get("JOB_BACKOFF_LIMIT")
+        self.back_off_limit: int = self.k8s_base_config.get("JOB_BACKOFF_LIMIT")
 
         # get the time to live seconds after a finished job gets auto removed
-        self.job_timeout = self.k8s_base_config.get("JOB_TIMEOUT")
+        self.job_timeout: int = self.k8s_base_config.get("JOB_TIMEOUT")
+
+        # get the flag that indicates if there are cpu resource limits
+        self.cpu_limits: bool = self.k8s_base_config.get("CPU_LIMITS")
 
         # declare the secret environment variables
         self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
@@ -170,20 +173,27 @@ class JobCreate:
             else:
                 cpus = '250m'
 
-            # this is done to make sure that cpu limit is some percentage greater than what is created
-            cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
-            cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
-
-            # set some cpu padding
-            cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
-            cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
-
             # set this to "Never" when troubleshooting pod issues
             restart_policy = run_job['run-config']['RESTART_POLICY']
 
             # get the baseline set of container resources
             resources = {'limits': {'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
                          'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '64Mi'}}
+
+            # if there is a cpu limit restriction add it to the resource spec
+            if self.cpu_limits:
+                # parse the cpu text
+                cpu_val_txt = ''.join(x for x in cpus if x.isdigit())
+                cpu_unit_txt = ''.join(x for x in cpus if not x.isdigit())
+
+                # this is done to make sure that cpu limit is some percentage greater than what is created
+                cpus_limit_val = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
+
+                # create the cpu specification
+                cpus_limit = f'{cpus_limit_val}{cpu_unit_txt}'
+
+                # append the limit onto the specification
+                resources['limits'].update({'cpu': cpus_limit})
 
             # remove any empty elements. this becomes important when setting the pod into a loop
             # see get_base_command_line() in the supervisor code
