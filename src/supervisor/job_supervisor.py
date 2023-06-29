@@ -35,10 +35,10 @@ class JobSupervisor:
         inits the class
         """
         # get the app version
-        self.app_version = os.getenv('APP_VERSION', 'Version number not set')
+        self.app_version: str = os.getenv('APP_VERSION', 'Version number not set')
 
         # get the environment this instance is running on
-        self.system = os.getenv('SYSTEM', 'System name not set')
+        self.system: str = os.getenv('SYSTEM', 'System name not set')
 
         # get the log level and directory from the environment.
         log_level, log_path = LoggingUtil.prep_for_logging()
@@ -47,13 +47,13 @@ class JobSupervisor:
         self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", level=log_level, line_format='medium', log_file_path=log_path)
 
         # init the list of pending runs. this stores all job details of the run
-        self.run_list = []
+        self.run_list: list = []
 
         # load the base configuration params
         self.k8s_base_config: dict = Utils.get_base_config()
 
         # init the running count of active runs
-        self.run_count = 0
+        self.run_count: int = 0
 
         # init the k8s job configuration storage
         self.k8s_job_configs: dict = {}
