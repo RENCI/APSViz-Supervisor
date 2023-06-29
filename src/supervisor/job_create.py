@@ -182,7 +182,7 @@ class JobCreate:
             restart_policy = run_job['run-config']['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources = {'limits': {'cpu': cpus_limit, 'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
+            resources = {'limits': {'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
                          'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '64Mi'}}
 
             # remove any empty elements. this becomes important when setting the pod into a loop
