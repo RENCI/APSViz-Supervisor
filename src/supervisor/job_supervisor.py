@@ -33,6 +33,7 @@ class JobSupervisor:
     def __init__(self):
         """
         inits the class
+
         """
         # get the app version
         self.app_version: str = os.getenv('APP_VERSION', 'Version number not set')
@@ -225,7 +226,7 @@ class JobSupervisor:
             # wait for the next check for something to do
             time.sleep(sleep_timeout)
 
-    def handle_job_error(self, run):
+    def handle_job_error(self, run: dict):
         """
         handles the job state when it is marked as in error
 
@@ -260,7 +261,7 @@ class JobSupervisor:
         # report the issue
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
-    def handle_job_complete(self, run):
+    def handle_job_complete(self, run: dict):
         """
         handles the job state when it is marked complete
 
@@ -279,13 +280,16 @@ class JobSupervisor:
 
         # add a comment on overall pass/fail
         if run['status_prov'].find('error') == -1:
-            msg = f"*{run['physical_location']} {run_type} run completed successfully {duration}* :100:"
+            msg = f"*{run['physical_location']} {run_type} run completed successfully {duration}*"
+            emoticon = ':100:'
+
         else:
-            msg = f"*{run['physical_location']} {run_type} run completed unsuccessfully {duration}* :boom:"
+            msg = f"*{run['physical_location']} {run_type} run completed unsuccessfully {duration}*"
+            emoticon = ':boom:'
             self.util_objs['utils'].send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", 'slack_issues_channel', run['debug'],
-                                                   run['instance_name'])
+                                                   run['instance_name'], emoticon)
         # send the message
-        self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_status_channel', run['debug'], run['instance_name'])
+        self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_status_channel', run['debug'], run['instance_name'], emoticon)
 
         # send something to the log to indicate complete
         self.logger.info("%s complete.", run['id'])
@@ -363,6 +367,9 @@ class JobSupervisor:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
+            # [["--noaa", "--nowcast"], ["--noaa"], ["--ndbc", "--nowcast"], ["--ndbc"], ["--contrails_rivers", "--nowcast"], ["--contrails_rivers"],
+            #  ["--contrails_coastal", "--nowcast"], ["--contrails_coastal"]]
+
             # create the additional command line parameters
             command_line_params = [thredds_url, job_configs[job_type]['DATA_MOUNT_PATH'] + job_configs[job_type]['SUB_PATH']]
 
@@ -388,7 +395,7 @@ class JobSupervisor:
         # return the command line and extend the path flag
         return command_line_params, extend_output_path
 
-    def handle_run(self, run) -> bool:
+    def handle_run(self, run: dict) -> bool:
         """
         handles the run processing
 
@@ -604,8 +611,10 @@ class JobSupervisor:
         """
         checks to see if this run is already in progress
 
+        :param new_run_id:
         :return:
         """
+
         # init found flag, presume not found
         ret_val: bool = False
 
@@ -637,19 +646,19 @@ class JobSupervisor:
         # make sure we got the config to continue
         if self.k8s_job_configs is not None:
             # check to see if we are in pause mode
-            runs = self.check_pause_status(runs)
+            runs = self.check_pause_status()
 
             # did we find anything to do
             if runs is not None:
-                # add this run to the list
+                # add the runs to the list
                 for run in runs:
                     # save the run id that was provided by the DB run.properties data
                     run_id = run['run_id']
 
                     # check for a duplicate run
                     if not self.check_for_duplicate_run(run_id):
-                        # make sure all the needed params are available. instance name and debug mode are handled here
-                        # because they both affect messaging and logging.
+                        # make sure all the needed params are available. instance name and debug mode
+                        # are handled here because they both affect messaging and logging.
                         missing_params_msg, instance_name, debug_mode, workflow_type, physical_location = self.check_input_params(run['run_data'])
 
                         # check the run params to see if there is something missing
@@ -704,20 +713,19 @@ class JobSupervisor:
 
                         # notify Slack
                         self.util_objs['utils'].send_slack_msg(run_id, f'{job_prov} run accepted.', 'slack_status_channel', debug_mode,
-                                                               run['run_data']['instancename'])
+                                                               run['run_data']['instancename'], ':rocket:')
                     else:
                         # update the run status in the DB
-                        self.util_objs['pg_db'].update_job_status(run_id, 'Duplicate rejected.')
+                        self.util_objs['pg_db'].update_job_status(run_id, 'Duplicate run rejected.')
 
                         # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, 'Duplicate rejected. :boom:', 'slack_status_channel', debug_mode,
-                                                               run['run_data']['instancename'])
+                        self.util_objs['utils'].send_slack_msg(run_id, 'Duplicate run rejected.', 'slack_status_channel', debug_mode,
+                                                               run['run_data']['instancename'], ':boom:')
 
-    def check_pause_status(self, runs) -> dict:
+    def check_pause_status(self) -> dict:
         """
         checks to see if we are in pause mode. if the system isn't, get new runs.
 
-        :param runs: the run parameters
         :return: returns dict of newly discovered runs
         """
         # init the return value
