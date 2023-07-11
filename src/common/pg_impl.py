@@ -105,7 +105,7 @@ class PGImplementation(PGUtilsMultiConnect):
         if ret_val > -1:
             self.commit('asgs')
 
-    def get_first_job(self, workflow_type):
+    def get_first_job(self, workflow_type: str):
         """
         gets the supervisor job order
 

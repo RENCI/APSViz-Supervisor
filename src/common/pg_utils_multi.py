@@ -83,7 +83,7 @@ class PGUtilsMultiConnect:
             # close the connection
             self.close_conn(db_name)
 
-    def close_conn(self, db_name):
+    def close_conn(self, db_name: str):
         """
         Closes a DB connection
 
