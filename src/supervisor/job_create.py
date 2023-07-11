@@ -196,7 +196,7 @@ class JobCreate:
                 resources['limits'].update({'cpu': cpus_limit})
 
             # remove any empty elements. this becomes important when setting the pod into a loop
-            # see get_base_command_line() in the supervisor code
+            # see get_base_command_line() in the job supervisor code
             if '' in new_cmd_list:
                 new_cmd_list.remove('')
 
