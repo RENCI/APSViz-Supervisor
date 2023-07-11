@@ -30,7 +30,7 @@ class JobFind:
         # create a logger
         self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobFind", level=log_level, line_format='medium', log_file_path=log_path)
 
-    def find_job_info(self, run) -> (bool, str, str):
+    def find_job_info(self, run: dict) -> (bool, str, str):
         """
         method to gather the k8s job information
 

@@ -26,7 +26,8 @@ class JobCreate:
 
     def __init__(self):
         """
-        inits the class
+        inits the class.
+
         """
         # get the log level and directory from the environment.
         log_level, log_path = LoggingUtil.prep_for_logging()
@@ -99,10 +100,13 @@ class JobCreate:
                                         {'name': 'UI_DATA_URL', 'key': 'ui-data-url'},
                                         {'name': 'AST_IO_RETRY_PAUSE', 'key': 'ast-io-retry-pause'}]
 
-    def create_job_object(self, run, job_type, job_details):
+    def create_job_object(self, run: dict, job_type: JobType, job_details: dict):
         """
-        creates a k8s job description object
+        Creates a k8s job description object
 
+        :param run:
+        :param job_type:
+        :param job_details:
         :return: client.V1Job, the job description object
         """
 
@@ -236,7 +240,7 @@ class JobCreate:
         # save these params onto the run info
         run_job['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
 
-    def create_job(self, run, job_type) -> object:
+    def create_job(self, run: dict, job_type: JobType) -> object:
         """
         creates the k8s job
 
@@ -288,7 +292,7 @@ class JobCreate:
         return job_id
 
     # @staticmethod
-    def delete_job(self, run) -> str:
+    def delete_job(self, run: dict) -> str:
         """
         deletes the k8s job
 
@@ -325,10 +329,12 @@ class JobCreate:
         # return the final status of the job
         return ret_val
 
-    def execute(self, run, job_type):
+    def execute(self, run: dict, job_type: JobType):
         """
         Executes the k8s job run
 
+        :param run:
+        :param job_type:
         :return: the job ID
         """
 
