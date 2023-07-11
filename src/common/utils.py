@@ -62,7 +62,7 @@ class Utils:
         # return the config data
         return data
 
-    def send_slack_msg(self, run_id, msg, channel, debug_mode=False, instance_name=None):
+    def send_slack_msg(self, run_id: str, msg: str, channel: str, debug_mode: bool = False, instance_name: str = None, emoticon: str = None):
         """
         sends a msg to the Slack channel
 
@@ -71,16 +71,17 @@ class Utils:
         :param channel: the Slack channel to post the message to
         :param debug_mode: mode to indicate that this is a no-op
         :param instance_name: the name of the ASGS instance
+        :param emoticon: an emoticon if set
         :return: nothing
         """
         # init the final msg
-        final_msg = f"APSViz Job Supervisor:{self.app_version} ({self.system}) - "
+        final_msg: str = f"APSViz Job Supervisor:{self.app_version} ({self.system}) - "
 
         # if there was an instance name use it
         final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
 
         # add the run id and msg
-        final_msg += msg if run_id is None else f'Run ID: {run_id} - {msg}'
+        final_msg += msg if run_id is None else f'Run ID: {run_id} - {"" if emoticon is None else emoticon} {msg}'
 
         # log the message
         self.logger.info(final_msg)
@@ -101,7 +102,7 @@ class Utils:
                 self.logger.exception('Slack %s messaging failed. msg: %s', self.slack_channels[channel], final_msg)
 
     @staticmethod
-    def get_run_time_delta(run) -> str:
+    def get_run_time_delta(run: dict) -> str:
         """
         sets the duration of a job in the run configuration.
 
