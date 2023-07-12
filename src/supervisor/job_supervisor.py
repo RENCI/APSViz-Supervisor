@@ -367,9 +367,6 @@ class JobSupervisor:
             thredds_url = run['downloadurl'] + '/fort.63.nc'
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
-            # [["--noaa", "--nowcast"], ["--noaa"], ["--ndbc", "--nowcast"], ["--ndbc"], ["--contrails_rivers", "--nowcast"], ["--contrails_rivers"],
-            #  ["--contrails_coastal", "--nowcast"], ["--contrails_coastal"]]
-
             # create the additional command line parameters
             command_line_params = [thredds_url, job_configs[job_type]['DATA_MOUNT_PATH'] + job_configs[job_type]['SUB_PATH']]
 
