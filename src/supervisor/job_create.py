@@ -11,7 +11,6 @@
     Author: Phil Owen, RENCI.org
 """
 
-import os
 import time
 
 from kubernetes import client, config
