@@ -64,7 +64,7 @@ class JobSupervisor:
         db_names: tuple = ('asgs',)
 
         # assign utility objects
-        self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
+        self.util_objs: dict = {'create': JobCreate(self.system), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
