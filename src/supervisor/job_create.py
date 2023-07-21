@@ -24,7 +24,7 @@ class JobCreate:
     Class that uses the k8s API to create, run and delete a job
     """
 
-    def __init__(self, system: str = 'Not set'):
+    def __init__(self):
         """
         inits the class.
 
@@ -100,7 +100,7 @@ class JobCreate:
                                         {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'},
                                         {'name': 'UI_DATA_URL', 'key': 'ui-data-url'},
                                         {'name': 'AST_IO_RETRY_PAUSE', 'key': 'ast-io-retry-pause'},
-                                        {'name': 'SYSTEM', 'key': system}]
+                                        {'name': 'SYSTEM', 'key': 'system'}]
 
     def create_job_object(self, run: dict, job_type: JobType, job_details: dict):
         """
