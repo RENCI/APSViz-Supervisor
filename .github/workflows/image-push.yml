@@ -36,12 +36,12 @@ jobs:
           registry: containers.renci.org
           username: ${{ secrets.USER }}
           password: ${{ secrets.PW }}
-      
+
       # get the tag for the image
       - name: Get the version
         id: get_version
         run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
-      
+
       # build and push the image. The docker v3 action automatically handles the git checkout.
       - name: Build/Push the image to the registry
         uses: docker/build-push-action@v3
@@ -52,3 +52,14 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}:latest
             ${{ env.REGISTRY }}:${{ steps.get_version.outputs.VERSION }}
+
+      # push the image to AWS/ECR
+      - name: Push the built image to the AWS/ECR registry
+        id: ecr
+        uses: jwalton/gh-ecr-push@v1
+        with:
+          access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: us-east-2
+          local-image: ${{ env.REGISTRY }}:${{ steps.get_version.outputs.VERSION }}
+          image: apsviz-supervisor:latest, apsviz-supervisor:${{ steps.get_version.outputs.VERSION }}
