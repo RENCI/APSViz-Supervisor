@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       in_container:
-        description: "this is the name of the input image (image:version)"
+        description: "this is the name of the input image name (latest presumed)"
         required: true
       version:
         description: "this is the image version (only) that will be used in AWS/ECR"
