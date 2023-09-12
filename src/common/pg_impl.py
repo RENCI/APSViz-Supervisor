@@ -95,8 +95,11 @@ class PGImplementation(PGUtilsMultiConnect):
         # split the run id. run id is in the form <instance id>_<url>
         run = run_id.split('-')
 
+        # build the uid
+        uid = '-'.join(run[1:])
+
         # create the sql. ensure the value does not exceed the column size (1024)
-        sql = f"SELECT public.set_config_item({int(run[0])}, '{run[1]}-{run[2]}', 'supervisor_job_status', '{value[:1024]}')"
+        sql = f"SELECT public.set_config_item({int(run[0])}, '{uid}', 'supervisor_job_status', '{value[:1024]}')"
 
         # run the SQL
         ret_val = self.exec_sql('asgs', sql)
