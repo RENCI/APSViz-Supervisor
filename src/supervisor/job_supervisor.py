@@ -417,7 +417,7 @@ class JobSupervisor:
             if 'PARALLEL' in job_configs[run['job-type']] and job_configs[run['job-type']]['PARALLEL']:
                 job_type_list.extend(job_configs[run['job-type']]['PARALLEL'])
 
-            # create jobs form items in the list
+            # create jobs from items in the list
             for job_type in job_type_list:
                 # get the data by the download url
                 command_line_params, extend_output_path = self.get_base_command_line(run, job_type)
@@ -495,17 +495,18 @@ class JobSupervisor:
                         # prepare for next stage
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
 
-                        # if the job type is not in the run then let it be created
-                        if run['job-type'] not in run or run['job-type'] == JobType.STAGING:
-                            # this bit is mostly for troubleshooting when the steps have been set
-                            # into a loop back to staging. if so, remove all other job types that
-                            # may have run
-                            for i in run.copy():
-                                if isinstance(i, JobType) and i is not JobType.STAGING:
-                                    run.pop(i)
-
+                        # if the job type is not in the run then declare it new
+                        if run['job-type'] not in run:
                             # set the job to new
                             run['status'] = JobStatus.NEW
+
+                            # note this bit is for troubleshooting when the steps have been set
+                            # into a loop back to staging. if so, remove all other job types that may have run
+                            # also add this to the above if statement -> or run['job-type'] == JobType.STAGING
+                            # and uncomment below...
+                            # for i in run.copy():
+                            #     if isinstance(i, JobType) and i is not JobType.STAGING:
+                            #         run.pop(i)
 
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
