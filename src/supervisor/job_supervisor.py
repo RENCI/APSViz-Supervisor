@@ -549,8 +549,8 @@ class JobSupervisor:
         config = self.get_job_configs()[run['workflow_type']][job_type]
 
         # load the config with the info from the config file
-        config['JOB_NAME'] += str(run['id']).lower()
-        config['DATA_VOLUME_NAME'] += str(run['id']).lower()
+        config['JOB_NAME'] += str(run['id']).lower().replace('_', '-')
+        config['DATA_VOLUME_NAME'] += str(run['id']).lower().replace('_', '-')
         config['COMMAND_LINE'].extend(command_line_params)
 
         # tack on any additional paths if requested
