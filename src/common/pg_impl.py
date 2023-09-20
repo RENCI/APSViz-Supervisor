@@ -92,7 +92,7 @@ class PGImplementation(PGUtilsMultiConnect):
         :return: nothing
         """
 
-        # split the run id. run id is in the form <instance id>_<url>
+        # split the run id. run id is in the form <instance id>_<uid><_HECRAS>
         run = run_id.split('-')
 
         # build the uid
