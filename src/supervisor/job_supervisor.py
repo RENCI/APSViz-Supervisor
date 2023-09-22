@@ -68,8 +68,7 @@ class JobSupervisor:
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
-        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'stormnumber',
-                                    'physical_location']
+        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'stormnumber', 'physical_location']
 
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
@@ -501,12 +500,10 @@ class JobSupervisor:
                             run['status'] = JobStatus.NEW
 
                             # note this bit is for troubleshooting when the steps have been set
-                            # into a loop back to staging. if so, remove all other job types that may have run
+                            # into a loop back to staging. if so, remove all other job types that may have done
                             # also add this to the above if statement -> or run['job-type'] == JobType.STAGING
                             # and uncomment below...
-                            # for i in run.copy():
-                            #     if isinstance(i, JobType) and i is not JobType.STAGING:
-                            #         run.pop(i)
+                            # for i in run.copy(): if isinstance(i, JobType) and i is not JobType.STAGING: run.pop(i)
 
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
@@ -597,13 +594,19 @@ class JobSupervisor:
         else:
             physical_location = ''
 
+        # get the relay context if this came from another run
+        if 'relay_context' in run_info:
+            relay_context = ', relayed from ' + run_info['relay_context']
+        else:
+            relay_context = ''
+
         # if the storm number doesn't exist default it
         if 'stormnumber' not in run_info:
             run_info['stormnumber'] = 'NA'
 
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode, \
-            workflow_type, physical_location
+        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode,
+                workflow_type, physical_location, relay_context)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -657,7 +660,8 @@ class JobSupervisor:
                     if not self.check_for_duplicate_run(run_id):
                         # make sure all the needed params are available. instance name and debug mode
                         # are handled here because they both affect messaging and logging.
-                        missing_params_msg, instance_name, debug_mode, workflow_type, physical_location = self.check_input_params(run['run_data'])
+                        missing_params_msg, instance_name, debug_mode, workflow_type, physical_location, relay_context = self.check_input_params(
+                            run['run_data'])
 
                         # check the run params to see if there is something missing
                         if len(missing_params_msg) > 0:
@@ -699,18 +703,18 @@ class JobSupervisor:
                             continue
 
                         # add the new run to the list
-                        self.run_list.append({'id': run_id, 'workflow_type': workflow_type, 'stormnumber': run['run_data']['stormnumber'],
-                                              'debug': debug_mode, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
-                                              'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted',
-                                              'downloadurl': run['run_data']['downloadurl'], 'gridname': run['run_data']['adcirc.gridname'],
-                                              'instance_name': run['run_data']['instancename'], 'run-start': dt.datetime.now(),
-                                              'physical_location': physical_location})
+                        self.run_list.append(
+                            {'id': run_id, 'workflow_type': workflow_type, 'stormnumber': run['run_data']['stormnumber'], 'debug': debug_mode,
+                             'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
+                             'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
+                             'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename'],
+                             'run-start': dt.datetime.now(), 'physical_location': physical_location})
 
                         # update the run status in the DB
-                        self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
+                        self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted{relay_context}')
 
                         # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, f'{job_prov} run accepted.', 'slack_status_channel', debug_mode,
+                        self.util_objs['utils'].send_slack_msg(run_id, f'{job_prov} run accepted{relay_context}.', 'slack_status_channel', debug_mode,
                                                                run['run_data']['instancename'], ':rocket:')
                     else:
                         # update the run status in the DB
