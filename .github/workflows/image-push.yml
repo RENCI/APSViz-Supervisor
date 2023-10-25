@@ -14,7 +14,7 @@ on:
 
 # working parameters that are specific to this script
 env:
-  REGISTRY: containers.renci.org/eds/apsviz-supervisor
+  REGISTRY: containers.renci.org/irods/irods-supervisor
 
 # job definition
 jobs:
@@ -52,14 +52,3 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}:latest
             ${{ env.REGISTRY }}:${{ steps.get_version.outputs.VERSION }}
-
-      # push the image to AWS/ECR
-      - name: Push the built image to the AWS/ECR registry
-        id: ecr
-        uses: jwalton/gh-ecr-push@v1
-        with:
-          access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: us-east-2
-          local-image: ${{ env.REGISTRY }}:${{ steps.get_version.outputs.VERSION }}
-          image: apsviz-supervisor:latest, apsviz-supervisor:${{ steps.get_version.outputs.VERSION }}
