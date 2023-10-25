@@ -14,8 +14,6 @@
 import os
 import datetime as dt
 from json import load
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
 
 
 class Utils:

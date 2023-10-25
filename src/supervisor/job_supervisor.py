@@ -149,11 +149,6 @@ class JobSupervisor:
                     # report the exception
                     self.logger.exception("Cleanup exception detected, id: %s", run['id'])
 
-                    msg = 'Exception caught. Terminating run.'
-
-                    # send the message
-                    self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_issues_channel', run['debug'], run['instance_name'])
-
                     # remove the run
                     self.run_list.remove(run)
 
@@ -273,22 +268,6 @@ class JobSupervisor:
         # update the run provenance in the DB
         run['status_prov'] += f', run complete {duration}'
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
-
-        # init the type of run
-        run_type = f"APS ({run['workflow_type']})"
-
-        # add a comment on overall pass/fail
-        if run['status_prov'].find('error') == -1:
-            msg = f"*{run['physical_location']} {run_type} run completed successfully {duration}*"
-            emoticon = ':100:'
-
-        else:
-            msg = f"*{run['physical_location']} {run_type} run completed unsuccessfully {duration}*"
-            emoticon = ':boom:'
-            self.util_objs['utils'].send_slack_msg(run['id'], f"{msg}\nRun provenance: {run['status_prov']}.", 'slack_issues_channel', run['debug'],
-                                                   run['instance_name'], emoticon)
-        # send the message
-        self.util_objs['utils'].send_slack_msg(run['id'], msg, 'slack_status_channel', run['debug'], run['instance_name'], emoticon)
 
         # send something to the log to indicate complete
         self.logger.info("%s complete.", run['id'])
@@ -578,7 +557,7 @@ class JobSupervisor:
             workflow_type = ''
 
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", debug_mode, workflow_type,
+        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", debug_mode, workflow_type
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -632,34 +611,27 @@ class JobSupervisor:
                     if not self.check_for_duplicate_run(run_id):
                         # make sure all the needed params are available. instance name and debug mode
                         # are handled here because they both affect messaging and logging.
-                        missing_params_msg, instance_name, debug_mode, workflow_type, physical_location, relay_context = self.check_input_params(
-                            run['run_data'])
+                        missing_params_msg, debug_mode, workflow_type = self.check_input_params(run['run_data'])
 
                         # check the run params to see if there is something missing
                         if len(missing_params_msg) > 0:
                             # update the run status everywhere
                             self.util_objs['pg_db'].update_job_status(run_id, f"Error - Run lacks the required run properties "
                                                                               f"({missing_params_msg}).")
-                            self.logger.error("Error: A %s run lacks the required run properties (%s): %s", physical_location, missing_params_msg,
-                                              run_id)
-                            self.util_objs['utils'].send_slack_msg(run_id, f"Error - Run lacks the required run properties ({missing_params_msg}) "
-                                                                           f"for a {physical_location} run.", 'slack_issues_channel', debug_mode,
-                                                                   instance_name)
 
                             # continue processing the remaining runs
                             continue
 
                         # if this is a new run
                         if run['run_data']['supervisor_job_status'].startswith('new'):
-                            job_prov = f'New {physical_location} APS ({workflow_type})'
+                            job_prov = 'New run'
                         # if we are in debug mode
                         elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                            job_prov = f'New debug {physical_location} APS ({workflow_type})'
+                            job_prov = 'New debug run'
                         # ignore the entry as it is not in a legit "start" state. this may just
                         # be an existing or completed run.
                         else:
-                            self.logger.info("Error: Unrecognized %s run command %s for Run ID %s", physical_location,
-                                             run['run_data']['supervisor_job_status'], run_id)
+                            self.logger.info("Error: Unrecognized run command")
                             continue
 
                         # get the first job for this workflow type
@@ -670,8 +642,7 @@ class JobSupervisor:
                             # get the first job name into a type
                             job_type = JobType(first_job)
                         else:
-                            self.logger.info("Error: Could not find the first %s job in the %s workflow for run id: %s", physical_location,
-                                             workflow_type, run_id)
+                            self.logger.info("Error: Could not find the first job in the %s workflow for run id: %s", workflow_type, run_id)
                             continue
 
                         # add the new run to the list
@@ -680,21 +651,13 @@ class JobSupervisor:
                              'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
                              'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
                              'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename'],
-                             'run-start': dt.datetime.now(), 'physical_location': physical_location})
+                             'run-start': dt.datetime.now()})
 
                         # update the run status in the DB
-                        self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted{relay_context}')
-
-                        # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, f'{job_prov} run accepted{relay_context}.', 'slack_status_channel', debug_mode,
-                                                               run['run_data']['instancename'], ':rocket:')
+                        self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
                     else:
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, 'Duplicate run rejected.')
-
-                        # notify Slack
-                        self.util_objs['utils'].send_slack_msg(run_id, 'Duplicate run rejected.', 'slack_status_channel', debug_mode,
-                                                               run['run_data']['instancename'], ':boom:')
 
     def check_pause_status(self) -> dict:
         """
@@ -712,9 +675,6 @@ class JobSupervisor:
         if pause_mode != self.debug_options['pause_mode']:
             # save the new pause mode
             self.debug_options['pause_mode'] = pause_mode
-
-            # let everyone know pause mode was toggled
-            self.util_objs['utils'].send_slack_msg(None, f'Application is now {"paused" if pause_mode else "active"}.', 'slack_status_channel')
 
         # get all the new runs if system is not in pause mode
         if not pause_mode:

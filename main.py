@@ -19,8 +19,4 @@ try:
     supervisor.run()
 except Exception:
     # log the reason for the shutdown
-    supervisor.logger.exception('The Job Supervisor (%s) is shutting down...', supervisor.system)
-
-# let everyone know the application is shutting down
-supervisor.util_objs['utils'].send_slack_msg(None, f'The Job Supervisor ({supervisor.system}) application is shutting down.',
-                                             'slack_status_channel')
+    supervisor.logger.exception('The iRODS K8s Job Supervisor (%s) is shutting down...', supervisor.system)
