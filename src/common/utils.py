@@ -37,10 +37,6 @@ class Utils:
         # assign the system name
         self.app_version = app_version
 
-        # init the Slack channels
-        self.slack_channels: dict = {'slack_status_channel': os.getenv('SLACK_STATUS_CHANNEL'),
-                                     'slack_issues_channel': os.getenv('SLACK_ISSUES_CHANNEL')}
-
         # get the config data
         self.k8s_config: dict = Utils.get_base_config()
 
@@ -61,45 +57,6 @@ class Utils:
 
         # return the config data
         return data
-
-    def send_slack_msg(self, run_id: str, msg: str, channel: str, debug_mode: bool = False, instance_name: str = None, emoticon: str = None):
-        """
-        sends a msg to the Slack channel
-
-        :param run_id: the ID of the supervisor run
-        :param msg: the msg to be sent
-        :param channel: the Slack channel to post the message to
-        :param debug_mode: mode to indicate that this is a no-op
-        :param instance_name: the name of the ASGS instance
-        :param emoticon: an emoticon if set
-        :return: nothing
-        """
-        # init the final msg
-        final_msg: str = f"APSViz Job Supervisor:{self.app_version} ({self.system}) - "
-
-        # if there was an instance name use it
-        final_msg += '' if instance_name is None else f'Instance name: {instance_name}, '
-
-        # add the run id and msg
-        final_msg += msg if run_id is None else f'Run ID: {run_id} - {"" if emoticon is None else emoticon} {msg}'
-
-        # log the message
-        self.logger.info(final_msg)
-
-        # send the message to Slack if not in debug mode and not running locally
-        if not debug_mode and self.system in ['Dev', 'Prod', 'AWS/EKS']:
-            # determine the client based on the channel
-            if channel == 'slack_status_channel':
-                client = WebClient(token=os.getenv('SLACK_STATUS_TOKEN'))
-            else:
-                client = WebClient(token=os.getenv('SLACK_ISSUES_TOKEN'))
-
-            try:
-                # send the message
-                client.chat_postMessage(channel=self.slack_channels[channel], text=final_msg)
-            except SlackApiError:
-                # log the error
-                self.logger.exception('Slack %s messaging failed. msg: %s', self.slack_channels[channel], final_msg)
 
     @staticmethod
     def get_run_time_delta(run: dict) -> str:
@@ -135,9 +92,6 @@ class Utils:
         if hours[0] >= self.k8s_config.get("SV_INACTIVITY"):
             # build up the message
             msg = f'The Supervisor application has not seen any new runs in the last {self.k8s_config.get("SV_INACTIVITY")} hours.'
-
-            # send the Slack message to the issues channel
-            self.send_slack_msg(None, msg, 'slack_issues_channel', debug_mode=False, instance_name=None)
 
             # log the event
             self.logger.info(msg)

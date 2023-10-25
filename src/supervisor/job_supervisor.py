@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-    This module creates and workflows APSViz processes as defined in the database.
+    This module creates and workflows iRODS-K8s processes as defined in the database.
 
     Author: Phil Owen, RENCI.org
 """
@@ -26,7 +26,7 @@ from src.common.utils import Utils
 
 class JobSupervisor:
     """
-    Class for the APSViz supervisor
+    Class for the iRODS K8s supervisor
 
     """
 
@@ -45,7 +45,7 @@ class JobSupervisor:
         log_level, log_path = LoggingUtil.prep_for_logging()
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.Jobs", level=log_level, line_format='medium', log_file_path=log_path)
+        self.logger = LoggingUtil.init_logging("iRODS.Supervisor.Jobs", level=log_level, line_format='medium', log_file_path=log_path)
 
         # init the list of pending runs. this stores all job details of the run
         self.run_list: list = []
@@ -61,14 +61,14 @@ class JobSupervisor:
 
         # specify the DB to get a connection
         # note the extra comma makes this single item a singleton tuple
-        db_names: tuple = ('asgs',)
+        db_names: tuple = ('irods-k8s',)
 
         # assign utility objects
         self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
-        self.required_run_params = ['supervisor_job_status', 'downloadurl', 'adcirc.gridname', 'instancename', 'stormnumber', 'physical_location']
+        self.required_run_params = []
 
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
@@ -77,7 +77,7 @@ class JobSupervisor:
         self.last_run_time = dt.datetime.now()
 
         # declare ready
-        self.logger.info('The APSViz Job Supervisor:%s (%s) has initialized...', self.app_version, self.system)
+        self.logger.info('The iRODS-K8s Job Supervisor:%s (%s) has initialized...', self.app_version, self.system)
 
     def get_job_configs(self) -> dict:
         """
@@ -303,7 +303,7 @@ class JobSupervisor:
         been set to '[""]' in the DB also note that the supervisor should be terminated prior to
         killing the job to avoid data directory removal (if that matters)
         command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
-        update public."ASGS_Mon_supervisor_config" set command_line='[""]', command_matrix='[""]'
+        update public."" set command_line='[""]', command_matrix='[""]'
         where id=;
 
         :param run: the run parameters
@@ -567,17 +567,6 @@ class JobSupervisor:
         :param run_info:
         :return: list of required items that weren't found
         """
-        # if there was an instance name use it
-        if 'instancename' in run_info:
-            instance_name = run_info['instancename']
-        else:
-            instance_name = None
-
-        # if there is a special k8s download url in the data use it.
-        if 'post.opendap.renci_tds-k8.downloadurl' in run_info:
-            # use the service name and save it for the run. force the apsviz thredds url -> https:
-            run_info['downloadurl'] = run_info['post.opendap.renci_tds-k8.downloadurl'].replace('http://apsviz-thredds', 'https://apsviz-thredds')
-
         # interrogate and set debug mode
         debug_mode = ('supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'))
 
@@ -586,27 +575,10 @@ class JobSupervisor:
             workflow_type = run_info['workflow_type']
         # if there is no workflow type default to ASGS legacy runs
         else:
-            workflow_type = 'ASGS'
-
-        # get the physical location of the cluster that initiated the run
-        if 'physical_location' in run_info:
-            physical_location = run_info['physical_location']
-        else:
-            physical_location = ''
-
-        # get the relay context if this came from another run
-        if 'relay_context' in run_info:
-            relay_context = ', relayed from ' + run_info['relay_context']
-        else:
-            relay_context = ''
-
-        # if the storm number doesn't exist default it
-        if 'stormnumber' not in run_info:
-            run_info['stormnumber'] = 'NA'
+            workflow_type = ''
 
         # loop through the params and return the ones that are missing
-        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", instance_name, debug_mode,
-                workflow_type, physical_location, relay_context)
+        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", debug_mode, workflow_type,
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """

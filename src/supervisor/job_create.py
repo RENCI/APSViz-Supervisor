@@ -28,13 +28,12 @@ class JobCreate:
         """
         inits the class.
 
-        :param system:
         """
         # get the log level and directory from the environment.
         log_level, log_path = LoggingUtil.prep_for_logging()
 
         # create a logger
-        self.logger = LoggingUtil.init_logging("APSVIZ.Supervisor.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
+        self.logger = LoggingUtil.init_logging("iRODS.Supervisor.JobCreate", level=log_level, line_format='medium', log_file_path=log_path)
 
         # load the base configuration params
         self.k8s_base_config: dict = Utils.get_base_config()
@@ -54,52 +53,11 @@ class JobCreate:
         # declare the secret environment variables
         self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
                                         {'name': 'LOG_PATH', 'key': 'log-path'},
-                                        {'name': 'ASGS_DB_HOST', 'key': 'asgs-host'},
-                                        {'name': 'ASGS_DB_PORT', 'key': 'asgs-port'},
-                                        {'name': 'ASGS_DB_USERNAME', 'key': 'asgs-username'},
-                                        {'name': 'ASGS_DB_PASSWORD', 'key': 'asgs-password'},
-                                        {'name': 'ASGS_DB_DATABASE', 'key': 'asgs-database'},
-                                        {'name': 'APSVIZ_DB_HOST', 'key': 'apsviz-host'},
-                                        {'name': 'APSVIZ_DB_PORT', 'key': 'apsviz-port'},
-                                        {'name': 'APSVIZ_DB_USERNAME', 'key': 'apsviz-username'},
-                                        {'name': 'APSVIZ_DB_PASSWORD', 'key': 'apsviz-password'},
-                                        {'name': 'APSVIZ_DB_DATABASE', 'key': 'apsviz-database'},
-                                        {'name': 'ADCIRC_OBS_DB_HOST', 'key': 'adcirc-obs-host'},
-                                        {'name': 'ADCIRC_OBS_DB_PORT', 'key': 'adcirc-obs-port'},
-                                        {'name': 'ADCIRC_OBS_DB_USERNAME', 'key': 'adcirc-obs-username'},
-                                        {'name': 'ADCIRC_OBS_DB_PASSWORD', 'key': 'adcirc-obs-password'},
-                                        {'name': 'ADCIRC_OBS_DB_DATABASE', 'key': 'adcirc-obs-database'},
-                                        {'name': 'APSVIZ_GAUGES_DB_HOST', 'key': 'apsviz-gauges-host'},
-                                        {'name': 'APSVIZ_GAUGES_DB_PORT', 'key': 'apsviz-gauges-port'},
-                                        {'name': 'APSVIZ_GAUGES_DB_DATABASE', 'key': 'apsviz-gauges-database'},
-                                        {'name': 'APSVIZ_GAUGES_DB_USERNAME', 'key': 'apsviz-gauges-username'},
-                                        {'name': 'APSVIZ_GAUGES_DB_PASSWORD', 'key': 'apsviz-gauges-password'},
-                                        {'name': 'APSVIZ_GAUGES_DB_ENGINE', 'key': 'apsviz-gauges-engine'},
-                                        {'name': 'GEOSERVER_USER', 'key': 'geo-username'},
-                                        {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'},
-                                        {'name': 'GEOSERVER_URL', 'key': 'geo-url'},
-                                        {'name': 'GEOSERVER_URL_EXT', 'key': 'geo-url-ext'},
-                                        {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
-                                        {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
-                                        {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
-                                        {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
-                                        {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
-                                        {'name': 'FILESERVER_HOST_URL', 'key': 'file-server-host-url'},
-                                        {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
-                                        {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
-                                        {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}, {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'},
-                                        {'name': 'COG_MOSAIC_HOST', 'key': 'cog-mosaic-host'},
-                                        {'name': 'COG_MOSAIC_PORT', 'key': 'cog-mosaic-port'},
-                                        {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
-                                        {'name': 'COG_MOSAIC_USERNAME', 'key': 'cog-mosaic-username'},
-                                        {'name': 'COG_MOSAIC_PASSWORD', 'key': 'cog-mosaic-password'},
-                                        {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'},
-                                        {'name': 'PSC_SYNC_URL', 'key': 'psc_sync_url'},
-                                        {'name': 'PSC_SYNC_TOKEN', 'key': 'psc_sync_token'},
-                                        {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'},
-                                        {'name': 'UI_DATA_URL', 'key': 'ui-data-url'},
-                                        {'name': 'AST_IO_RETRY_PAUSE', 'key': 'ast-io-retry-pause'},
+                                        {'name': 'IRODS_K8S_DB_HOST', 'key': 'irods-k8s-host'},
+                                        {'name': 'IRODS_K8S_DB_PORT', 'key': 'irods-k8s-port'},
+                                        {'name': 'IRODS_K8S_DB_USERNAME', 'key': 'irods-k8s-username'},
+                                        {'name': 'IRODS_K8S_DB_PASSWORD', 'key': 'irods-k8s-password'},
+                                        {'name': 'IRODS_K8S_DB_DATABASE', 'key': 'irods-k8s-database'},
                                         {'name': 'SYSTEM', 'key': 'system'}]
 
     def create_job_object(self, run: dict, job_type: JobType, job_details: dict):

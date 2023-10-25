@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
 
-# This Dockerfile is used to build the APSVIZ-Supervisor image
+# This Dockerfile is used to build the iRODS-K8s-Supervisor image
 
 FROM python:3.11.6-slim
 
@@ -32,7 +32,7 @@ RUN useradd --create-home -u 1000 nru
 USER nru
 
 # Create the directory for the code and cd to it
-WORKDIR /repo/APSVIZ-Supervisor
+WORKDIR /repo/iRODS-K8s-Supervisor
 
 # Copy in just the requirements first for caching purposes
 COPY requirements.txt requirements.txt

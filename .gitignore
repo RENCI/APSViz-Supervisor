@@ -9,8 +9,8 @@
 /src/supervisor/__pycache__/
 
 /src/common/base_config.json
-/src/common/APSVIZ.Supervisor.JobCreate.log
-/src/common/APSVIZ.Supervisor.pg_utils.log
-/src/common/APSVIZ.Supervisor.Jobs.log
-/src/common/APSVIZ.Supervisor.JobFind.log
+/src/common/iRODS.Supervisor.JobCreate.log
+/src/common/iRODS.Supervisor.pg_utils.log
+/src/common/iRODS.Supervisor.Jobs.log
+/src/common/iRODS.Supervisor.JobFind.log
 /src/test/.pytest_cache/
