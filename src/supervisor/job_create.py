@@ -53,11 +53,11 @@ class JobCreate:
         # declare the secret environment variables
         self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
                                         {'name': 'LOG_PATH', 'key': 'log-path'},
-                                        {'name': 'IRODS_K8S_DB_HOST', 'key': 'irods-k8s-host'},
-                                        {'name': 'IRODS_K8S_DB_PORT', 'key': 'irods-k8s-port'},
-                                        {'name': 'IRODS_K8S_DB_USERNAME', 'key': 'irods-k8s-username'},
-                                        {'name': 'IRODS_K8S_DB_PASSWORD', 'key': 'irods-k8s-password'},
-                                        {'name': 'IRODS_K8S_DB_DATABASE', 'key': 'irods-k8s-database'},
+                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'},
+                                        {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
+                                        {'name': 'IRODS_SV_DB_USERNAME', 'key': 'irods-sv-username'},
+                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'},
+                                        {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'},
                                         {'name': 'SYSTEM', 'key': 'system'}]
 
     def create_job_object(self, run: dict, job_type: JobType, job_details: dict):
@@ -108,7 +108,7 @@ class JobCreate:
         # get all the env params into an array
         for item in secret_env_params:
             secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
-                secret_key_ref=client.V1SecretKeySelector(name='eds-keys', key=item['key']))))
+                secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))))
 
         # init a list for all the containers in this job
         containers: list = []
