@@ -61,7 +61,7 @@ class JobSupervisor:
 
         # specify the DB to get a connection
         # note the extra comma makes this single item a singleton tuple
-        db_names: tuple = ('irods-k8s',)
+        db_names: tuple = ('irods-sv',)
 
         # assign utility objects
         self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
@@ -77,7 +77,7 @@ class JobSupervisor:
         self.last_run_time = dt.datetime.now()
 
         # declare ready
-        self.logger.info('The iRODS-K8s Job Supervisor:%s (%s) has initialized...', self.app_version, self.system)
+        self.logger.info('The iRODS K8s Job Supervisor:%s (%s) has initialized...', self.app_version, self.system)
 
     def get_job_configs(self) -> dict:
         """
@@ -596,7 +596,7 @@ class JobSupervisor:
         self.k8s_job_configs = self.get_job_configs()
 
         # make sure we got the config to continue
-        if self.k8s_job_configs is not None:
+        if self.k8s_job_configs is not None and len(self.k8s_job_configs) > 0:
             # check to see if we are in pause mode
             runs = self.check_pause_status()
 
