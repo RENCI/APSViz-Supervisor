@@ -39,18 +39,11 @@ class JobType(str, Enum):
     Class that stores the job type name constants
     """
     STAGING = 'staging'
-    HAZUS = 'hazus'
-    LOAD_GEO_SERVER = 'load-geo-server'
-    LOAD_GEO_SERVER_S3 = 'load-geo-server-s3'
+    DATABASE = 'database'
+    PROVIDER = 'provider'
+    CONSUMER = 'consumer'
+    FORENSICS = 'forensics'
     FINAL_STAGING = 'final-staging'
-    ADCIRC2COG_TIFF = 'adcirc2cog-tiff'
-    GEOTIFF2COG = 'geotiff2cog'
-    OBS_MOD_AST = 'obs-mod-ast'
-    ADCIRCTIME_TO_COG = 'adcirctime-to-cog'
-    AST_RUN_HARVESTER = 'ast-run-harvester'
-    COLLAB_DATA_SYNC = 'collab-data-sync'
-    ADCIRC_TO_KALPANA_COG = 'adcirc-to-kalpana-cog'
-    TIMESERIESDB_INGEST = 'timeseriesdb-ingest'
+
     ERROR = 'error'
-    OTHER_1 = 'TBD'
     COMPLETE = 'complete'
