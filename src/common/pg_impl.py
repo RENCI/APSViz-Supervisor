@@ -71,7 +71,7 @@ class PGImplementation(PGUtilsMultiConnect):
         """
 
         # create the sql
-        sql: str = 'SELECT public.get_supervisor_config_items_json()'
+        sql: str = 'SELECT public.get_supervisor_request_items_json()'
 
         # get the data
         ret_val = self.exec_sql('irods-sv', sql)
@@ -92,14 +92,8 @@ class PGImplementation(PGUtilsMultiConnect):
         :return: nothing
         """
 
-        # split the run id. run id is in the form <instance id>_<uid><_HECRAS>
-        run = run_id.split('-')
-
-        # build the uid
-        uid = '-'.join(run[1:])
-
         # create the sql. ensure the value does not exceed the column size (1024)
-        sql = f"SELECT public.set_config_item({int(run[0])}, '{uid}', 'supervisor_job_status', '{value[:1024]}')"
+        sql = f"SELECT public.set_request_item({run_id}, '{value[:1024]}')"
 
         # run the SQL
         ret_val = self.exec_sql('irods-sv', sql)
