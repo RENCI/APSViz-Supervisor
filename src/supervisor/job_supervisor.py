@@ -215,7 +215,7 @@ class JobSupervisor:
                 # set the sleep timeout
                 sleep_timeout = self.k8s_base_config.get("POLL_SHORT_SLEEP")
 
-            self.logger.debug("All active run checks complete. Sleeping for %s minutes.", sleep_timeout / 60)
+            self.logger.debug("All active run checks complete. Sleeping for %s seconds.", sleep_timeout)
 
             # wait for the next check for something to do
             time.sleep(sleep_timeout)
@@ -229,23 +229,23 @@ class JobSupervisor:
         """
         # does this run have a final staging step
         if 'final-staging' not in self.k8s_job_configs[run['workflow_type']]:
-            self.logger.error("Error detected for a %s run of type %s. Run id: %s", run['physical_location'], run['workflow_type'], run['id'])
-            run['status_prov'] += f", error detected in a {run['physical_location']} run of type {run['workflow_type']}. No cleanup occurred."
+            self.logger.error("Error detected for a run of type %s. Run id: %s", run['workflow_type'], run['id'])
+            run['status_prov'] += f", error detected in a run of type {run['workflow_type']}. No cleanup occurred."
 
             # set error conditions
             run['job-type'] = JobType.COMPLETE
             run['status'] = JobStatus.ERROR
         # if this was a final staging run that failed force complete
         elif 'final-staging' in run:
-            self.logger.error("Error detected for a %s run in final staging with run id: %s", run['physical_location'], run['id'])
-            run['status_prov'] += f", error detected for a {run['physical_location']} run in final staging. An incomplete cleanup may have occurred."
+            self.logger.error("Error detected for a run in final staging with run id: %s", run['id'])
+            run['status_prov'] += f", error detected for a run in final staging. An incomplete cleanup may have occurred."
 
             # set error conditions
             run['job-type'] = JobType.COMPLETE
             run['status'] = JobStatus.ERROR
         # else try to clean up
         else:
-            self.logger.error(f"Error detected for a {run['physical_location']} run. About to clean up of intermediate files. Run id: %s", run['id'])
+            self.logger.error(f"Error detected for a run. About to clean up of intermediate files. Run id: %s", run['id'])
             run['status_prov'] += ', error detected'
 
             # set the type to clean up
@@ -296,76 +296,33 @@ class JobSupervisor:
         # get the proper job configs
         job_configs = self.k8s_job_configs[run['workflow_type']]
 
-        # is this a staging job array
+        # is this a staging job
         if job_type == JobType.STAGING:
-            command_line_params = ['--inputURL', run['downloadurl'], '--isHurricane', run['stormnumber'], '--outputDir']
-            extend_output_path = True
+            command_line_params = ''
 
-        # is this a hazus job array
-        elif job_type == JobType.HAZUS:
-            command_line_params = ['--downloadurl', run['downloadurl'], '--datadir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
+        # is this a consumer job
+        elif job_type == JobType.CONSUMER:
+            command_line_params = ''
 
-        # is this an adcirc2cog_tiff job array
-        elif job_type == JobType.ADCIRC2COG_TIFF:
-            command_line_params = ['--inputDIR', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input', '--outputDIR',
-                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + job_configs[job_type]['SUB_PATH'], '--inputFile']
+        # is this a database job
+        elif job_type == JobType.DATABASE:
+            command_line_params = ''
 
-        # is this a geotiff2cog job array
-        elif job_type == JobType.GEOTIFF2COG:
-            command_line_params = ['--inputDIR', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/cogeo', '--finalDIR',
-                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + job_configs[job_type][
-                                       'SUB_PATH'], '--inputParam']
+        # is this a forensics job
+        elif job_type == JobType.FORENSICS:
+            command_line_params = ''
 
-        # is this a geo server load job array
-        elif job_type == JobType.LOAD_GEO_SERVER:
-            command_line_params = ['--instanceId', str(run['id'])]
+        # is this a provider job
+        elif job_type == JobType.PROVIDER:
+            command_line_params = ''
 
-        # is this a geo server load s3 job array
-        elif job_type == JobType.LOAD_GEO_SERVER_S3:
-            command_line_params = ['--instanceId', str(run['id']), '--HECRAS_URL', run['downloadurl']]
-
-        # is this a final staging job array
+        # is this a final staging job
         elif job_type == JobType.FINAL_STAGING:
-            command_line_params = ['--inputDir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + job_configs[job_type]['SUB_PATH'],
-                                   '--outputDir', job_configs[job_type]['DATA_MOUNT_PATH'] + job_configs[job_type]['SUB_PATH'], '--tarMeta',
-                                   str(run['id'])]
+            command_line_params = ''
 
-        # is this an obs mod ast job
-        elif job_type == JobType.OBS_MOD_AST:
-            thredds_url = run['downloadurl'] + '/fort.63.nc'
-            thredds_url = thredds_url.replace('fileServer', 'dodsC')
-
-            # create the additional command line parameters
-            command_line_params = [thredds_url, run['gridname'],
-                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + job_configs[job_type][
-                                       'ADDITIONAL_PATH'], str(run['id'])]
-
-        # is this an ast run harvester job
-        elif job_type == JobType.AST_RUN_HARVESTER:
-            thredds_url = run['downloadurl'] + '/fort.63.nc'
-            thredds_url = thredds_url.replace('fileServer', 'dodsC')
-
-            # create the additional command line parameters
-            command_line_params = [thredds_url, job_configs[job_type]['DATA_MOUNT_PATH'] + job_configs[job_type]['SUB_PATH']]
-
-        # is this an adcirc time to cog converter job array
-        elif job_type == JobType.ADCIRCTIME_TO_COG:
-            command_line_params = ['--inputDIR', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/input', '--outputDIR',
-                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + job_configs[job_type]['SUB_PATH'], '--finalDIR',
-                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']) + '/' + 'final' + job_configs[job_type][
-                                       'SUB_PATH'], '--inputFile']
-
-        # is this a collaborator data sync job
-        elif job_type == JobType.COLLAB_DATA_SYNC:
-            command_line_params = ['--run_id', str(run['id']), '--physical_location', str(run['physical_location'])]
-
-        # is this an adcirc to kalpana cog job
-        elif job_type == JobType.ADCIRC_TO_KALPANA_COG:
-            command_line_params = ['--modelRunID', str(run['id'])]
-
-        # is this a timeseries DB ingest job
-        elif job_type == JobType.TIMESERIESDB_INGEST:
-            command_line_params = ['--modelRunID', str(run['id'])]
+        # unknown job type
+        else:
+            self.logger.error('Error: Unrecognized job type %s.', job_type)
 
         # return the command line and extend the path flag
         return command_line_params, extend_output_path
@@ -413,12 +370,12 @@ class JobSupervisor:
                     run['status_prov'] += f", {job_type.value} running"
                     self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
-                    self.logger.info("A %s job was created. Run ID: %s, Job type: %s", run['physical_location'], run['id'], job_type)
+                    self.logger.info("A job was created. Run ID: %s, Job type: %s", run['id'], job_type)
                 else:
                     # set the error status
                     run['status'] = JobStatus.ERROR
 
-                    self.logger.info("A %s job was not created. Run ID: %s, Job type: %s", run['physical_location'], run['id'], job_type)
+                    self.logger.info("A job was not created. Run ID: %s, Job type: %s", run['id'], job_type)
 
                 # if the next job is complete there is no reason to keep adding more jobs
                 if job_configs[job_type.value]['NEXT_JOB_TYPE'] == JobType.COMPLETE.value:
@@ -434,14 +391,14 @@ class JobSupervisor:
 
             # check the job status, report any issues
             if not job_found:
-                self.logger.error("Error: A %s job not found. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
+                self.logger.error("Error: A job not found. Run ID: %s, Job type: %s", run['id'], run['job-type'])
             elif job_status.startswith('Timeout'):
-                self.logger.error("Error: A %s job has timed out. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
+                self.logger.error("Error: A job has timed out. Run ID: %s, Job type: %s", run['id'], run['job-type'])
             elif job_status.startswith('Failed'):
-                self.logger.error("Error: A %s job has failed. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
+                self.logger.error("Error: A job has failed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
                 run['status_prov'] += f", {run['job-type'].value} failed"
             elif job_status.startswith('Complete'):
-                self.logger.info("A %s job has completed. Run ID: %s, Job type: %s", run['physical_location'], run['id'], run['job-type'])
+                self.logger.info("A job has completed. Run ID: %s, Job type: %s", run['id'], run['job-type'])
 
             # if the job was found
             if job_found:
@@ -459,9 +416,8 @@ class JobSupervisor:
 
                     # was there an error on the job
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error("Error: A failed %s job detected. Run status %s. Run ID: %s, Job type: %s, job delete status: %s, "
-                                          "pod status: %s", run['physical_location'], run['status'], run['id'], run['job-type'], job_del_status,
-                                          pod_status)
+                        self.logger.error("Error: A failed job detected. Run status %s. Run ID: %s, Job type: %s, job delete status: %s, "
+                                          "pod status: %s", run['status'], run['id'], run['job-type'], job_del_status, pod_status)
 
                         # set error conditions
                         run['status'] = JobStatus.ERROR
@@ -490,14 +446,14 @@ class JobSupervisor:
                     job_del_status = self.util_objs['create'].delete_job(run)
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
-                        self.logger.error("Error: A failed %s job and/or pod detected. Run status: %s. Run ID: %s, Job type: %s, job delete status: "
-                                          "%s, pod status: %s.", run['physical_location'], run['status'], run['id'], run['job-type'], job_del_status,
+                        self.logger.error("Error: A failed job and/or pod detected. Run status: %s. Run ID: %s, Job type: %s, job delete status: "
+                                          "%s, pod status: %s.", run['status'], run['id'], run['job-type'], job_del_status,
                                           pod_status)
 
                     # set error conditions
                     run['status'] = JobStatus.ERROR
             else:
-                self.logger.error("Error: A %s job not found: Run ID: %s, Run status: %s, Job type: %s", run['physical_location'], run['id'],
+                self.logger.error("Error: A job not found: Run ID: %s, Run status: %s, Job type: %s", run['id'],
                                   run['status'], run['job-type'])
 
                 # set error condition
@@ -647,11 +603,9 @@ class JobSupervisor:
 
                         # add the new run to the list
                         self.run_list.append(
-                            {'id': run_id, 'workflow_type': workflow_type, 'stormnumber': run['run_data']['stormnumber'], 'debug': debug_mode,
+                            {'id': run_id, 'workflow_type': workflow_type, 'debug': debug_mode,
                              'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
-                             'status_prov': f'{job_prov} run accepted', 'downloadurl': run['run_data']['downloadurl'],
-                             'gridname': run['run_data']['adcirc.gridname'], 'instance_name': run['run_data']['instancename'],
-                             'run-start': dt.datetime.now()})
+                             'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now()})
 
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
