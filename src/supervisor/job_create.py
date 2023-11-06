@@ -99,12 +99,6 @@ class JobCreate:
         # duplicate the environment param list
         secret_env_params = self.secret_env_params.copy()
 
-        # load geo can't use the http_proxy values
-        if job_type not in (JobType.LOAD_GEO_SERVER, JobType.LOAD_GEO_SERVER_S3):
-            # add the proxy values to the env param list
-            secret_env_params.extend([{'name': 'http_proxy', 'key': 'http-proxy-url'}, {'name': 'https_proxy', 'key': 'http-proxy-url'},
-                                      {'name': 'HTTP_PROXY', 'key': 'http-proxy-url'}, {'name': 'HTTPS_PROXY', 'key': 'http-proxy-url'}])
-
         # get all the env params into an array
         for item in secret_env_params:
             secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
@@ -141,7 +135,7 @@ class JobCreate:
             restart_policy = run_job['run-config']['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources = {'limits': {'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
+            resources = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
                          'requests': {'cpu': cpus, 'memory': run_job['run-config']['MEMORY'], 'ephemeral-storage': '64Mi'}}
 
             # if there is a cpu limit restriction add it to the resource spec
