@@ -51,14 +51,11 @@ class JobCreate:
         self.cpu_limits: bool = self.k8s_base_config.get("CPU_LIMITS")
 
         # declare the secret environment variables
-        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
-                                        {'name': 'LOG_PATH', 'key': 'log-path'},
-                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'},
-                                        {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
+        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
+                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'}, {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
                                         {'name': 'IRODS_SV_DB_USERNAME', 'key': 'irods-sv-username'},
                                         {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'},
-                                        {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'},
-                                        {'name': 'SYSTEM', 'key': 'system'}]
+                                        {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'}, {'name': 'SYSTEM', 'key': 'system'}]
 
     def create_job_object(self, run: dict, job_type: JobType, job_details: dict):
         """
@@ -72,6 +69,20 @@ class JobCreate:
 
         # get a reference to the job type
         run_job = run[job_type]
+
+        # declare an array for the env declarations
+        secret_envs = []
+
+        ports = None
+        service = None
+
+        # duplicate the environment param list
+        secret_env_params = self.secret_env_params.copy()
+
+        # get all the env params into an array
+        for item in secret_env_params:
+            secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
+                secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))))
 
         # declare the volume mounts
         volumes = [client.V1Volume(name=run_job['run-config']['DATA_VOLUME_NAME'],
@@ -87,22 +98,40 @@ class JobCreate:
                 volumes.append(client.V1Volume(name=name, persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=name)))
                 volume_mounts.append(client.V1VolumeMount(name=name, mount_path=mount_paths[index]))
 
+        # if this is a DB deploy add the config script
+        if job_type == JobType.DATABASE:
+            # set the env params
+            secret_envs.append(client.V1EnvVar(name='POSTGRES_USER', value='postgres'))
+            secret_envs.append(client.V1EnvVar(name='POSTGRES_PASSWORD', value='testpassword'))
+            secret_envs.append(client.V1EnvVar(name='PGDATA', value='/var/lib/postgresql/data/db_data'))
+
+            # create a volume for the DB init script
+            volumes.append(
+                client.V1Volume(name='init-db-script', config_map=client.V1ConfigMapVolumeSource(name='supervisor-dev-scripts', default_mode=511)))
+            # mount the DB init script
+            volume_mounts.append(client.V1VolumeMount(name='init-db-script', mount_path='/docker-entrypoint-initdb.d/001-init-irods-db.sh',
+                                                      sub_path='init-irods-pg-db.sh'))
+
+            # create a service to access the DB
+            service = client.V1Service(api_version="v1", metadata=client.V1ObjectMeta(name=run_job['run-config']['JOB_NAME'],
+                                                                                      labels={"app": run_job['run-config']['JOB_NAME']}),
+                                       spec=client.V1ServiceSpec(selector={"app": run_job['run-config']['JOB_NAME']}, ports=[
+                                           client.V1ServicePort(name='db-service-port', port=5432, protocol='TCP', target_port=5432)],
+                                                                 type='ClusterIP'))
+
+            # create ports on the container for the DB
+            ports = [client.V1ContainerPort(name='service-port', container_port=5432)]
+
+        # if this is an irods server add the config script
+        # if job_type == JobType.PROVIDER:
+        #     volumes.append(client.V1Volume(name='base-config-script', config_map=''))
+        #     volume_mounts.append(client.V1VolumeMount(name='', mount_path='', sub_path='init-irods-pg-db.sh'))
+
         # get the ephemeral limit
         if run_job['run-config']['EPHEMERAL'] is not None:
             ephemeral_limit = run_job['run-config']['EPHEMERAL']
         else:
             ephemeral_limit = '128Mi'
-
-        # declare an array for the env declarations
-        secret_envs = []
-
-        # duplicate the environment param list
-        secret_env_params = self.secret_env_params.copy()
-
-        # get all the env params into an array
-        for item in secret_env_params:
-            secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
-                secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))))
 
         # init a list for all the containers in this job
         containers: list = []
@@ -165,7 +194,7 @@ class JobCreate:
             # add the container to the list
             containers.append(client.V1Container(name=run_job['run-config']['JOB_NAME'] + '-' + str(idx), image=run_job['run-config']['IMAGE'],
                                                  command=new_cmd_list, volume_mounts=volume_mounts, image_pull_policy='Always', env=secret_envs,
-                                                 resources=resources))
+                                                 resources=resources, ports=ports))
 
         # save the number of containers in this job/pod for status checking later
         run_job['total_containers'] = len(containers)
@@ -192,7 +221,7 @@ class JobCreate:
         job = client.V1Job(api_version="batch/v1", kind="Job", metadata=client.V1ObjectMeta(name=run_job['run-config']['JOB_NAME']), spec=job_spec)
 
         # save these params onto the run info
-        run_job['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?'}
+        run_job['job-config'] = {'job': job, 'job-details': job_details, 'job_id': '?', 'service': service, 'svc_id': '?'}
 
     def create_job(self, run: dict, job_type: JobType) -> object:
         """
@@ -203,7 +232,8 @@ class JobCreate:
         :return: str the job id
         """
         # create the API hooks
-        api_instance = client.BatchV1Api()
+        job_api = client.BatchV1Api()
+        service_api = client.CoreV1Api()
 
         # get references to places in the config to make things more readable
         job_data = run[job_type]['job-config']
@@ -212,11 +242,17 @@ class JobCreate:
 
         # init the return storage
         job_id: str = ''
+        svc_id: str = ''
 
         if not run['fake-jobs']:
             try:
                 # create the job
-                api_instance.create_namespaced_job(body=job_data['job'], namespace=job_details['NAMESPACE'])
+                job_api.create_namespaced_job(body=job_data['job'], namespace=job_details['NAMESPACE'])
+
+                # create the service
+                if job_data['service'] is not None:
+                    service_api.create_namespaced_service(body=job_data['service'], namespace=job_details['NAMESPACE'])
+
             except client.ApiException:
                 self.logger.exception("Error creating job: %s", run_details['JOB_NAME'])
                 return None
@@ -225,7 +261,7 @@ class JobCreate:
             time.sleep(job_data['job-details']['CREATE_SLEEP'])
 
             # get the job run information
-            jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
+            jobs = job_api.list_namespaced_job(namespace=job_details['NAMESPACE'])
 
             # for each item returned
             for job in jobs.items:
@@ -234,16 +270,29 @@ class JobCreate:
                     self.logger.debug("Found new job: %s, controller-uid: %s, status: %s", run_details['JOB_NAME'],
                                       job.metadata.labels['controller-uid'], job.status.active)
 
-                    # save job id
                     job_id = str(job.metadata.labels["controller-uid"])
 
                     # no need to continue looking
                     break
+
+            # get the services
+            svcs = service_api.list_namespaced_service(namespace=job_details['NAMESPACE'])
+
+            # for each item returned
+            for svc in svcs.items:
+                # is this the one that was launched
+                if 'app' in svc.metadata.labels and svc.metadata.labels['app'] == run_details['JOB_NAME']:
+                    # save service id
+                    svc_id = str(svc.metadata.uid)
+
+                    # no need to continue looking
+                    break
+
         else:
             job_id = 'fake-job-' + job_type
 
         # return the job controller uid
-        return job_id
+        return job_id, svc_id
 
     # @staticmethod
     def delete_job(self, run: dict) -> str:
@@ -313,10 +362,11 @@ class JobCreate:
         self.create_job_object(run, job_type, job_details)
 
         # create and launch the job
-        job_id = self.create_job(run, job_type)
+        job_id, svc_id = self.create_job(run, job_type)
 
         # save these params onto the run info
         run[job_type]['job-config']['job_id'] = job_id
+        run[job_type]['job-config']['svc_id'] = svc_id
 
         # return to the caller
         return job_id

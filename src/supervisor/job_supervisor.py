@@ -238,14 +238,14 @@ class JobSupervisor:
         # if this was a final staging run that failed force complete
         elif 'final-staging' in run:
             self.logger.error("Error detected for a run in final staging with run id: %s", run['id'])
-            run['status_prov'] += f", error detected for a run in final staging. An incomplete cleanup may have occurred."
+            run['status_prov'] += ", error detected for a run in final staging. An incomplete cleanup may have occurred."
 
             # set error conditions
             run['job-type'] = JobType.COMPLETE
             run['status'] = JobStatus.ERROR
         # else try to clean up
         else:
-            self.logger.error(f"Error detected for a run. About to clean up of intermediate files. Run id: %s", run['id'])
+            self.logger.error("Error detected for a run. About to clean up of intermediate files. Run id: %s", run['id'])
             run['status_prov'] += ', error detected'
 
             # set the type to clean up
@@ -629,6 +629,12 @@ class JobSupervisor:
         if pause_mode != self.debug_options['pause_mode']:
             # save the new pause mode
             self.debug_options['pause_mode'] = pause_mode
+
+            # build the message
+            msg: str = f'The application is now {"paused" if pause_mode else "active"}.'
+
+            # log pause mode was toggled
+            self.logger.info(msg)
 
         # get all the new runs if system is not in pause mode
         if not pause_mode:
