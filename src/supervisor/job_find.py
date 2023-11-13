@@ -38,7 +38,7 @@ class JobFind:
         :return:
         """
         # load the baseline cluster params
-        sv_config = run[run['job-type']]['job-config']['sv-details']
+        sv_config = run[run['job-type']]['job-config']['sv-config']
         job_name = run[run['job-type']]['run-config']['JOB_NAME']
 
         # if this is not a fake job

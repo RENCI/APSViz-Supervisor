@@ -298,7 +298,7 @@ class JobSupervisor:
         extend_output_path = False
 
         # get the proper job configs
-        job_configs = self.k8s_job_configs[run['workflow_type']]
+        # TODO: job_configs = self.k8s_job_configs[run['workflow_type']]
 
         # is this a consumer job
         if job_type == JobType.CONSUMER:
@@ -450,7 +450,11 @@ class JobSupervisor:
                             # set the job to new
                             run['status'] = JobStatus.NEW
 
-                            # note this bit is for troubleshooting when the steps have been set    # into a loop back to staging. if so, remove all other job types that may have done    # also add this to the above if statement -> or run['job-type'] == JobType.STAGING    # and uncomment below...    # for i in run.copy(): if isinstance(i, JobType) and i is not JobType.STAGING: run.pop(i)
+                            # note this bit is for troubleshooting when the steps have been set
+                            # into a loop back to staging. if so, remove all other job types that may have done
+                            # also add this to the above if statement -> or run['job-type'] == JobType.STAGING
+                            # and uncomment below...
+                            # for i in run.copy(): if isinstance(i, JobType) and i is not JobType.STAGING: run.pop(i)
 
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
@@ -547,8 +551,9 @@ class JobSupervisor:
             test_image = ''
 
         # loop through the params and return the ones that are missing
-        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
-                workflow_type, db_image, os_image, test_image)
+        return (
+        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
+        db_image, os_image, test_image)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """

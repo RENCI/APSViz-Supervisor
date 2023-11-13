@@ -132,17 +132,21 @@ class JobCreate:
             secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
                 secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))))
 
-        # declare the volume mounts
+        # declare the volumes
         volumes: list = [client.V1Volume(name=run_config['DATA_VOLUME_NAME'], persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
             claim_name=f'{self.sv_config["DATA_PVC_CLAIM"]}'))]
+
+        # declare the volume mounts
         volume_mounts: list = [client.V1VolumeMount(name=run_config['DATA_VOLUME_NAME'], mount_path=run_config['DATA_MOUNT_PATH'])]
 
         # if there is a desire to mount other persistent volumes
         if run_config['FILESVR_VOLUME_NAME']:
+            # get all the volume mount paths
             mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
 
+            # create volume claims for each volume name
             for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
-                # build the mounted volumes list
+                # build the mounted volumes and mounts list
                 volumes.append(client.V1Volume(name=name, persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=name)))
                 volume_mounts.append(client.V1VolumeMount(name=name, mount_path=mount_paths[index]))
 
@@ -216,7 +220,7 @@ class JobCreate:
                 self.logger.info('command line: %s', " ".join(new_cmd_list))
 
             # get the image name
-            image_name = self.get_image_name(run, job_type)
+            image_name: str = self.get_image_name(run, job_type)
 
             # add the container to the list
             containers.append(client.V1Container(name=job_details['run-config']['JOB_NAME'] + '-' + str(idx), image=image_name, command=new_cmd_list,
@@ -224,7 +228,7 @@ class JobCreate:
                                                  ports=ports))
 
         # save the number of containers in this job/pod for status checking later
-        job_details['total_containers'] = len(containers)
+        job_details['total_containers']: int = len(containers)
 
         # if there was a node selector found use it
         if run_config['NODE_TYPE']:
@@ -250,9 +254,9 @@ class JobCreate:
                                                        spec=job_spec)
 
         # save these params onto the run info
-        job_details['job-config']['job'] = job
-        job_details['job-config']['sv-details'] = self.sv_config
-        job_details['job-config']['service'] = service
+        job_details['job-config']['job']: client.models.v1_job.V1Job = job
+        job_details['job-config']['sv-config']: dict = self.sv_config
+        job_details['job-config']['service']: dict = service
 
     @staticmethod
     def get_image_name(run, job_type):
@@ -312,7 +316,7 @@ class JobCreate:
         """
         # init the output params
         ports: list = []
-        service_config = None
+        service_config: client.models.v1_service.V1Service = None
 
         # if this is a deployment that requires network service, triggerd by a port declaration in the run config
         if run_config['PORT_RANGE']:
@@ -340,7 +344,7 @@ class JobCreate:
             # there can be multiple ranges. go through them
             for port_range in run_config['PORT_RANGE']:
                 # get all the ports in a single list
-                port_list = [x for x in range(port_range[0], port_range[1] + 1)]
+                port_list = list(range(port_range[0], port_range[1] + 1))
 
             # create ports on the container for the DB
             ports: list = [client.V1ContainerPort(name=f'sp-{x}', container_port=x) for x in port_list]
@@ -446,7 +450,6 @@ class JobCreate:
             if not run['debug'] and run['status'] != JobStatus.ERROR:
                 job_details = run[run['job-type']]
                 run_config = job_details['run-config']
-                job_config = job_details['job-config']
 
                 # create the API hooks
                 job_api = client.BatchV1Api()
@@ -484,13 +487,11 @@ class JobCreate:
             # loop through all the workflow steps
             for item in run:
                 # determine if this is a service based on the existence of a port definition
-                if type(item) is JobType and run[item]['job-config']['service'] is not None:
+                if isinstance(item, JobType) and run[item]['job-config']['service'] is not None:
                     # set the run type
                     run['job-type'] = item
 
                     # delete the k8s job if it exists
-                    job_del_status = self.delete_job(run, True)
-
-                    pass
+                    self.delete_job(run, True)
         except Exception:
             self.logger.exception('Error removing lingering jobs/services.')
