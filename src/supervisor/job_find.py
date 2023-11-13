@@ -38,7 +38,7 @@ class JobFind:
         :return:
         """
         # load the baseline cluster params
-        job_details = run[run['job-type']]['job-config']['job-details']
+        sv_details = run[run['job-type']]['job-config']['sv-details']
         job_name = run[run['job-type']]['run-config']['JOB_NAME']
 
         # if this is not a fake job
@@ -50,7 +50,7 @@ class JobFind:
             except config.ConfigException:
                 try:
                     # else get the local config
-                    config.load_kube_config(context=job_details['CLUSTER'])
+                    config.load_kube_config(context=sv_details['CLUSTER'])
                 except config.ConfigException as exc:
                     raise Exception("Could not configure kubernetes python client") from exc
 
@@ -63,7 +63,7 @@ class JobFind:
             pod_status: str = ''
 
             # get the job run information
-            jobs = api_instance.list_namespaced_job(namespace=job_details['NAMESPACE'])
+            jobs = api_instance.list_namespaced_job(namespace=sv_details['NAMESPACE'])
 
             # init the job status
             job_status: str = 'Pending'
