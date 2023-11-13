@@ -51,7 +51,7 @@ class JobSupervisor:
         self.run_list: list = []
 
         # load the base configuration params
-        self.k8s_base_config: dict = Utils.get_base_config()
+        self.sv_config: dict = Utils.get_base_config()
 
         # init the running count of active runs
         self.run_count: int = 0
@@ -68,7 +68,7 @@ class JobSupervisor:
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
         # init the run params to look for list
-        self.required_run_params = []
+        self.required_run_params = ['workflow-type']
 
         # debug options
         self.debug_options: dict = {'pause_mode': True, 'fake_job': False}
@@ -105,6 +105,7 @@ class JobSupervisor:
                 for item in job_config_data[workflow_type].items():
                     item[1]['COMMAND_LINE'] = json.loads(item[1]['COMMAND_LINE'])
                     item[1]['COMMAND_MATRIX'] = json.loads(item[1]['COMMAND_MATRIX'])
+                    item[1]['PORT_RANGE'] = json.loads(item[1]['PORT_RANGE']) if item[1]['PORT_RANGE'] is not None else None
                     item[1]['PARALLEL'] = [JobType(x) for x in json.loads(item[1]['PARALLEL'])] if item[1]['PARALLEL'] is not None else None
 
         # return the config data
@@ -205,15 +206,15 @@ class JobSupervisor:
                 self.last_run_time = dt.datetime.now()
 
             # check for something to do after a period of time
-            if no_activity_counter >= self.k8s_base_config.get("MAX_NO_ACTIVITY_COUNT"):
+            if no_activity_counter >= self.sv_config.get("MAX_NO_ACTIVITY_COUNT"):
                 # set the sleep timeout
-                sleep_timeout = self.k8s_base_config.get("POLL_LONG_SLEEP")
+                sleep_timeout = self.sv_config.get("POLL_LONG_SLEEP")
 
                 # try again at this poll rate
-                no_activity_counter = self.k8s_base_config.get("MAX_NO_ACTIVITY_COUNT") - 1
+                no_activity_counter = self.sv_config.get("MAX_NO_ACTIVITY_COUNT") - 1
             else:
                 # set the sleep timeout
-                sleep_timeout = self.k8s_base_config.get("POLL_SHORT_SLEEP")
+                sleep_timeout = self.sv_config.get("POLL_SHORT_SLEEP")
 
             self.logger.debug("All active run checks complete. Sleeping for %s seconds.", sleep_timeout)
 
@@ -262,6 +263,9 @@ class JobSupervisor:
         :param run:
         :return:
         """
+        # clean up any jobs/services that may be lingering
+        self.util_objs['create'].clean_up_jobs_and_svcs(run)
+
         # get the run duration
         duration = Utils.get_run_time_delta(run)
 
@@ -296,28 +300,36 @@ class JobSupervisor:
         # get the proper job configs
         job_configs = self.k8s_job_configs[run['workflow_type']]
 
-        # is this a staging job
-        if job_type == JobType.STAGING:
-            command_line_params = ''
-
         # is this a consumer job
-        elif job_type == JobType.CONSUMER:
+        if job_type == JobType.CONSUMER:
             command_line_params = ''
 
-        # is this a database job
-        elif job_type == JobType.DATABASE:
+        # is this a final staging job
+        elif job_type == JobType.FINAL_STAGING:
             command_line_params = ''
 
         # is this a forensics job
         elif job_type == JobType.FORENSICS:
             command_line_params = ''
 
+        # is this a mysql database job
+        elif job_type == JobType.MYSQL_DATABASE:
+            command_line_params = ''
+
+        # is this a postgres database job
+        elif job_type == JobType.PG_DATABASE:
+            command_line_params = ''
+
         # is this a provider job
         elif job_type == JobType.PROVIDER:
             command_line_params = ''
 
-        # is this a final staging job
-        elif job_type == JobType.FINAL_STAGING:
+        # is this a staging job
+        elif job_type == JobType.STAGING:
+            command_line_params = ''
+
+        # is this a mysql database job
+        elif job_type == JobType.TESTER:
             command_line_params = ''
 
         # unknown job type
@@ -345,7 +357,7 @@ class JobSupervisor:
             # set the activity flag
             no_activity = False
 
-            # create a list of jobs to create
+            # create a list of parallel jobs to create
             job_type_list: list = [run['job-type']]
 
             # append any parallel jobs if they exist
@@ -402,6 +414,10 @@ class JobSupervisor:
 
             # if the job was found
             if job_found:
+                # if this is a server process job set it to complete set it moves to the next step
+                if self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
+                    job_status = 'Complete'
+
                 # did the job timeout (presumably waiting for resources) or failed
                 if job_status.startswith('Timeout') or job_status.startswith('Failed'):
                     # remove the job and get the final run status
@@ -434,11 +450,7 @@ class JobSupervisor:
                             # set the job to new
                             run['status'] = JobStatus.NEW
 
-                            # note this bit is for troubleshooting when the steps have been set
-                            # into a loop back to staging. if so, remove all other job types that may have done
-                            # also add this to the above if statement -> or run['job-type'] == JobType.STAGING
-                            # and uncomment below...
-                            # for i in run.copy(): if isinstance(i, JobType) and i is not JobType.STAGING: run.pop(i)
+                            # note this bit is for troubleshooting when the steps have been set    # into a loop back to staging. if so, remove all other job types that may have done    # also add this to the above if statement -> or run['job-type'] == JobType.STAGING    # and uncomment below...    # for i in run.copy(): if isinstance(i, JobType) and i is not JobType.STAGING: run.pop(i)
 
                 # was there a failure. remove the job and declare failure
                 elif pod_status.startswith('Failed'):
@@ -447,14 +459,12 @@ class JobSupervisor:
 
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
                         self.logger.error("Error: A failed job and/or pod detected. Run status: %s. Run ID: %s, Job type: %s, job delete status: "
-                                          "%s, pod status: %s.", run['status'], run['id'], run['job-type'], job_del_status,
-                                          pod_status)
+                                          "%s, pod status: %s.", run['status'], run['id'], run['job-type'], job_del_status, pod_status)
 
                     # set error conditions
                     run['status'] = JobStatus.ERROR
             else:
-                self.logger.error("Error: A job not found: Run ID: %s, Run status: %s, Job type: %s", run['id'],
-                                  run['status'], run['job-type'])
+                self.logger.error("Error: A job not found: Run ID: %s, Run status: %s, Job type: %s", run['id'], run['status'], run['job-type'])
 
                 # set error condition
                 run['status'] = JobStatus.ERROR
@@ -495,6 +505,9 @@ class JobSupervisor:
         # save these params in the run info
         run[job_type] = {'run-config': config}
 
+        # add in the default parameters to be filled in later
+        run[job_type].update({'job-config': {'job': None, 'sv-details': None, 'job_id': None, 'service': None, 'svc_id': None}})
+
     def check_input_params(self, run_info: dict) -> (str, str, bool):
         """
         Checks the run data to insure we have all the necessary info to start a run
@@ -502,18 +515,40 @@ class JobSupervisor:
         :param run_info:
         :return: list of required items that weren't found
         """
-        # interrogate and set debug mode
+        # get debug mode if available
         debug_mode = ('supervisor_job_status' in run_info and run_info['supervisor_job_status'].startswith('debug'))
 
         # get the workflow type
-        if 'workflow_type' in run_info:
-            workflow_type = run_info['workflow_type']
+        if 'workflow-type' in run_info['request_data']:
+            workflow_type = run_info['request_data']['workflow-type']
         # if there is no workflow type default to ASGS legacy runs
         else:
             workflow_type = ''
 
+        # get the name:version for the DB image
+        if 'db-image' in run_info['request_data']:
+            db_image = run_info['request_data']['db-image']
+        # if there is no workflow type default to ASGS legacy runs
+        else:
+            db_image = ''
+
+        # get the name:version for the OS image
+        if 'os-image' in run_info['request_data']:
+            os_image = run_info['request_data']['os-image']
+        # if there is no workflow type default to ASGS legacy runs
+        else:
+            os_image = ''
+
+        # get the name:version for the test image
+        if 'test-image' in run_info['request_data']:
+            test_image = run_info['request_data']['test-image']
+        # if there is no workflow type default to ASGS legacy runs
+        else:
+            test_image = ''
+
         # loop through the params and return the ones that are missing
-        return f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info])}", debug_mode, workflow_type
+        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
+                workflow_type, db_image, os_image, test_image)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -567,7 +602,7 @@ class JobSupervisor:
                     if not self.check_for_duplicate_run(run_id):
                         # make sure all the needed params are available. instance name and debug mode
                         # are handled here because they both affect messaging and logging.
-                        missing_params_msg, debug_mode, workflow_type = self.check_input_params(run['run_data'])
+                        missing_params_msg, debug_mode, workflow_type, db_image, os_image, test_image = self.check_input_params(run['run_data'])
 
                         # check the run params to see if there is something missing
                         if len(missing_params_msg) > 0:
@@ -603,8 +638,8 @@ class JobSupervisor:
 
                         # add the new run to the list
                         self.run_list.append(
-                            {'id': run_id, 'workflow_type': workflow_type, 'debug': debug_mode,
-                             'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
+                            {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'os_image': os_image,
+                             'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
                              'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now()})
 
                         # update the run status in the DB
