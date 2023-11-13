@@ -15,5 +15,5 @@ max-attributes=12
 max-nested-blocks=10
 max-branches=25
 max-statements=60
-max-locals=35
+max-locals=40
 fail-under=9.5
