@@ -39,9 +39,11 @@ class JobType(str, Enum):
     Class that stores the job type name constants
     """
     STAGING = 'staging'
-    DATABASE = 'database'
+    PG_DATABASE = 'pg-database'
+    MYSQL_DATABASE = 'mysql-database'
     PROVIDER = 'provider'
     CONSUMER = 'consumer'
+    TESTER = 'tester'
     FORENSICS = 'forensics'
     FINAL_STAGING = 'final-staging'
 
