@@ -274,7 +274,7 @@ class JobSupervisor:
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # send something to the log to indicate complete
-        self.logger.info("%s complete.", run['id'])
+        self.logger.info("Run id %s complete.", run['id'])
 
         # remove the run
         self.run_list.remove(run)
