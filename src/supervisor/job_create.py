@@ -14,7 +14,7 @@
         run (a request for a workflow run): houses the details of all the workflow steps (jobs) in a run.
             It also includes the run request gathered from the DB.
         job_details (run[job type]): A workflow step identified by the job type that includes the run and job configs.
-        run_config (job_details['run-config']): the parameters used to populate each workflow job/step temlate.
+        run_config (job_details['run-config']): the parameters used to populate each workflow job/step template.
         job_config = (job_details['job-config']): k8s templates populated with the run-config params for each job/step.
 """
 import time
@@ -57,11 +57,9 @@ class JobCreate:
         self.cpu_limits: bool = self.sv_config.get("CPU_LIMITS")
 
         # declare the secret environment variables
-        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
-                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'}, {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
-                                        {'name': 'IRODS_SV_DB_USERNAME', 'key': 'irods-sv-username'},
-                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'},
-                                        {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'}, {'name': 'SYSTEM', 'key': 'system'}]
+        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
+                                        {'name': 'LOG_PATH', 'key': 'log-path'},
+                                        {'name': 'SYSTEM', 'key': 'system'}]
 
     def execute(self, run: dict, job_type: JobType):
         """
@@ -151,9 +149,7 @@ class JobCreate:
                 volume_mounts.append(client.V1VolumeMount(name=name, mount_path=mount_paths[index]))
 
         # get the service configuration
-        ports, service = self.create_svc_objects(job_type, run_config, secret_envs, volume_mounts, volumes)
-
-        # TODO: if this is an irods server add the config script
+        ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
 
         # get the ephemeral limit
         if run_config['EPHEMERAL'] is not None:
@@ -272,13 +268,13 @@ class JobCreate:
 
         # is this a DB job
         if job_type in [JobType.PG_DATABASE, JobType.MYSQL_DATABASE]:
-            # is a DB image defined for the run
+            # use th DB image in the request if assigned
             if run['db_image']:
                 # assign the DB image
                 ret_val = run['db_image']
         # else is it an OS job
         elif job_type in [JobType.PROVIDER, JobType.CONSUMER]:
-            # is an OS image defined for the run
+            # use th OS image in the request if assigned
             if run['os_image']:
                 # assign the OS image
                 ret_val = f'containers.renci.org/irods/irods-{run["os_image"]}'
@@ -303,10 +299,12 @@ class JobCreate:
         return ret_val
 
     @staticmethod
-    def create_svc_objects(job_type, run_config, secret_envs, volume_mounts, volumes) -> (list, client.models.v1_service.V1Service):
+    def create_svc_objects(run: dict, job_type: JobType, run_config: dict, secret_envs: list, volume_mounts: list, volumes: list) -> (
+            list, client.models.v1_service.V1Service):
         """
         adds config volumes and a network service to the job deployment if desired
 
+        :param run:
         :param job_type:
         :param run_config:
         :param secret_envs:
@@ -316,7 +314,11 @@ class JobCreate:
         """
         # init the output params
         ports: list = []
-        service_config: client.models.v1_service.V1Service = None
+        service_config = None
+        db_service_name: str = ''
+
+        # init the volume info for init scripts
+        cfg_map_info = []
 
         # if this is a deployment that requires network service, triggerd by a port declaration in the run config
         if run_config['PORT_RANGE']:
@@ -326,20 +328,54 @@ class JobCreate:
 
             # set the env params and a file system mount for a postgres DB
             if job_type == JobType.PG_DATABASE:
+                # set the environment params
                 secret_envs.append(client.V1EnvVar(name='POSTGRES_USER', value='postgres'))
                 secret_envs.append(client.V1EnvVar(name='POSTGRES_PASSWORD', value='testpassword'))
                 secret_envs.append(client.V1EnvVar(name='PGDATA', value='/var/lib/postgresql/data/db_data'))
 
-                # create a volume for the DB init script
-                volumes.append(client.V1Volume(name='init-pgdb-script',
-                                               config_map=client.V1ConfigMapVolumeSource(name='supervisor-dev-scripts', default_mode=511)))
+                # set the config map script name and mount
+                cfg_map_info = [['init-irods-pg-db', 'init-irods-pg-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+
+            # set the env params and a file system mount for a MySQL DB
+            elif job_type == JobType.MYSQL_DATABASE:
+                # set the environment params
+                secret_envs.append(client.V1EnvVar(name='MYSQL_USER', value='irods'))
+                secret_envs.append(client.V1EnvVar(name='MYSQL_ROOT_PASSWORD', value='testpassword'))
+                secret_envs.append(client.V1EnvVar(name='MYSQL_PASSWORD', value='testpassword'))
+
+                # set the config map script name and mount
+                cfg_map_info = [['init-irods-mysql-db', 'init-irods-mysql-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+
+            # set the env params and a file system mount for a iRODS provider
+            elif job_type == JobType.PROVIDER:
+                # set the config map script name and mount
+                # add these to run on irods logging
+                # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
+                # ['irods', 'irods', '/etc/logrotate.d/irods'],
+                cfg_map_info = [['irodsinstall', 'irodsInstall.sh', '/irods/irodsInstall.sh'],
+                                ['serviceinit', 'serviceInit.json', '/irods/serviceInit.json']]
+
+                # get the database service name. it is the same as the job name
+                if JobType.PG_DATABASE in run:
+                    db_service_name = run[JobType.PG_DATABASE]['run-config']['JOB_NAME']
+                elif JobType.MYSQL_DATABASE in run:
+                    db_service_name = run[JobType.MYSQL_DATABASE]['run-config']['JOB_NAME']
+
+                # save the service name to the environment
+                secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
+
+            # set the env params and a file system mount for a iRODS consumer
+            # elif job_type == JobType.CONSUMER:
+            #     # set the config map script name and mount
+            #     cfg_map = [['init-irods-mysql-db', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+
+            # loop though all the config map items defined and create mounts
+            for item in cfg_map_info:
+                # create a volume for the init script
+                volumes.append(client.V1Volume(name=item[0], config_map=client.V1ConfigMapVolumeSource(name='supervisor-scripts', default_mode=511)))
 
                 # mount the DB init script
-                volume_mounts.append(client.V1VolumeMount(name='init-pgdb-script', mount_path='/docker-entrypoint-initdb.d/001-init-irods-db.sh',
-                                                          sub_path='init-irods-pg-db.sh'))
-            # TODO: set the env params and a file system mount for a MySQL DB
-            elif job_type == JobType.MYSQL_DATABASE:
-                pass
+                volume_mounts.append(client.V1VolumeMount(name=item[0], sub_path=f'{item[1]}', mount_path=item[2]))
 
             # there can be multiple ranges. go through them
             for port_range in run_config['PORT_RANGE']:
@@ -347,16 +383,17 @@ class JobCreate:
                 port_list = list(range(port_range[0], port_range[1] + 1))
 
             # create ports on the container for the DB
-            ports: list = [client.V1ContainerPort(name=f'sp-{x}', container_port=x) for x in port_list]
+            ports = [client.V1ContainerPort(name=f'sp-{x}', container_port=x) for x in port_list]
 
             # create the port configs
-            ports_config: list = [client.V1ServicePort(name=f'db-sp-{x}', port=x, protocol='TCP', target_port=x) for x in port_list]
+            ports_config = [client.V1ServicePort(name=f'db-sp-{x}', port=x, protocol='TCP', target_port=x) for x in port_list]
 
             # create a service to access the DB
             service_config = client.V1Service(api_version="v1",
                                               metadata=client.V1ObjectMeta(name=run_config['JOB_NAME'], labels={"app": run_config['JOB_NAME']}),
                                               spec=client.V1ServiceSpec(selector={"app": run_config['JOB_NAME']}, ports=ports_config,
                                                                         type='ClusterIP'))
+
 
         # return the port and service details
         return ports, service_config

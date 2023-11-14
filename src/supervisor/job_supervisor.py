@@ -135,7 +135,7 @@ class JobSupervisor:
                 try:
                     # skip this job if it is complete
                     if run['job-type'] == JobType.COMPLETE:
-                        self.handle_job_complete(run)
+                        self.handle_run_complete(run)
 
                         # continue processing
                         continue
@@ -256,9 +256,9 @@ class JobSupervisor:
         # report the issue
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
-    def handle_job_complete(self, run: dict):
+    def handle_run_complete(self, run: dict):
         """
-        handles the job state when it is marked complete
+        handles the completion of a run
 
         :param run:
         :return:
@@ -285,7 +285,7 @@ class JobSupervisor:
         note: use this to keep a pod running after command_line and command_matrix for the job have
         been set to '[""]' in the DB also note that the supervisor should be terminated prior to
         killing the job to avoid data directory removal (if that matters)
-        command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
+        command_line_params = ['/bin/sh', '-c', 'while true; do sleep 7200; done']
         update public."" set command_line='[""]', command_matrix='[""]'
         where id=;
 
