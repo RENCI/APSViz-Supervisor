@@ -57,8 +57,7 @@ class JobCreate:
         self.cpu_limits: bool = self.sv_config.get("CPU_LIMITS")
 
         # declare the secret environment variables
-        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
-                                        {'name': 'LOG_PATH', 'key': 'log-path'},
+        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
                                         {'name': 'SYSTEM', 'key': 'system'}]
 
     def execute(self, run: dict, job_type: JobType):
@@ -119,6 +118,10 @@ class JobCreate:
         job_details = run[job_type]
         run_config = job_details['run-config']
 
+        # declare arrays for the volumes and volume mounts
+        volume_mounts: list = []
+        volumes: list = []
+
         # declare an array for the env declarations
         secret_envs: list = []
 
@@ -130,23 +133,12 @@ class JobCreate:
             secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
                 secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))))
 
-        # declare the volumes
-        volumes: list = [client.V1Volume(name=run_config['DATA_VOLUME_NAME'], persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
-            claim_name=f'{self.sv_config["DATA_PVC_CLAIM"]}'))]
+        # declare the volume shared by all
+        self.declare_shared_volume(run_config, volume_mounts, volumes)
 
-        # declare the volume mounts
-        volume_mounts: list = [client.V1VolumeMount(name=run_config['DATA_VOLUME_NAME'], mount_path=run_config['DATA_MOUNT_PATH'])]
-
-        # if there is a desire to mount other persistent volumes
+        # declare the ephemeral volumes
         if run_config['FILESVR_VOLUME_NAME']:
-            # get all the volume mount paths
-            mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
-
-            # create volume claims for each volume name
-            for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
-                # build the mounted volumes and mounts list
-                volumes.append(client.V1Volume(name=name, persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=name)))
-                volume_mounts.append(client.V1VolumeMount(name=name, mount_path=mount_paths[index]))
+            self.declare_ephemeral_volumes(run, run_config, volume_mounts, volumes)
 
         # get the service configuration
         ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
@@ -254,6 +246,39 @@ class JobCreate:
         job_details['job-config']['sv-config']: dict = self.sv_config
         job_details['job-config']['service']: dict = service
 
+    def declare_ephemeral_volumes(self, run, run_config, volume_mounts, volumes):
+        # get all the volume mount paths
+        mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
+        # create volume claims for each volume name
+        for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
+            # build the mounted volumes and mounts list
+            # client.V1Volume(name=f"{name}-{run['id']}",
+            # persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=f"{name}-{run['id']}"))
+
+            volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=client.V1EphemeralVolumeSource(
+                volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
+                                                                                                                     resources=client.V1ResourceRequirements(
+                                                                                                                         requests={
+                                                                                                                             'storage': '1Gi'}))))))
+
+            volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run['id']}", mount_path=mount_paths[index]))
+
+    def declare_shared_volume(self, run_config: dict, volume_mounts: list, volumes: list ) -> (list, list):
+        """
+        declares the shared volume mount
+
+        :param run_config:
+        :param volume_mounts:
+        :param volumes:
+        :return:
+        """
+        # declare the volume
+        volumes = [client.V1Volume(name=run_config['DATA_VOLUME_NAME'], persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+            claim_name=f'{self.sv_config["DATA_PVC_CLAIM"]}'))]
+
+        # declare the volume mount
+        volume_mounts = [client.V1VolumeMount(name=run_config['DATA_VOLUME_NAME'], mount_path=run_config['DATA_MOUNT_PATH'])]
+
     @staticmethod
     def get_image_name(run, job_type):
         """
@@ -348,12 +373,13 @@ class JobCreate:
 
             # set the env params and a file system mount for a iRODS provider
             elif job_type == JobType.PROVIDER:
-                # set the config map script name and mount
-                # add these to run on irods logging
+                # set the config map script name and mounts.
+                # add these to run on irods logging and or probing
                 # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
-                cfg_map_info = [['irodsinstall', 'irodsInstall.sh', '/irods/irodsInstall.sh'],
-                                ['serviceinit', 'serviceInit.json', '/irods/serviceInit.json']]
+                # ['dsd', 'dsd.py', '/irods/dsd.py'],
+                cfg_map_info = [['irodsproviderinstall', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
+                                ['providerinit', 'providerInit.json', '/irods/providerInit.json']]
 
                 # get the database service name. it is the same as the job name
                 if JobType.PG_DATABASE in run:
@@ -365,9 +391,23 @@ class JobCreate:
                 secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
 
             # set the env params and a file system mount for a iRODS consumer
-            # elif job_type == JobType.CONSUMER:
-            #     # set the config map script name and mount
-            #     cfg_map = [['init-irods-mysql-db', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+            elif job_type == JobType.CONSUMER:
+                # set the config map script name and mounts.
+                # add these to run on irods logging and or probing
+                # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
+                # ['irods', 'irods', '/etc/logrotate.d/irods'],
+                # ['dsd', 'dsd.py', '/irods/dsd.py'],
+                cfg_map_info = [['irodsconsumerinstall', 'irodsConsumerInstall.sh', '/irods/irodsConsumerInstall.sh'],
+                                ['consumerinit', 'consumerInit.json', '/irods/consumerInit.json']]
+
+                # get the database service name. it is the same as the job name
+                if JobType.PG_DATABASE in run:
+                    db_service_name = run[JobType.PG_DATABASE]['run-config']['JOB_NAME']
+                elif JobType.MYSQL_DATABASE in run:
+                    db_service_name = run[JobType.MYSQL_DATABASE]['run-config']['JOB_NAME']
+
+                # save the service name to the environment
+                secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
 
             # loop though all the config map items defined and create mounts
             for item in cfg_map_info:
@@ -380,7 +420,7 @@ class JobCreate:
             # there can be multiple ranges. go through them
             for port_range in run_config['PORT_RANGE']:
                 # get all the ports in a single list
-                port_list = list(range(port_range[0], port_range[1] + 1))
+                port_list.extend(list(range(port_range[0], port_range[1] + 1)))
 
             # create ports on the container for the DB
             ports = [client.V1ContainerPort(name=f'sp-{x}', container_port=x) for x in port_list]
@@ -393,7 +433,6 @@ class JobCreate:
                                               metadata=client.V1ObjectMeta(name=run_config['JOB_NAME'], labels={"app": run_config['JOB_NAME']}),
                                               spec=client.V1ServiceSpec(selector={"app": run_config['JOB_NAME']}, ports=ports_config,
                                                                         type='ClusterIP'))
-
 
         # return the port and service details
         return ports, service_config
@@ -508,8 +547,8 @@ class JobCreate:
 
         # trap any k8s call errors
         except Exception:
-            ret_val = "Job delete error, job may no longer exist."
-            self.logger.exception("%s", ret_val)
+            ret_val = "Job delete error, job may not exist."
+            self.logger.error("%s", ret_val)
 
         # return the final status of the job
         return ret_val
