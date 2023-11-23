@@ -118,23 +118,18 @@ class JobCreate:
         job_details = run[job_type]
         run_config = job_details['run-config']
 
+        # init a list for all the containers in this job
+        containers: list = []
+
+        # declare an array for the env declarations
+        secret_envs: list = self.get_env_params()
+
         # declare arrays for the volumes and volume mounts
         volume_mounts: list = []
         volumes: list = []
 
-        # declare an array for the env declarations
-        secret_envs: list = []
-
-        # duplicate the environment param list
-        secret_env_params: list = self.secret_env_params.copy()
-
-        # get all the env params into an array
-        for item in secret_env_params:
-            secret_envs.append(client.V1EnvVar(name=item['name'], value_from=client.V1EnvVarSource(
-                secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))))
-
-        # declare the volume shared by all
-        self.declare_shared_volume(run_config, volume_mounts, volumes)
+        # declare the shared volumes
+        volumes, volume_mounts = self.declare_shared_volume(run['id'], run_config)
 
         # declare the ephemeral volumes
         if run_config['FILESVR_VOLUME_NAME']:
@@ -143,14 +138,11 @@ class JobCreate:
         # get the service configuration
         ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
 
-        # get the ephemeral limit
+        # get the ephemeral limit for the container
         if run_config['EPHEMERAL'] is not None:
             ephemeral_limit = run_config['EPHEMERAL']
         else:
             ephemeral_limit = '128Mi'
-
-        # init a list for all the containers in this job
-        containers: list = []
 
         # init the restart policy for the job
         restart_policy: str = 'Never'
@@ -229,12 +221,12 @@ class JobCreate:
             node_selector: dict = {}
 
         # create and configure a spec section for the container
-        template: client.models.v1_pod_template_spec.V1PodTemplateSpec = client.V1PodTemplateSpec(
+        pod_template: client.models.v1_pod_template_spec.V1PodTemplateSpec = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run_config['JOB_NAME']}),
             spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector))
 
         # create the specification of job deployment, active_deadline_seconds=30
-        job_spec: client.models.v1_job_spec.V1JobSpec = client.V1JobSpec(template=template, backoff_limit=self.back_off_limit,
+        job_spec: client.models.v1_job_spec.V1JobSpec = client.V1JobSpec(template=pod_template, backoff_limit=self.back_off_limit,
                                                                          ttl_seconds_after_finished=self.job_timeout)
 
         # instantiate the job object
@@ -246,38 +238,77 @@ class JobCreate:
         job_details['job-config']['sv-config']: dict = self.sv_config
         job_details['job-config']['service']: dict = service
 
-    def declare_ephemeral_volumes(self, run, run_config, volume_mounts, volumes):
-        # get all the volume mount paths
-        mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
-        # create volume claims for each volume name
-        for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
-            # build the mounted volumes and mounts list
-            # client.V1Volume(name=f"{name}-{run['id']}",
-            # persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=f"{name}-{run['id']}"))
-
-            volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=client.V1EphemeralVolumeSource(
-                volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
-                                                                                                                     resources=client.V1ResourceRequirements(
-                                                                                                                         requests={
-                                                                                                                             'storage': '1Gi'}))))))
-
-            volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run['id']}", mount_path=mount_paths[index]))
-
-    def declare_shared_volume(self, run_config: dict, volume_mounts: list, volumes: list ) -> (list, list):
+    def get_env_params(self) -> list:
         """
-        declares the shared volume mount
+        gets the environment variables
 
+        :return:
+        """
+        # init the return environment params
+        ret_val: list = []
+
+        # get all the env params into an array
+        for item in self.secret_env_params:
+            # get the location of the secret
+            secret_location = client.V1EnvVarSource(secret_key_ref=client.V1SecretKeySelector(name='irods-keys', key=item['key']))
+
+            # add it to the list
+            ret_val.append(client.V1EnvVar(name=item['name'], value_from=secret_location))
+
+        # return the params
+        return ret_val
+
+    @staticmethod
+    def declare_ephemeral_volumes(run, run_config, volume_mounts, volumes):
+        """
+
+        :param run:
         :param run_config:
         :param volume_mounts:
         :param volumes:
         :return:
         """
-        # declare the volume
-        volumes = [client.V1Volume(name=run_config['DATA_VOLUME_NAME'], persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+        # get all the volume mount paths
+        mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
+
+        # build the volume claim spec
+        pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'], resources=client.V1ResourceRequirements(requests={'storage': '1Gi'}))
+
+        # build the ephemeral name source
+        ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
+
+        # create volumes and mounts
+        for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
+
+            # build the volume definition
+            volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=ephemeral_source))
+
+            # and the volume mounts
+            volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run['id']}", mount_path=mount_paths[index]))
+
+    def declare_shared_volume(self, run_id: int, run_config: dict) -> (list, list):
+        """
+        declares the shared volume mount
+
+        :param run_id:
+        :param run_config
+        :return:
+        """
+        # declare the shared volume
+        volumes: list = [client.V1Volume(name=run_config['DATA_VOLUME_NAME'], persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
             claim_name=f'{self.sv_config["DATA_PVC_CLAIM"]}'))]
 
-        # declare the volume mount
-        volume_mounts = [client.V1VolumeMount(name=run_config['DATA_VOLUME_NAME'], mount_path=run_config['DATA_MOUNT_PATH'])]
+        # declare the shared volume mount
+        volume_mounts: list = [client.V1VolumeMount(name=run_config['DATA_VOLUME_NAME'], mount_path=run_config['DATA_MOUNT_PATH'])]
+
+        # add in the shared memory volume for /dev/shm
+        volumes.append(client.V1Volume(name=f"dev-shm-{run_id}", empty_dir={'sizeLimit': '128Mi', 'medium': "Memory"}))
+
+        # and the mount info for it
+        volume_mounts.append(client.V1VolumeMount(name=f"dev-shm-{run_id}", mount_path='/dev/shm'))
+
+        # return the default shared volume objects
+        return volumes, volume_mounts
 
     @staticmethod
     def get_image_name(run, job_type):
@@ -400,14 +431,13 @@ class JobCreate:
                 cfg_map_info = [['irodsconsumerinstall', 'irodsConsumerInstall.sh', '/irods/irodsConsumerInstall.sh'],
                                 ['consumerinit', 'consumerInit.json', '/irods/consumerInit.json']]
 
-                # get the database service name. it is the same as the job name
-                if JobType.PG_DATABASE in run:
-                    db_service_name = run[JobType.PG_DATABASE]['run-config']['JOB_NAME']
-                elif JobType.MYSQL_DATABASE in run:
-                    db_service_name = run[JobType.MYSQL_DATABASE]['run-config']['JOB_NAME']
+                # get the provider name. it is the same as the job name
+                if JobType.PROVIDER in run:
+                    # get the provider name
+                    provider_name = run[JobType.PROVIDER]['run-config']['JOB_NAME']
 
-                # save the service name to the environment
-                secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
+                    # save the service name to the environment
+                    secret_envs.append(client.V1EnvVar(name='PROVIDER_NAME', value=provider_name))
 
             # loop though all the config map items defined and create mounts
             for item in cfg_map_info:
