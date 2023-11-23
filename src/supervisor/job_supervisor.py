@@ -298,7 +298,7 @@ class JobSupervisor:
         extend_output_path = False
 
         # get the proper job configs
-        # TODO: job_configs = self.k8s_job_configs[run['workflow_type']]
+        job_configs = self.k8s_job_configs[run['workflow_type']]
 
         # is this a consumer job
         if job_type == JobType.CONSUMER:
@@ -326,7 +326,8 @@ class JobSupervisor:
 
         # is this a staging job
         elif job_type == JobType.STAGING:
-            command_line_params = ''
+            command_line_params = ['/bin/sh', '-c', f'rm -rf {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}; mkdir -m 777 -p'
+                                                    f' {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}']
 
         # is this a mysql database job
         elif job_type == JobType.TESTER:
