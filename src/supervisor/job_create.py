@@ -354,8 +354,7 @@ class JobCreate:
         # return to the caller
         return ret_val
 
-    @staticmethod
-    def create_svc_objects(run: dict, job_type: JobType, run_config: dict, secret_envs: list, volume_mounts: list, volumes: list) -> (
+    def create_svc_objects(self, run: dict, job_type: JobType, run_config: dict, secret_envs: list, volume_mounts: list, volumes: list) -> (
             list, client.models.v1_service.V1Service):
         """
         adds config volumes and a network service to the job deployment if desired
@@ -377,7 +376,7 @@ class JobCreate:
         cfg_map_info = []
 
         # if this is a deployment that requires network service, triggerd by a port declaration in the run config
-        if run_config['PORT_RANGE']:
+        if self.is_server_process(run_config):
             # init the intermediate port details
             ports_config: list = []
             port_list: list = []
@@ -493,7 +492,7 @@ class JobCreate:
                 job_api.create_namespaced_job(body=job_config['job'], namespace=self.sv_config['NAMESPACE'])
 
                 # create the service
-                if run_config['PORT_RANGE'] is not None:
+                if self.is_server_process(run_config):
                     service_api.create_namespaced_service(body=job_config['service'], namespace=self.sv_config['NAMESPACE'])
 
             except client.ApiException:
