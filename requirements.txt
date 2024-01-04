@@ -7,6 +7,6 @@
 
 kubernetes==26.1.0
 psycopg2-binary==2.9.9
-slack-sdk==3.23.0
-pylint==3.0.2
-pytest==7.4.3
+slack-sdk==3.26.1
+pylint==3.0.3
+pytest==7.4.4
