@@ -408,8 +408,10 @@ class JobCreate:
                 # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
                 # ['dsd', 'dsd.py', '/irods/dsd.py'],
-                cfg_map_info = [['irodsproviderinstall', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
-                                ['providerinit', 'providerInit.json', '/irods/providerInit.json']]
+                cfg_map_info = [['irods-provider-install', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
+                                ['provider-init', 'providerInit.json', '/irods/providerInit.json'],
+                                ['test-brief', 'testBrief.sh', '/irods/testBrief.sh'],
+                                ['all-core-tests', 'allCoreTests.sh', '/irods/allCoreTests.sh']]
 
                 # get the database service name. it is the same as the job name
                 if JobType.PG_DATABASE in run:
@@ -427,8 +429,8 @@ class JobCreate:
                 # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
                 # ['dsd', 'dsd.py', '/irods/dsd.py'],
-                cfg_map_info = [['irodsconsumerinstall', 'irodsConsumerInstall.sh', '/irods/irodsConsumerInstall.sh'],
-                                ['consumerinit', 'consumerInit.json', '/irods/consumerInit.json']]
+                cfg_map_info = [['irods-consumer-install', 'irodsConsumerInstall.sh', '/irods/irodsConsumerInstall.sh'],
+                                ['consumer-init', 'consumerInit.json', '/irods/consumerInit.json']]
 
                 # get the provider name. it is the same as the job name
                 if JobType.PROVIDER in run:
@@ -560,19 +562,24 @@ class JobCreate:
                 job_api = client.BatchV1Api()
                 service_api = client.CoreV1Api()
 
-                # remove the job if it is not a server process
+                # remove the job if it is not a server process. this could be forced if it is a run cleanup operation
                 if not self.is_server_process(run_config) or force:
-                    # remove the job
-                    job_response = job_api.delete_namespaced_job(name=run_config['JOB_NAME'], namespace=self.sv_config['NAMESPACE'],
-                                                                 body=client.V1DeleteOptions(propagation_policy='Foreground', grace_period_seconds=1))
-                    # set the return value
-                    ret_val = job_response.status
-
-                    # if this is a server process
+                    # if this is a server process kill the service first
                     if self.is_server_process(run_config):
                         # remove the service
                         service_api.delete_namespaced_service(run_config['JOB_NAME'], namespace=self.sv_config['NAMESPACE'],
                                                               body=client.V1DeleteOptions(propagation_policy='Foreground', grace_period_seconds=1))
+
+                        self.logger.debug('Deleting service: Job name: %s', run_config['JOB_NAME'])
+
+                    # remove the job
+                    job_response = job_api.delete_namespaced_job(name=run_config['JOB_NAME'], namespace=self.sv_config['NAMESPACE'],
+                                                                 body=client.V1DeleteOptions(propagation_policy='Foreground', grace_period_seconds=1))
+
+                    self.logger.debug('Deleting job: %s', run_config['JOB_NAME'])
+
+                    # set the return value
+                    ret_val = job_response.status
 
         # trap any k8s call errors
         except Exception:
