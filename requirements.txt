@@ -7,5 +7,5 @@
 
 kubernetes==26.1.0
 psycopg2-binary==2.9.9
-pylint==3.0.2
-pytest==7.4.3
+pylint==3.0.3
+pytest==7.4.4
