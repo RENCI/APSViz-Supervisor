@@ -27,9 +27,8 @@ class JobCreate:
 
     def __init__(self):
         """
-        inits the class.
+        inits the K8s job creation class.
 
-        :param system:
         """
         # get the log level and directory from the environment.
         log_level, log_path = LoggingUtil.prep_for_logging()
