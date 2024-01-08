@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
 # SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2024 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -367,7 +368,7 @@ class JobSupervisor:
             thredds_url = thredds_url.replace('fileServer', 'dodsC')
 
             # create the additional command line parameters
-            command_line_params = [thredds_url, job_configs[job_type]['DATA_MOUNT_PATH'] + job_configs[job_type]['SUB_PATH']]
+            command_line_params = [thredds_url, job_configs[job_type]['DATA_MOUNT_PATH'] + job_configs[job_type]['SUB_PATH'], str(run['id'])]
 
         # is this an adcirc time to cog converter job array
         elif job_type == JobType.ADCIRCTIME_TO_COG:
