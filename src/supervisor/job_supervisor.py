@@ -282,13 +282,7 @@ class JobSupervisor:
 
     def get_base_command_line(self, run: dict, job_type: JobType) -> (list, bool):
         """
-        gets the command lines for each run type
-        note: use this to keep a pod running after command_line and command_matrix for the job have
-        been set to '[""]' in the DB also note that the supervisor should be terminated prior to
-        killing the job to avoid data directory removal (if that matters)
-        command_line_params = ['/bin/sh', '-c', 'while true; do sleep 7200; done']
-        update public."" set command_line='[""]', command_matrix='[""]'
-        where id=;
+        gets the command lines for each workflow step type
 
         :param run: the run parameters
         :param job_type:
@@ -301,17 +295,12 @@ class JobSupervisor:
         # get the proper job configs
         job_configs = self.k8s_job_configs[run['workflow_type']]
 
-        # is this a consumer job
-        if job_type == JobType.CONSUMER:
-            command_line_params = ''
+        # is this a staging job
+        if job_type == JobType.STAGING:
+            command_line_params = ['--run-dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial']
 
-        # is this a final staging job
-        elif job_type == JobType.FINAL_STAGING:
-            command_line_params = ''
-
-        # is this a forensics job
-        elif job_type == JobType.FORENSICS:
-            command_line_params = ''
+            # command_line_params = ['/bin/sh', '-c', f'rm -rf {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}; mkdir -m 777 -p'
+            #                                         f' {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}']
 
         # is this a mysql database job
         elif job_type == JobType.MYSQL_DATABASE:
@@ -321,16 +310,23 @@ class JobSupervisor:
         elif job_type == JobType.PG_DATABASE:
             command_line_params = ''
 
+        # is this a consumer job
+        if job_type == JobType.CONSUMER:
+            command_line_params = ''
+
         # is this a provider job
         elif job_type == JobType.PROVIDER:
             command_line_params = ''
 
-        # is this a staging job
-        elif job_type == JobType.STAGING:
-            command_line_params = ['/bin/sh', '-c', f'rm -rf {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}; mkdir -m 777 -p'
-                                                    f' {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}']
+        # is this a forensics job
+        elif job_type == JobType.FORENSICS:
+            command_line_params = ''
 
-        # is this a mysql database job
+        # is this a final staging job
+        elif job_type == JobType.FINAL_STAGING:
+            command_line_params = ['--run-dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'final']
+
+        # is this a tester job
         elif job_type == JobType.TESTER:
             command_line_params = ''
 
