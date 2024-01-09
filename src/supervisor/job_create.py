@@ -59,7 +59,10 @@ class JobCreate:
 
         # declare the secret environment variables
         self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
-                                        {'name': 'SYSTEM', 'key': 'system'}]
+                                        {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'},
+                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'}, {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
+                                        {'name': 'IRODS_SV_DB_USERNAME', 'key': 'irods-sv-username'},
+                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'}, {'name': 'SYSTEM', 'key': 'system'}]
 
     def execute(self, run: dict, job_type: JobType):
         """
@@ -280,7 +283,6 @@ class JobCreate:
 
         # create volumes and mounts
         for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
-
             # build the volume definition
             volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=ephemeral_source))
 
