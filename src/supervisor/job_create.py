@@ -322,7 +322,7 @@ class JobCreate:
         :param job_type:
         :return:
         """
-        # set the return value default (what is defined in the DB)
+        # set the return value default (what is defined in the SV workflow step)
         ret_val: str = run[job_type]['run-config']['IMAGE']
 
         # is this a DB job
