@@ -297,7 +297,7 @@ class JobSupervisor:
 
         # is this a staging job
         if job_type == JobType.STAGING:
-            command_line_params = ['--run-dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial']
+            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial']
 
             # command_line_params = ['/bin/sh', '-c', f'rm -rf {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}; mkdir -m 777 -p'
             #                                         f' {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}']
@@ -311,7 +311,7 @@ class JobSupervisor:
             command_line_params = ''
 
         # is this a consumer job
-        if job_type == JobType.CONSUMER:
+        elif job_type == JobType.CONSUMER:
             command_line_params = ''
 
         # is this a provider job
@@ -324,7 +324,7 @@ class JobSupervisor:
 
         # is this a final staging job
         elif job_type == JobType.FINAL_STAGING:
-            command_line_params = ['--run-dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'final']
+            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'final']
 
         # is this a tester job
         elif job_type == JobType.TESTER:
