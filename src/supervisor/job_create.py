@@ -82,7 +82,7 @@ class JobCreate:
 
         # load the k8s configuration
         try:
-            # first try to get the config if this is running on the cluster
+            # first, try to get the config if this is running on the cluster
             config.load_incluster_config()
         except Exception:
             try:
@@ -102,7 +102,7 @@ class JobCreate:
         job_details['job-config']['svc_id'] = svc_id
         run_config = job_details['run-config']
 
-        # if this is a server process mark it for cleanup at the end of the workflow
+        # if this is a server process, mark it for cleanup at the end of the workflow
         if self.is_server_process(run_config):
             job_config['server-process'] = True
 
@@ -179,13 +179,13 @@ class JobCreate:
             resources: dict = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
                                'requests': {'cpu': cpus, 'memory': run_config['MEMORY'], 'ephemeral-storage': '64Mi'}}
 
-            # if there is a cpu limit restriction add it to the resource spec
+            # if there is a cpu limit restriction, add it to the resource spec
             if self.cpu_limits:
                 # parse the cpu text
                 cpu_val_txt: str = ''.join(x for x in cpus if x.isdigit())
                 cpu_unit_txt: str = ''.join(x for x in cpus if not x.isdigit())
 
-                # this is done to make sure that cpu limit is some percentage greater than what is created
+                # this is done to make sure that the cpu limit is some percentage greater than what is created
                 cpus_limit_val: int = int(cpu_val_txt) + int((int(cpu_val_txt) * self.limit_multiplier))
 
                 # create the cpu specification
@@ -214,7 +214,7 @@ class JobCreate:
         # save the number of containers in this job/pod for status checking later
         job_details['total_containers']: int = len(containers)
 
-        # if there was a node selector found use it
+        # if there was a node selector found, use it
         if run_config['NODE_TYPE']:
             # separate the tag and type
             params: list = run_config['NODE_TYPE'].split(':')
@@ -325,7 +325,7 @@ class JobCreate:
         # set the return value default (what is defined in the SV workflow step)
         ret_val: str = run[job_type]['run-config']['IMAGE']
 
-        # is this a DB job
+        # is this a DB job?
         if job_type in [JobType.PG_DATABASE, JobType.MYSQL_DATABASE]:
             # use th DB image in the request if assigned
             if run['db_image']:
@@ -350,7 +350,7 @@ class JobCreate:
         """
         ret_val: bool = False
 
-        # is this a server process
+        # is this a server process?
         if run_config['PORT_RANGE']:
             ret_val = True
 
@@ -404,7 +404,7 @@ class JobCreate:
                 # set the config map script name and mount
                 cfg_map_info = [['init-irods-mysql-db', 'init-irods-mysql-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
 
-            # set the env params and a file system mount for a iRODS provider
+            # set the env params and a file system mount for an iRODS provider
             elif job_type == JobType.PROVIDER:
                 # set the config map script name and mounts.
                 # add these to run on irods logging and or probing
@@ -412,9 +412,7 @@ class JobCreate:
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
                 # ['dsd', 'dsd.py', '/irods/dsd.py'],
                 cfg_map_info = [['irods-provider-install', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
-                                ['provider-init', 'providerInit.json', '/irods/providerInit.json'],
-                                ['test-brief', 'testBrief.sh', '/irods/testBrief.sh'],
-                                ['all-core-tests', 'allCoreTests.sh', '/irods/allCoreTests.sh']]
+                                ['provider-init', 'providerInit.json', '/irods/providerInit.json']]
 
                 # get the database service name. it is the same as the job name
                 if JobType.PG_DATABASE in run:
@@ -425,7 +423,7 @@ class JobCreate:
                 # save the service name to the environment
                 secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
 
-            # set the env params and a file system mount for a iRODS consumer
+            # set the env params and a file system mount for an iRODS consumer
             elif job_type == JobType.CONSUMER:
                 # set the config map script name and mounts.
                 # add these to run on irods logging and or probing
@@ -443,7 +441,7 @@ class JobCreate:
                     # save the service name to the environment
                     secret_envs.append(client.V1EnvVar(name='PROVIDER_NAME', value=provider_name))
 
-            # loop though all the config map items defined and create mounts
+            # loop though all the configs map items defined and create mounts
             for item in cfg_map_info:
                 # create a volume for the init script
                 volumes.append(client.V1Volume(name=item[0], config_map=client.V1ConfigMapVolumeSource(name='supervisor-scripts', default_mode=511)))
@@ -512,7 +510,7 @@ class JobCreate:
 
             # for each item returned
             for job in jobs.items:
-                # is this the one that was launched
+                # is this the one that was launched?
                 if 'app' in job.metadata.labels and job.metadata.labels['app'] == run_config['JOB_NAME']:
                     self.logger.debug("Found new job: %s, controller-uid: %s, status: %s", run_config['JOB_NAME'],
                                       job.metadata.labels['controller-uid'], job.status.active)
@@ -527,7 +525,7 @@ class JobCreate:
 
             # for each item returned
             for svc in svcs.items:
-                # is this the one that was launched
+                # is this the one that was launched?
                 if 'app' in svc.metadata.labels and svc.metadata.labels['app'] == run_config['JOB_NAME']:
                     # save service id
                     svc_id = str(svc.metadata.uid)
@@ -554,7 +552,7 @@ class JobCreate:
         ret_val: str = 'success'
 
         try:
-            # if this is a debug run or if an error was detected keep the jobs available for interrogation
+            # if this is a debug run or if an error was detected, keep the jobs available for interrogation
             # note: a duplicate name collision on the next run could occur if the jobs are not removed
             # before the same run is restarted.
             if not run['debug'] and run['status'] != JobStatus.ERROR:
@@ -567,7 +565,7 @@ class JobCreate:
 
                 # remove the job if it is not a server process. this could be forced if it is a run cleanup operation
                 if not self.is_server_process(run_config) or force:
-                    # if this is a server process kill the service first
+                    # if this is a server process, kill the service first
                     if self.is_server_process(run_config):
                         # remove the service
                         service_api.delete_namespaced_service(run_config['JOB_NAME'], namespace=self.sv_config['NAMESPACE'],
