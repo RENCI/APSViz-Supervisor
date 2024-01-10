@@ -322,7 +322,7 @@ class JobSupervisor:
         elif job_type == JobType.FORENSICS:
             command_line_params = ''
 
-        # is this a final staging job
+        # is this a final staging job?
         elif job_type == JobType.FINAL_STAGING:
             command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'final']
 
