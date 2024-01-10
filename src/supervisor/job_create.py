@@ -411,7 +411,7 @@ class JobCreate:
                 # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
                 # ['dsd', 'dsd.py', '/irods/dsd.py'],
-                cfg_map_info = [['irods-provider-install', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
+                cfg_map_info = [['irods-provider-core-install', 'irodsProviderCoreInstall.sh', '/irods/irodsProviderCoreInstall.sh'],
                                 ['provider-init', 'providerInit.json', '/irods/providerInit.json']]
 
                 # get the database service name. it is the same as the job name
