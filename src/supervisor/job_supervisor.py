@@ -326,7 +326,7 @@ class JobSupervisor:
         elif job_type == JobType.FINAL_STAGING:
             command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'final']
 
-        # is this a tester job
+        # is this a tester job?
         elif job_type == JobType.TESTER:
             command_line_params = ''
 
