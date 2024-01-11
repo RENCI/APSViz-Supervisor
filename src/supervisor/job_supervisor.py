@@ -517,28 +517,28 @@ class JobSupervisor:
         # get the workflow type
         if 'workflow-type' in run_info['request_data']:
             workflow_type = run_info['request_data']['workflow-type']
-        # if there is no workflow type default to empty
+        # if there is no workflow type specified, then default to empty
         else:
             workflow_type = ''
 
         # get the name:version for the DB image
         if 'db-image' in run_info['request_data']:
             db_image = run_info['request_data']['db-image']
-        # if there is no workflow type default to empty
+        # if there is no db image specified, then default to empty
         else:
             db_image = ''
 
         # get the name:version for the OS image
         if 'os-image' in run_info['request_data']:
             os_image = run_info['request_data']['os-image']
-        # if there is no workflow type default to empty
+        # if there is no os image specified, then type default to empty
         else:
             os_image = ''
 
         # get the name:version for the test image
         if 'test-image' in run_info['request_data']:
             test_image = run_info['request_data']['test-image']
-        # if there is no workflow type default to empty
+        # if there is no test image specified, then default to empty
         else:
             test_image = ''
 
