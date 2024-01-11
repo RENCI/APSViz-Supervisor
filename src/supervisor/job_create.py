@@ -62,7 +62,9 @@ class JobCreate:
                                         {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'},
                                         {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'}, {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
                                         {'name': 'IRODS_SV_DB_USERNAME', 'key': 'irods-sv-username'},
-                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'}, {'name': 'SYSTEM', 'key': 'system'}]
+                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'}, {'name': 'SYSTEM', 'key': 'system'},
+                                        {'name': 'FORENSICS_MAX_WAIT', 'key': 'forensics-max-wait'},
+                                        {'name': 'FORENSICS_CHECK_INTERVAL', 'key': 'forensics-check-interval'}]
 
     def execute(self, run: dict, job_type: JobType):
         """
