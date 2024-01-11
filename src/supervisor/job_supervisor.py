@@ -68,7 +68,7 @@ class JobSupervisor:
         self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
                                 'utils': Utils(self.logger, self.system, self.app_version)}
 
-        # init the run params to look for list
+        # init the run params to look for a list
         self.required_run_params = ['workflow-type']
 
         # debug options
@@ -192,7 +192,7 @@ class JobSupervisor:
                       f'run{"s" if self.run_count != 1 else ""} in progress.'
                 self.logger.info(msg)
 
-            # was there any activity
+            # was there any activity'--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])
             if no_activity:
                 # increment the counter
                 no_activity_counter += 1
@@ -229,7 +229,7 @@ class JobSupervisor:
         :param run:
         :return:
         """
-        # does this run have a final staging step
+        # does this run have a final staging step?
         if 'final-staging' not in self.k8s_job_configs[run['workflow_type']]:
             self.logger.error("Error detected for a run of type %s. Run id: %s", run['workflow_type'], run['id'])
             run['status_prov'] += f", error detected in a run of type {run['workflow_type']}. No cleanup occurred."
@@ -295,32 +295,32 @@ class JobSupervisor:
         # get the proper job configs
         job_configs = self.k8s_job_configs[run['workflow_type']]
 
-        # is this a staging job
+        # is this a staging job?
         if job_type == JobType.STAGING:
             command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial']
 
             # command_line_params = ['/bin/sh', '-c', f'rm -rf {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}; mkdir -m 777 -p'
             #                                         f' {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}']
 
-        # is this a mysql database job
+        # is this a mysql database job?
         elif job_type == JobType.MYSQL_DATABASE:
             command_line_params = ''
 
-        # is this a postgres database job
+        # is this a postgres database job?
         elif job_type == JobType.PG_DATABASE:
             command_line_params = ''
 
-        # is this a consumer job
+        # is this a consumer job?
         elif job_type == JobType.CONSUMER:
             command_line_params = ''
 
-        # is this a provider job
+        # is this a provider job?
         elif job_type == JobType.PROVIDER:
             command_line_params = ''
 
-        # is this a forensics job
+        # is this a forensics job?
         elif job_type == JobType.FORENSICS:
-            command_line_params = ''
+            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
 
         # is this a final staging job?
         elif job_type == JobType.FINAL_STAGING:
@@ -373,7 +373,7 @@ class JobSupervisor:
                 # execute the k8s job run
                 job_id = self.util_objs['create'].execute(run, job_type)
 
-                # did we not get a job_id
+                # did we not get a job_id?
                 if job_id is not None:
                     # set the current status
                     run['status'] = JobStatus.RUNNING
@@ -387,11 +387,11 @@ class JobSupervisor:
 
                     self.logger.info("A job was not created. Run ID: %s, Job type: %s", run['id'], job_type)
 
-                # if the next job is complete there is no reason to keep adding more jobs
+                # if the next job is complete, there is no reason to keep adding more jobs
                 if job_configs[job_type.value]['NEXT_JOB_TYPE'] == JobType.COMPLETE.value:
                     break
 
-        # if the job is running check the status
+        # if the job is running, check the status
         if run['status'] == JobStatus.RUNNING and run['status'] != JobStatus.ERROR:
             # set the activity flag
             no_activity = False
@@ -412,7 +412,7 @@ class JobSupervisor:
 
             # if the job was found
             if job_found:
-                # if this is a server process job set it to complete set it moves to the next step
+                # if this is a server process job set it to complete, set it moves to the next step
                 if self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
                     job_status = 'Complete'
 
@@ -423,12 +423,12 @@ class JobSupervisor:
 
                     # set error conditions
                     run['status'] = JobStatus.ERROR
-                # did the job and pod succeed
+                # did the job and the pod succeed?
                 elif job_status.startswith('Complete') and not pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_del_status = self.util_objs['create'].delete_job(run)
 
-                    # was there an error on the job
+                    # was there an error on the job?
                     if job_del_status == '{}' or job_del_status.find('Failed') != -1:
                         self.logger.error("Error: A failed job detected. Run status %s. Run ID: %s, Job type: %s, job delete status: %s, "
                                           "pod status: %s", run['status'], run['id'], run['job-type'], job_del_status, pod_status)
@@ -440,7 +440,7 @@ class JobSupervisor:
                         run['status_prov'] += f", {run['job-type'].value} complete"
                         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
-                        # prepare for next stage
+                        # prepare for the next stage
                         run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
 
                         # if the job type is not in the run then declare it new
@@ -448,7 +448,7 @@ class JobSupervisor:
                             # set the job to new
                             run['status'] = JobStatus.NEW
 
-                # was there a failure. remove the job and declare failure
+                # was there a failure? remove the job and declare failure
                 elif pod_status.startswith('Failed'):
                     # remove the job and get the final run status
                     job_del_status = self.util_objs['create'].delete_job(run)
@@ -559,7 +559,7 @@ class JobSupervisor:
 
         # loop through the current run list
         for item in self.run_list:
-            # was it found
+            # was it found?
             if item['id'] == new_run_id:
                 # set the flag
                 ret_val = True
@@ -587,7 +587,7 @@ class JobSupervisor:
             # check to see if we are in pause mode
             runs = self.check_pause_status()
 
-            # did we find anything to do
+            # did we find anything to do?
             if runs is not None:
                 # add the runs to the list
                 for run in runs:
@@ -624,7 +624,7 @@ class JobSupervisor:
                         # get the first job for this workflow type
                         first_job = self.util_objs['pg_db'].get_first_job(workflow_type)
 
-                        # did we get a job type
+                        # did we get a job type?
                         if first_job is not None:
                             # get the first job name into a type
                             job_type = JobType(first_job)
@@ -667,7 +667,7 @@ class JobSupervisor:
             # log pause mode was toggled
             self.logger.info(msg)
 
-        # get all the new runs if system is not in pause mode
+        # get all the new runs if the system is not in pause mode
         if not pause_mode:
             # get the new runs
             runs = self.util_objs['pg_db'].get_new_runs()
