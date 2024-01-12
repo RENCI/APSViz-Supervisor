@@ -21,7 +21,7 @@ from src.supervisor.job_create import JobCreate
 from src.supervisor.job_find import JobFind
 from src.common.pg_impl import PGImplementation
 from src.common.logger import LoggingUtil
-from src.common.job_enums import JobType, JobStatus
+from src.common.job_enums import JobType, JobStatus, DBType
 from src.common.utils import Utils
 
 
@@ -275,7 +275,7 @@ class JobSupervisor:
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # send something to the log to indicate complete
-        self.logger.info("Run id %s complete.", run['id'])
+        self.logger.info("Run ID: %s is complete.", run['id'])
 
         # remove the run
         self.run_list.remove(run)
@@ -299,15 +299,8 @@ class JobSupervisor:
         if job_type == JobType.STAGING:
             command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial']
 
-            # command_line_params = ['/bin/sh', '-c', f'rm -rf {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}; mkdir -m 777 -p'
-            #                                         f' {job_configs[job_type]["DATA_MOUNT_PATH"]}/{run["id"]}']
-
-        # is this a mysql database job?
-        elif job_type == JobType.MYSQL_DATABASE:
-            command_line_params = ''
-
-        # is this a postgres database job?
-        elif job_type == JobType.PG_DATABASE:
+        # is this a database job?
+        elif job_type == JobType.DATABASE:
             command_line_params = ''
 
         # is this a consumer job?
@@ -521,12 +514,20 @@ class JobSupervisor:
         else:
             workflow_type = ''
 
-        # get the name:version for the DB image
-        if 'db-image' in run_info['request_data']:
-            db_image = run_info['request_data']['db-image']
-        # if there is no db image specified, then default to empty
+        # get the DB image and type
+        if 'db-image' in run_info['request_data'] and 'db-type' in run_info['request_data']:
+            # is it a valid DB image and type?
+            if run_info['request_data']['db-image'] != '' and str(run_info['request_data']['db-type']).upper() in DBType.__members__:
+                db_image = run_info['request_data']['db-image']
+                db_type = run_info['request_data']['db-type']
+            # else use the default
+            else:
+                db_image = ''
+                db_type = ''
+        # else use the default
         else:
             db_image = ''
+            db_type = ''
 
         # get the name:version for the OS image
         if 'os-image' in run_info['request_data']:
@@ -543,8 +544,9 @@ class JobSupervisor:
             test_image = ''
 
         # loop through the params and return the ones that are missing
-        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
-                workflow_type, db_image, os_image, test_image)
+        return (
+        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
+        db_image, db_type, os_image, test_image)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -598,7 +600,8 @@ class JobSupervisor:
                     if not self.check_for_duplicate_run(run_id):
                         # make sure all the needed params are available. instance name and debug mode
                         # are handled here because they both affect messaging and logging.
-                        missing_params_msg, debug_mode, workflow_type, db_image, os_image, test_image = self.check_input_params(run['run_data'])
+                        missing_params_msg, debug_mode, workflow_type, db_image, db_type, os_image, test_image = self.check_input_params(
+                            run['run_data'])
 
                         # check the run params to see if there is something missing
                         if len(missing_params_msg) > 0:
@@ -634,9 +637,9 @@ class JobSupervisor:
 
                         # add the new run to the list
                         self.run_list.append(
-                            {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'os_image': os_image,
-                             'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type, 'status': JobStatus.NEW,
-                             'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now()})
+                            {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'db_type': db_type,
+                             'os_image': os_image, 'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
+                             'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now()})
 
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')

@@ -22,7 +22,7 @@ import time
 
 from kubernetes import client, config
 from src.common.logger import LoggingUtil
-from src.common.job_enums import JobType, JobStatus
+from src.common.job_enums import JobType, JobStatus, DBType
 from src.common.utils import Utils
 
 
@@ -328,8 +328,8 @@ class JobCreate:
         ret_val: str = run[job_type]['run-config']['IMAGE']
 
         # is this a DB job?
-        if job_type in [JobType.PG_DATABASE, JobType.MYSQL_DATABASE]:
-            # use th DB image in the request if assigned
+        if job_type == JobType.DATABASE:
+            # use th DB image in the request if assigned.
             if run['db_image']:
                 # assign the DB image
                 ret_val = run['db_image']
@@ -387,24 +387,24 @@ class JobCreate:
             port_list: list = []
 
             # set the env params and a file system mount for a postgres DB
-            if job_type == JobType.PG_DATABASE:
-                # set the environment params
-                secret_envs.append(client.V1EnvVar(name='POSTGRES_USER', value='postgres'))
-                secret_envs.append(client.V1EnvVar(name='POSTGRES_PASSWORD', value='testpassword'))
-                secret_envs.append(client.V1EnvVar(name='PGDATA', value='/var/lib/postgresql/data/db_data'))
+            if job_type == JobType.DATABASE:
+                # is this a postgres DB
+                if run['db_type'] == DBType.POSTGRESQL or run['db_type'] == '':
+                    # set the environment params
+                    secret_envs.append(client.V1EnvVar(name='POSTGRES_USER', value='postgres'))
+                    secret_envs.append(client.V1EnvVar(name='POSTGRES_PASSWORD', value='testpassword'))
+                    secret_envs.append(client.V1EnvVar(name='PGDATA', value='/var/lib/postgresql/data/db_data'))
 
-                # set the config map script name and mount
-                cfg_map_info = [['init-irods-pg-db', 'init-irods-pg-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+                    # set the config map script name and mount
+                    cfg_map_info = [['init-irods-pg-db', 'init-irods-pg-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+                elif run['db_type'] == DBType.MYSQL:
+                    # set the environment params
+                    secret_envs.append(client.V1EnvVar(name='MYSQL_USER', value='irods'))
+                    secret_envs.append(client.V1EnvVar(name='MYSQL_ROOT_PASSWORD', value='testpassword'))
+                    secret_envs.append(client.V1EnvVar(name='MYSQL_PASSWORD', value='testpassword'))
 
-            # set the env params and a file system mount for a MySQL DB
-            elif job_type == JobType.MYSQL_DATABASE:
-                # set the environment params
-                secret_envs.append(client.V1EnvVar(name='MYSQL_USER', value='irods'))
-                secret_envs.append(client.V1EnvVar(name='MYSQL_ROOT_PASSWORD', value='testpassword'))
-                secret_envs.append(client.V1EnvVar(name='MYSQL_PASSWORD', value='testpassword'))
-
-                # set the config map script name and mount
-                cfg_map_info = [['init-irods-mysql-db', 'init-irods-mysql-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
+                    # set the config map script name and mount
+                    cfg_map_info = [['init-irods-mysql-db', 'init-irods-mysql-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
 
             # set the env params and a file system mount for an iRODS provider
             elif job_type == JobType.PROVIDER:
@@ -413,14 +413,13 @@ class JobCreate:
                 # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
                 # ['dsd', 'dsd.py', '/irods/dsd.py'],
-                cfg_map_info = [['irods-provider-core-install', 'irodsProviderCoreInstall.sh', '/irods/irodsProviderCoreInstall.sh'],
+                cfg_map_info = [['irods-provider-install', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
+                                ['irods-provider-core-install', 'irodsProviderCoreInstall.sh', '/irods/irodsProviderCoreInstall.sh'],
                                 ['provider-init', 'providerInit.json', '/irods/providerInit.json']]
 
                 # get the database service name. it is the same as the job name
-                if JobType.PG_DATABASE in run:
-                    db_service_name = run[JobType.PG_DATABASE]['run-config']['JOB_NAME']
-                elif JobType.MYSQL_DATABASE in run:
-                    db_service_name = run[JobType.MYSQL_DATABASE]['run-config']['JOB_NAME']
+                if JobType.DATABASE in run:
+                    db_service_name = run[JobType.DATABASE]['run-config']['JOB_NAME']
 
                 # save the service name to the environment
                 secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
@@ -609,4 +608,6 @@ class JobCreate:
                     # delete the k8s job if it exists
                     self.delete_job(run, True)
         except Exception:
-            self.logger.exception('Error removing lingering jobs/services.')
+            self.logger.exception('Exception: Error during cleanup of jobs/services for Run ID: %s.', run['id'])
+
+        self.logger.info("The Jobs/services cleanup is complete for Run ID: %s.", run['id'])

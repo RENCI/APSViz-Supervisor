@@ -17,15 +17,15 @@ from enum import Enum
 
 class JobStatus(int, Enum):
     """
-    Class that stores the job status constants
+    Enum class that stores the job status constants
     """
     # new run status indicator
     NEW = 1
 
-    # the run is currently active indicator
+    # the run is currently the active indicator
     RUNNING = 2
 
-    # the run is complete indicator
+    # the run is the complete indicator
     COMPLETE = 3
 
     # something non-fatal happened in the process indicator
@@ -35,13 +35,20 @@ class JobStatus(int, Enum):
     ERROR = -1
 
 
+class DBType(str, Enum):
+    """
+    Enum class for the various database types
+    """
+    POSTGRESQL = "postgresql"
+    MYSQL = "mysql"
+
+
 class JobType(str, Enum):
     """
-    Class that stores the job type name constants
+    Enum class that stores the job type name constants
     """
     STAGING = 'staging'
-    PG_DATABASE = 'pg-database'
-    MYSQL_DATABASE = 'mysql-database'
+    DATABASE = 'database'
     PROVIDER = 'provider'
     CONSUMER = 'consumer'
     TESTER = 'tester'
