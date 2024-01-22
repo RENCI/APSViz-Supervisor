@@ -45,12 +45,15 @@ class DBType(str, Enum):
 
 class JobType(str, Enum):
     """
-    Enum class that stores the job type name constants
+    Enum class that lists the job type name constants
     """
     STAGING = 'staging'
     DATABASE = 'database'
     PROVIDER = 'provider'
+    PROVIDERSECONDARY = 'providersecondary'
     CONSUMER = 'consumer'
+    CONSUMERSECONDARY = 'consumersecondary'
+    CONSUMERTERTIARY = 'consumertertiary'
     TESTER = 'tester'
     FORENSICS = 'forensics'
     FINAL_STAGING = 'final-staging'
