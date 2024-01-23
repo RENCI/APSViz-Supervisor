@@ -307,8 +307,20 @@ class JobSupervisor:
         elif job_type == JobType.CONSUMER:
             command_line_params = ''
 
+        # is this a consumer job?
+        elif job_type == JobType.CONSUMERSECONDARY:
+            command_line_params = ''
+
+        # is this a consumer job?
+        elif job_type == JobType.CONSUMERTERTIARY:
+            command_line_params = ''
+
         # is this a provider job?
         elif job_type == JobType.PROVIDER:
+            command_line_params = ''
+
+        # is this a provider job?
+        elif job_type == JobType.PROVIDERSECONDARY:
             command_line_params = ''
 
         # is this a forensics job?
@@ -479,17 +491,20 @@ class JobSupervisor:
         # get the job type config
         config = self.get_job_configs()[run['workflow_type']][job_type]
 
+        # get the run id into a string for all
+        run_id = str(run['id'])
+
         # load the config with the info from the config file
-        config['JOB_NAME'] += str(run['id']).lower().replace('_', '-')
-        config['DATA_VOLUME_NAME'] += str(run['id']).lower().replace('_', '-')
+        config['JOB_NAME'] += run_id
+        config['DATA_VOLUME_NAME'] += run_id
         config['COMMAND_LINE'].extend(command_line_params)
 
         # tack on any additional paths if requested
         if extend_output_path:
-            config['SUB_PATH'] = '/' + str(run['id']) + config['SUB_PATH']
-            config['COMMAND_LINE'].extend([config['DATA_MOUNT_PATH'] + config['SUB_PATH'] + config['ADDITIONAL_PATH']])
+            config['SUB_PATH'] = f"'/'{run_id}{config['SUB_PATH']}"
+            config['COMMAND_LINE'].extend(f"{config['DATA_MOUNT_PATH']}{config['SUB_PATH']}{config['ADDITIONAL_PATH']}")
 
-        self.logger.debug("Job command line. Run ID: %s, Job type: %s, Command line: %s", run['id'], job_type, config['COMMAND_LINE'])
+        self.logger.debug("Job command line. Run ID: %s, Job type: %s, Command line: %s", run_id, job_type, config['COMMAND_LINE'])
 
         # save these params in the run info
         run[job_type] = {'run-config': config}
@@ -544,9 +559,8 @@ class JobSupervisor:
             test_image = ''
 
         # loop through the params and return the ones that are missing
-        return (
-        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
-        db_image, db_type, os_image, test_image)
+        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
+                workflow_type, db_image, db_type, os_image, test_image)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -635,17 +649,46 @@ class JobSupervisor:
                             self.logger.info("Error: Could not find the first job in the %s workflow for run id: %s", workflow_type, run_id)
                             continue
 
+                        # scan the run for job characteristics
+                        workflow_jobs: dict = self.get_workflow_jobs(workflow_type)
+
                         # add the new run to the list
                         self.run_list.append(
                             {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'db_type': db_type,
                              'os_image': os_image, 'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
-                             'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now()})
+                             'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now(), 'workflow_jobs': workflow_jobs})
 
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
                     else:
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, 'Duplicate run rejected.')
+
+    def get_workflow_jobs(self, workflow_type: str) -> dict:
+        """
+        gets all the jobs used in a workflow run
+
+        :return:
+        """
+        # init the return
+        ret_val: dict = {}
+
+        # get the workflow characteristics
+        workflow_config: dict = self.k8s_job_configs[workflow_type]
+
+        # loop through the job types and assign their inclusion in the workflow
+        for item in JobType:
+            # is the job type in the workflow
+            if item in workflow_config:
+                # mark it as included in the workflow
+                ret_val[item] = True
+            # else
+            else:
+                # mark it as not in the workflow
+                ret_val[item] = False
+
+        # return to the caller
+        return ret_val
 
     def check_pause_status(self) -> dict:
         """

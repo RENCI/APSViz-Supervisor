@@ -128,7 +128,7 @@ class JobCreate:
         containers: list = []
 
         # declare an array for the env declarations
-        secret_envs: list = self.get_env_params()
+        secret_envs: list = self.get_env_params(run['workflow_jobs'])
 
         # declare arrays for the volumes and volume mounts
         volume_mounts: list = []
@@ -244,7 +244,7 @@ class JobCreate:
         job_details['job-config']['sv-config']: dict = self.sv_config
         job_details['job-config']['service']: dict = service
 
-    def get_env_params(self) -> list:
+    def get_env_params(self, workflow_jobs: dict) -> list:
         """
         gets the environment variables
 
@@ -260,6 +260,11 @@ class JobCreate:
 
             # add it to the list
             ret_val.append(client.V1EnvVar(name=item['name'], value_from=secret_location))
+
+        # add in the jobs in this workflow
+        for item in workflow_jobs:
+            # add it to the list
+            ret_val.append(client.V1EnvVar(name=item.name, value=str(workflow_jobs[item])[0]))
 
         # return the params
         return ret_val
@@ -404,6 +409,7 @@ class JobCreate:
                     secret_envs.append(client.V1EnvVar(name='MYSQL_PASSWORD', value='testpassword'))
 
                     # set the config map script name and mount
+                    # TODO: verify this is the correct location for a MySQL DB?
                     cfg_map_info = [['init-irods-mysql-db', 'init-irods-mysql-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
 
             # set the env params and a file system mount for an iRODS provider
@@ -419,22 +425,37 @@ class JobCreate:
 
                 # get the database service name. it is the same as the job name
                 if JobType.DATABASE in run:
-                    db_service_name = run[JobType.DATABASE]['run-config']['JOB_NAME']
+                    # save the DB host name
+                    db_host_name: str = run[JobType.DATABASE]['run-config']['JOB_NAME']
 
-                # save the service name to the environment
-                secret_envs.append(client.V1EnvVar(name='DB_SERVICE_NAME', value=db_service_name))
+                    # default the DB params
+                    db_port_number: str = '5432'
+                    db_driver_name: str = 'PostgreSQL ANSI'
 
-            # set the env params and a file system mount for an iRODS consumer
-            elif job_type == JobType.CONSUMER:
+                    # id this is a mysql DB
+                    if run['db_type'] == DBType.MYSQL:
+                        # save the port and driver name values
+                        db_port_number = '3306'
+                        db_driver_name = 'MySQL ANSI'
+
+                    # save the DB configs to environment variables to be used in job init scripts
+                    secret_envs.append(client.V1EnvVar(name='DB_HOST_NAME', value=db_host_name))
+                    secret_envs.append(client.V1EnvVar(name='DB_PORT_NUM', value=db_port_number))
+                    secret_envs.append(client.V1EnvVar(name='DB_DRIVER_NAME', value=db_driver_name))
+
+            # set the env params and a file system mount for an iRODS consumers
+            elif job_type in [JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
                 # set the config map script name and mounts.
                 # add these to run on irods logging and or probing
                 # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
                 # ['irods', 'irods', '/etc/logrotate.d/irods'],
                 # ['dsd', 'dsd.py', '/irods/dsd.py'],
                 cfg_map_info = [['irods-consumer-install', 'irodsConsumerInstall.sh', '/irods/irodsConsumerInstall.sh'],
+                                ['irods-consumer-secondary-install', 'irodsConsumerSecondaryInstall.sh', '/irods/irodsConsumerSecondaryInstall.sh'],
+                                ['irods-consumer-tertiary-install', 'irodsConsumerTertiaryInstall.sh', '/irods/irodsConsumerTertiaryInstall.sh'],
                                 ['consumer-init', 'consumerInit.json', '/irods/consumerInit.json']]
 
-                # get the provider name. it is the same as the job name
+                # get the provider name. it is the same as the job name for the env param lookup
                 if JobType.PROVIDER in run:
                     # get the provider name
                     provider_name = run[JobType.PROVIDER]['run-config']['JOB_NAME']
