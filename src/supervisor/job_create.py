@@ -380,7 +380,6 @@ class JobCreate:
         # init the output params
         ports: list = []
         service_config = None
-        db_service_name: str = ''
 
         # init the volume info for init scripts
         cfg_map_info = []

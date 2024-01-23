@@ -559,8 +559,9 @@ class JobSupervisor:
             test_image = ''
 
         # loop through the params and return the ones that are missing
-        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
-                workflow_type, db_image, db_type, os_image, test_image)
+        return (
+        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
+        db_image, db_type, os_image, test_image)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -656,7 +657,8 @@ class JobSupervisor:
                         self.run_list.append(
                             {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'db_type': db_type,
                              'os_image': os_image, 'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
-                             'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now(), 'workflow_jobs': workflow_jobs})
+                             'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now(),
+                             'workflow_jobs': workflow_jobs})
 
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
