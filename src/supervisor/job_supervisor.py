@@ -267,7 +267,7 @@ class JobSupervisor:
         # clean up any jobs/services that may be lingering
         self.util_objs['create'].clean_up_jobs_and_svcs(run)
 
-        # get the run duration
+        # get the run duration python3 /irods/dsd.py --path / >> /data/out.txt
         duration = Utils.get_run_time_delta(run)
 
         # update the run provenance in the DB
@@ -297,7 +297,8 @@ class JobSupervisor:
 
         # is this a staging job?
         if job_type == JobType.STAGING:
-            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial']
+            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial',
+                                   '--workflow_type', run['workflow_type']]
 
         # is this a database job?
         elif job_type == JobType.DATABASE:
@@ -559,9 +560,8 @@ class JobSupervisor:
             test_image = ''
 
         # loop through the params and return the ones that are missing
-        return (
-        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
-        db_image, db_type, os_image, test_image)
+        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
+                workflow_type, db_image, db_type, os_image, test_image)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
