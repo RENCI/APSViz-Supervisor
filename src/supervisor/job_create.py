@@ -178,7 +178,7 @@ class JobCreate:
             restart_policy: str = run_config['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources: dict = {'limits': {'cpu': cpus, 'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
+            resources: dict = {'limits': {'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
                                'requests': {'cpu': cpus, 'memory': run_config['MEMORY'], 'ephemeral-storage': '64Mi'}}
 
             # if there is a cpu limit restriction, add it to the resource spec
