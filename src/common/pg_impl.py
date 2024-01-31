@@ -59,7 +59,7 @@ class PGImplementation(PGUtilsMultiConnect):
         sql: str = 'SELECT public.get_supervisor_job_defs_json()'
 
         # get the data
-        ret_val = self.exec_sql('asgs', sql)
+        ret_val = self.exec_sql('apsviz', sql)
 
         # return the data
         return ret_val
@@ -75,7 +75,7 @@ class PGImplementation(PGUtilsMultiConnect):
         sql: str = 'SELECT public.get_supervisor_config_items_json()'
 
         # get the data
-        ret_val = self.exec_sql('asgs', sql)
+        ret_val = self.exec_sql('apsviz', sql)
 
         # if there were no runs return None
         if ret_val == -1:
@@ -103,11 +103,11 @@ class PGImplementation(PGUtilsMultiConnect):
         sql = f"SELECT public.set_config_item({int(run[0])}, '{uid}', 'supervisor_job_status', '{value[:1024]}')"
 
         # run the SQL
-        ret_val = self.exec_sql('asgs', sql)
+        ret_val = self.exec_sql('apsviz', sql)
 
         # if there were no errors, commit the updates
         if ret_val > -1:
-            self.commit('asgs')
+            self.commit('apsviz')
 
     def get_first_job(self, workflow_type: str):
         """
@@ -119,7 +119,7 @@ class PGImplementation(PGUtilsMultiConnect):
         sql: str = f"SELECT public.get_supervisor_job_order('{workflow_type}')"
 
         # get the order of jobs for this workflow type
-        jobs_in_order = self.exec_sql('asgs', sql)
+        jobs_in_order = self.exec_sql('apsviz', sql)
 
         # if we got a list get the first one
         if isinstance(jobs_in_order, list):

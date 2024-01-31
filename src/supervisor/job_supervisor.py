@@ -62,7 +62,7 @@ class JobSupervisor:
 
         # specify the DB to get a connection
         # note the extra comma makes this single item a singleton tuple
-        db_names: tuple = ('asgs',)
+        db_names: tuple = ('apsviz',)
 
         # assign utility objects
         self.util_objs: dict = {'create': JobCreate(), 'k8s_find': JobFind(), 'pg_db': PGImplementation(db_names, _logger=self.logger),
@@ -304,7 +304,7 @@ class JobSupervisor:
         been set to '[""]' in the DB also note that the supervisor should be terminated prior to
         killing the job to avoid data directory removal (if that matters)
         command_line_params = ['/bin/sh', '-c', 'while true; do date; sleep 3600; done']
-        update public."ASGS_Mon_supervisor_config" set command_line='[""]', command_matrix='[""]'
+        update public."supervisor_config" set command_line='[""]', command_matrix='[""]'
         where id=;
 
         :param run: the run parameters
@@ -585,9 +585,9 @@ class JobSupervisor:
         # get the workflow type
         if 'workflow_type' in run_info:
             workflow_type = run_info['workflow_type']
-        # if there is no workflow type default to ASGS legacy runs
+        # if there is no workflow type default to APSVIZ legacy runs
         else:
-            workflow_type = 'ASGS'
+            workflow_type = 'ECFLOW'
 
         # get the physical location of the cluster that initiated the run
         if 'physical_location' in run_info:
