@@ -71,7 +71,7 @@ class Utils:
         :param msg: the msg to be sent
         :param channel: the Slack channel to post the message to
         :param debug_mode: mode to indicate that this is a no-op
-        :param instance_name: the name of the ASGS instance
+        :param instance_name: the name of the APSVIZ instance
         :param emoticon: an emoticon if set
         :return: nothing
         """
