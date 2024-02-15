@@ -46,7 +46,7 @@ class JobFind:
         if not run['fake-jobs']:
             # load the k8s configuration
             try:
-                # first try to get the config if this is running on the cluster
+                # first, try to get the config if this is running on the cluster
                 config.load_incluster_config()
             except config.ConfigException:
                 try:
@@ -71,12 +71,12 @@ class JobFind:
 
             # for each item returned
             for job in jobs.items:
-                # is this a valid job
+                # is this a valid job?
                 if 'job-name' not in job.metadata.labels:
                     self.logger.error('Job with no "job-name" label element detected while looking in %s', job)
-                # is this the one that was launched
+                # is this the one that was launched?
                 elif job.metadata.labels['job-name'] == job_name:
-                    # set the job found flag
+                    # set the job found a flag
                     job_found = True
 
                     self.logger.debug('Found job: %s, controller-uid: %s, status: %s', job_name, job.metadata.labels["controller-uid"],
@@ -87,11 +87,11 @@ class JobFind:
                         job_status = 'Running'
                     # did the job finish
                     else:
-                        # did the job fail
+                        # did the job fail?
                         if job.status.failed:
                             job_status = 'Failed'
                             pod_status = 'Failed'
-                        # did the job succeed
+                        # did the job succeed?
                         elif job.status.succeeded:
                             pod_status = 'Succeeded'
                             job_status = 'Complete'
