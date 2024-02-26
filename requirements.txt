@@ -1,3 +1,4 @@
+
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
 # SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 # SPDX-FileCopyrightText: 2024 Renaissance Computing Institute. All rights reserved.
@@ -8,5 +9,5 @@
 
 kubernetes==26.1.0
 psycopg2-binary==2.9.9
-pylint==3.0.3
-pytest==8.0.0
+pylint==3.1.0
+pytest==8.0.2
