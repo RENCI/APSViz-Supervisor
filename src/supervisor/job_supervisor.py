@@ -267,7 +267,7 @@ class JobSupervisor:
         # clean up any jobs/services that may be lingering
         self.util_objs['create'].clean_up_jobs_and_svcs(run)
 
-        # get the run duration python3 /irods/dsd.py --path / >> /data/out.txt
+        # get the run duration
         duration = Utils.get_run_time_delta(run)
 
         # update the run provenance in the DB
@@ -297,7 +297,8 @@ class JobSupervisor:
 
         # is this a staging job?
         if job_type == JobType.STAGING:
-            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'initial',
+            command_line_params = ['--run_id', str(run['id']), '--run_dir',
+                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['request_group']), '--step_type', 'initial',
                                    '--workflow_type', run['workflow_type']]
 
         # is this a database job?
@@ -326,11 +327,13 @@ class JobSupervisor:
 
         # is this a forensics job?
         elif job_type == JobType.FORENSICS:
-            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id'])]
+            command_line_params = ['--run_id', str(run['id']), '--run_dir',
+                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['request_group'])]
 
         # is this a final staging job?
         elif job_type == JobType.FINAL_STAGING:
-            command_line_params = ['--run_dir', job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['id']), '--step_type', 'final']
+            command_line_params = ['--run_id', str(run['id']), '--run_dir',
+                                   job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['request_group']), '--step_type', 'final']
 
         # is this a tester job?
         elif job_type == JobType.TESTER:
@@ -536,14 +539,14 @@ class JobSupervisor:
             if run_info['request_data']['db-image'] != '' and str(run_info['request_data']['db-type']).upper() in DBType.__members__:
                 db_image = run_info['request_data']['db-image']
                 db_type = run_info['request_data']['db-type']
-            # else use the default
+            # else use the default. this should never happen if the UI was used for the request
             else:
-                db_image = ''
-                db_type = ''
-        # else use the default
+                db_image = 'postgres:14.11'
+                db_type = DBType.POSTGRESQL
+        # else use the default. this should never happen if the UI was used for the request
         else:
-            db_image = ''
-            db_type = ''
+            db_image = 'postgres:14.11'
+            db_type = DBType.POSTGRESQL
 
         # get the name:version for the OS image
         if 'os-image' in run_info['request_data']:
@@ -559,9 +562,17 @@ class JobSupervisor:
         else:
             test_image = ''
 
+        # get the name:version for the test image
+        if 'request_group' in run_info:
+            request_group = run_info['request_group']
+        # if there is no test image specified, then default to empty
+        else:
+            request_group = ''
+
         # loop through the params and return the ones that are missing
-        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
-                workflow_type, db_image, db_type, os_image, test_image)
+        return (
+        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
+        db_image, db_type, os_image, test_image, request_group)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -615,8 +626,8 @@ class JobSupervisor:
                     if not self.check_for_duplicate_run(run_id):
                         # make sure all the needed params are available. instance name and debug mode
                         # are handled here because they both affect messaging and logging.
-                        missing_params_msg, debug_mode, workflow_type, db_image, db_type, os_image, test_image = self.check_input_params(
-                            run['run_data'])
+                        missing_params_msg, debug_mode, workflow_type, db_image, db_type, os_image, test_image, request_group = (
+                            self.check_input_params(run['run_data']))
 
                         # check the run params to see if there is something missing
                         if len(missing_params_msg) > 0:
@@ -658,7 +669,7 @@ class JobSupervisor:
                             {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'db_type': db_type,
                              'os_image': os_image, 'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
                              'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now(),
-                             'workflow_jobs': workflow_jobs})
+                             'request_group': request_group, 'workflow_jobs': workflow_jobs})
 
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
