@@ -393,7 +393,7 @@ class JobCreate:
             # set the env params and a file system mount for a postgres DB
             if job_type == JobType.DATABASE:
                 # is this a postgres DB
-                if run['db_type'] == DBType.POSTGRESQL or run['db_type'] == '':
+                if run['db_type'] == DBType.POSTGRESQL or run['db_type'] == DBType.DEFAULT:
                     # set the environment params
                     secret_envs.append(client.V1EnvVar(name='POSTGRES_USER', value='postgres'))
                     secret_envs.append(client.V1EnvVar(name='POSTGRES_PASSWORD', value='testpassword'))
@@ -442,6 +442,9 @@ class JobCreate:
                     secret_envs.append(client.V1EnvVar(name='DB_PORT_NUM', value=db_port_number))
                     secret_envs.append(client.V1EnvVar(name='DB_DRIVER_NAME', value=db_driver_name))
 
+                    # add in the request name which is also the data directory name for the init scripts
+                    secret_envs.append(client.V1EnvVar(name='REQUEST_GROUP', value=run['request_group']))
+
             # set the env params and a file system mount for an iRODS consumers
             elif job_type in [JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
                 # set the config map script name and mounts.
@@ -461,6 +464,9 @@ class JobCreate:
 
                     # save the service name to the environment
                     secret_envs.append(client.V1EnvVar(name='PROVIDER_NAME', value=provider_name))
+
+                # add in the request name which is also the data directory name for the init scripts
+                secret_envs.append(client.V1EnvVar(name='REQUEST_GROUP', value=run['request_group']))
 
             # loop though all the configs map items defined and create mounts
             for item in cfg_map_info:
