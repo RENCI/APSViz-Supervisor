@@ -640,10 +640,10 @@ class JobSupervisor:
 
                         # if this is a new run
                         if run['run_data']['supervisor_job_status'].startswith('new'):
-                            job_prov = 'New run'
+                            job_prov = f'New run accepted for {request_group}, '
                         # if we are in debug mode
                         elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                            job_prov = 'New debug run'
+                            job_prov = 'New debug run accepted for {request_group}, '
                         # ignore the entry as it is not in a legit "start" state. this may just
                         # be an existing or completed run.
                         else:
@@ -668,11 +668,11 @@ class JobSupervisor:
                         self.run_list.append(
                             {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'db_type': db_type,
                              'os_image': os_image, 'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
-                             'status': JobStatus.NEW, 'status_prov': f'{job_prov} run accepted', 'run-start': dt.datetime.now(),
+                             'status': JobStatus.NEW, 'status_prov': f'{job_prov}', 'run-start': dt.datetime.now(),
                              'request_group': request_group, 'workflow_jobs': workflow_jobs})
 
                         # update the run status in the DB
-                        self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov} run accepted')
+                        self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov}')
                     else:
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, 'Duplicate run rejected.')
