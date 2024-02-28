@@ -445,6 +445,9 @@ class JobCreate:
                     # add in the request name which is also the data directory name for the init scripts
                     secret_envs.append(client.V1EnvVar(name='REQUEST_GROUP', value=run['request_group']))
 
+                    # add in the package directory
+                    secret_envs.append(client.V1EnvVar(name='PACKAGE_DIR', value=run['package_dir']))
+
             # set the env params and a file system mount for an iRODS consumers
             elif job_type in [JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
                 # set the config map script name and mounts.
@@ -467,6 +470,9 @@ class JobCreate:
 
                 # add in the request name which is also the data directory name for the init scripts
                 secret_envs.append(client.V1EnvVar(name='REQUEST_GROUP', value=run['request_group']))
+
+                # add in the package directory
+                secret_envs.append(client.V1EnvVar(name='PACKAGE_DIR', value=run['package_dir']))
 
             # loop though all the configs map items defined and create mounts
             for item in cfg_map_info:

@@ -569,10 +569,16 @@ class JobSupervisor:
         else:
             request_group = ''
 
+        # get the name:version for the test image
+        if 'package-dir' in run_info['request_data']:
+            package_dir = run_info['request_data']['package-dir']
+        # if there is no test image specified, then default to empty
+        else:
+            package_dir = ''
+
         # loop through the params and return the ones that are missing
-        return (
-        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
-        db_image, db_type, os_image, test_image, request_group)
+        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
+                workflow_type, db_image, db_type, os_image, test_image, request_group, package_dir)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
@@ -626,7 +632,7 @@ class JobSupervisor:
                     if not self.check_for_duplicate_run(run_id):
                         # make sure all the needed params are available. instance name and debug mode
                         # are handled here because they both affect messaging and logging.
-                        missing_params_msg, debug_mode, workflow_type, db_image, db_type, os_image, test_image, request_group = (
+                        missing_params_msg, debug_mode, workflow_type, db_image, db_type, os_image, test_image, request_group, package_dir = (
                             self.check_input_params(run['run_data']))
 
                         # check the run params to see if there is something missing
@@ -640,10 +646,10 @@ class JobSupervisor:
 
                         # if this is a new run
                         if run['run_data']['supervisor_job_status'].startswith('new'):
-                            job_prov = f'New run accepted for {request_group}, '
+                            job_prov = f'New run accepted for {request_group}'
                         # if we are in debug mode
                         elif run['run_data']['supervisor_job_status'].startswith('debug'):
-                            job_prov = 'New debug run accepted for {request_group}, '
+                            job_prov = 'New debug run accepted for {request_group}'
                         # ignore the entry as it is not in a legit "start" state. this may just
                         # be an existing or completed run.
                         else:
@@ -668,8 +674,8 @@ class JobSupervisor:
                         self.run_list.append(
                             {'id': run_id, 'debug': debug_mode, 'workflow_type': workflow_type, 'db_image': db_image, 'db_type': db_type,
                              'os_image': os_image, 'test_image': test_image, 'fake-jobs': self.debug_options['fake_job'], 'job-type': job_type,
-                             'status': JobStatus.NEW, 'status_prov': f'{job_prov}', 'run-start': dt.datetime.now(),
-                             'request_group': request_group, 'workflow_jobs': workflow_jobs})
+                             'status': JobStatus.NEW, 'status_prov': f'{job_prov}', 'run-start': dt.datetime.now(), 'request_group': request_group,
+                             'package_dir': package_dir, 'workflow_jobs': workflow_jobs})
 
                         # update the run status in the DB
                         self.util_objs['pg_db'].update_job_status(run_id, f'{job_prov}')
