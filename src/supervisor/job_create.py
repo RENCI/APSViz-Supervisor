@@ -127,19 +127,21 @@ class JobCreate:
         # init a list for all the containers in this job
         containers: list = []
 
-        # declare an array for the env declarations
-        secret_envs: list = self.get_env_params(run['workflow_jobs'])
-
         # declare arrays for the volumes and volume mounts
         volume_mounts: list = []
         volumes: list = []
 
+        # declare an array for the env declarations
+        secret_envs: list = self.get_env_params(run['workflow_jobs'])
+
         # declare the shared volumes
         volumes, volume_mounts = self.declare_shared_volume(run['id'], run_config)
 
-        # declare the ephemeral volumes
-        if run_config['FILESVR_VOLUME_NAME']:
-            self.declare_ephemeral_volumes(run, run_config, volume_mounts, volumes)
+        # if there is an ephemeral volume name specified, mount it
+        self.declare_ephemeral_volumes(run, run_config, volume_mounts, volumes)
+
+        # mount the NFS volume if this is an irods server
+        security_context = self.declare_nfs_volume(job_type, volume_mounts, volumes)
 
         # get the service configuration
         ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
@@ -272,6 +274,7 @@ class JobCreate:
     @staticmethod
     def declare_ephemeral_volumes(run, run_config, volume_mounts, volumes):
         """
+        Creates an ephemeral volume
 
         :param run:
         :param run_config:
@@ -279,22 +282,51 @@ class JobCreate:
         :param volumes:
         :return:
         """
-        # get all the volume mount paths
-        mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
+        # if there is a file server mount specified in the job type
+        if run_config['FILESVR_VOLUME_NAME']:
+            # get all the volume mount paths
+            mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
 
-        # build the volume claim spec
-        pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'], resources=client.V1ResourceRequirements(requests={'storage': '1Gi'}))
+            # build the volume claim spec
+            pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
+                                                     resources=client.V1ResourceRequirements(requests={'storage': '1Gi'}))
 
-        # build the ephemeral name source
-        ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
+            # build the ephemeral name source
+            ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
 
-        # create volumes and mounts
-        for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
-            # build the volume definition
-            volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=ephemeral_source))
+            # create volumes and mounts
+            for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
+                # build the volume definition
+                volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=ephemeral_source))
 
-            # and the volume mounts
-            volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run['id']}", mount_path=mount_paths[index]))
+                # and the volume mounts
+                volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run['id']}", mount_path=mount_paths[index]))
+
+    def declare_nfs_volume(self, job_type, volume_mounts, volumes):
+        """
+        Creates an ephemeral volume
+
+        :param job_type:
+        :param volume_mounts:
+        :param volumes:
+        :return:
+        """
+        # init the return value
+        security_context = None
+
+        # create the mount and security context if this is an irods server
+        if self.is_irods_server_process(job_type):
+            # add in the shared memory volume for /dev/shm
+            volumes.append(client.V1Volume(name='nfs-vol', nfs={'server': self.sv_config['NFS_SERVER'], 'path': self.sv_config['NFS_PATH']}))
+
+            # declare the NFS volume mount
+            volume_mounts.append(client.V1VolumeMount(name='nfs-vol', mount_path=self.sv_config['NFS_MOUNT']))
+
+            # # set the security context for the pod
+            security_context = client.V1PodSecurityContext(run_as_user=30000, supplemental_groups=[])
+
+        # return the security context
+        return security_context
 
     def declare_shared_volume(self, run_id: int, run_config: dict) -> (list, list):
         """
@@ -364,6 +396,22 @@ class JobCreate:
         # return to the caller
         return ret_val
 
+    @staticmethod
+    def is_irods_server_process(job_type: JobType) -> bool:
+        """
+        determines if the run is for an irods server process
+
+        :return:
+        """
+        ret_val: bool = False
+
+        # is this a server process?
+        if job_type in [JobType.PROVIDER, JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
+            ret_val = True
+
+        # return to the caller
+        return ret_val
+
     def create_svc_objects(self, run: dict, job_type: JobType, run_config: dict, secret_envs: list, volume_mounts: list, volumes: list) -> (
             list, client.models.v1_service.V1Service):
         """
@@ -392,8 +440,8 @@ class JobCreate:
 
             # set the env params and a file system mount for a postgres DB
             if job_type == JobType.DATABASE:
-                # is this a postgres DB
-                if run['db_type'] == DBType.POSTGRESQL or run['db_type'] == DBType.DEFAULT:
+                # is this a postgres DB?
+                if run['db_type'] == DBType.POSTGRESQL:
                     # set the environment params
                     secret_envs.append(client.V1EnvVar(name='POSTGRES_USER', value='postgres'))
                     secret_envs.append(client.V1EnvVar(name='POSTGRES_PASSWORD', value='testpassword'))
