@@ -503,7 +503,8 @@ class JobCreate:
                                 ['irods-consumer-secondary-install', 'irodsConsumerSecondaryInstall.sh', '/irods/irodsConsumerSecondaryInstall.sh'],
                                 ['irods-consumer-tertiary-install', 'irodsConsumerTertiaryInstall.sh', '/irods/irodsConsumerTertiaryInstall.sh'],
                                 ['consumer-init', 'consumerInit.json', '/irods/consumerInit.json'],
-                                ['irods', 'irods', '']]
+                                ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
+                                ['irods', 'irods', '/etc/logrotate.d/irods']]
 
                 # get the provider name. it is the same as the job name for the env param lookup
                 if JobType.PROVIDER in run:
