@@ -289,7 +289,7 @@ class JobCreate:
 
             # build the volume claim spec
             pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
-                                                     resources=client.V1ResourceRequirements(requests={'storage': '1Gi'}))
+                                                     resources=client.V1ResourceRequirements(requests={'storage': '5Gi'}))
 
             # build the ephemeral name source
             ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
@@ -462,13 +462,11 @@ class JobCreate:
             # set the env params and a file system mount for an iRODS provider
             elif job_type == JobType.PROVIDER:
                 # set the config map script name and mounts.
-                # add these to run on irods logging and or probing
-                # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
-                # ['irods', 'irods', '/etc/logrotate.d/irods'],
-                # ['dsd', 'dsd.py', '/irods/dsd.py'],
                 cfg_map_info = [['irods-provider-install', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
                                 ['irods-provider-core-install', 'irodsProviderCoreInstall.sh', '/irods/irodsProviderCoreInstall.sh'],
-                                ['provider-init', 'providerInit.json', '/irods/providerInit.json']]
+                                ['provider-init', 'providerInit.json', '/irods/providerInit.json'],
+                                ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
+                                ['irods', 'irods', '/etc/logrotate.d/irods']]
 
                 # get the database service name. it is the same as the job name
                 if JobType.DATABASE in run:
@@ -501,14 +499,11 @@ class JobCreate:
             # set the env params and a file system mount for an iRODS consumers
             elif job_type in [JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
                 # set the config map script name and mounts.
-                # add these to run on irods logging and or probing
-                # ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
-                # ['irods', 'irods', '/etc/logrotate.d/irods'],
-                # ['dsd', 'dsd.py', '/irods/dsd.py'],
                 cfg_map_info = [['irods-consumer-install', 'irodsConsumerInstall.sh', '/irods/irodsConsumerInstall.sh'],
                                 ['irods-consumer-secondary-install', 'irodsConsumerSecondaryInstall.sh', '/irods/irodsConsumerSecondaryInstall.sh'],
                                 ['irods-consumer-tertiary-install', 'irodsConsumerTertiaryInstall.sh', '/irods/irodsConsumerTertiaryInstall.sh'],
-                                ['consumer-init', 'consumerInit.json', '/irods/consumerInit.json']]
+                                ['consumer-init', 'consumerInit.json', '/irods/consumerInit.json'],
+                                ['irods', 'irods', '']]
 
                 # get the provider name. it is the same as the job name for the env param lookup
                 if JobType.PROVIDER in run:
