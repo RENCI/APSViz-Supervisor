@@ -72,7 +72,7 @@ class Utils:
         minutes = divmod(delta.seconds, 60)
 
         # return the duration to the caller
-        return f'in {minutes[0]} minutes, {minutes[1]} seconds'
+        return f'in {minutes[0]} minutes and {minutes[1]} seconds'
 
     def check_last_run_time(self, last_run_time: dt.datetime) -> dt.datetime:
         """

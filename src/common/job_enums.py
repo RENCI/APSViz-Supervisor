@@ -39,7 +39,7 @@ class DBType(str, Enum):
     """
     Enum class for the various database types
     """
-    POSTGRESQL = "postgresql"
+    POSTGRESQL = "postgres"
     MYSQL = "mysql"
 
 

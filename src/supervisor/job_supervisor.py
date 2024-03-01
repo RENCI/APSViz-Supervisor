@@ -265,7 +265,12 @@ class JobSupervisor:
         :return:
         """
         # clean up any jobs/services that may be lingering
-        self.util_objs['create'].clean_up_jobs_and_svcs(run)
+        status_prov: str = self.util_objs['create'].clean_up_jobs_and_svcs(run)
+
+        # add the status to the provenance if there were any services removed
+        if status_prov != '':
+            # save anything that was cleaned up
+            run['status_prov'] += f', {status_prov}'
 
         # get the run duration
         duration = Utils.get_run_time_delta(run)
@@ -421,7 +426,7 @@ class JobSupervisor:
 
             # if the job was found
             if job_found:
-                # if this is a server process job set it to complete, set it moves to the next step
+                # if this is a server process job set it to complete, so it moves to the next step
                 if self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
                     job_status = 'Complete'
 
@@ -445,8 +450,13 @@ class JobSupervisor:
                         # set error conditions
                         run['status'] = JobStatus.ERROR
                     else:
+                        if self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
+                            status_msg = 'configuring'
+                        else:
+                            status_msg = 'complete'
+
                         # complete this job and setup for the next job
-                        run['status_prov'] += f", {run['job-type'].value} complete"
+                        run['status_prov'] += f", {run['job-type'].value} {status_msg}"
                         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
                         # prepare for the next stage

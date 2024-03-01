@@ -479,16 +479,18 @@ class JobCreate:
                     db_port_number: str = '5432'
                     db_driver_name: str = 'PostgreSQL ANSI'
 
-                    # id this is a mysql DB
+                    # is this is a mysql DB?
                     if run['db_type'] == DBType.MYSQL:
                         # save the port and driver name values
                         db_port_number = '3306'
                         db_driver_name = 'MySQL ANSI'
+                    # TODO: support Oracle
 
                     # save the DB configs to environment variables to be used in job init scripts
                     secret_envs.append(client.V1EnvVar(name='DB_HOST_NAME', value=db_host_name))
                     secret_envs.append(client.V1EnvVar(name='DB_PORT_NUM', value=db_port_number))
                     secret_envs.append(client.V1EnvVar(name='DB_DRIVER_NAME', value=db_driver_name))
+                    secret_envs.append(client.V1EnvVar(name='DB_TYPE_NAME', value=run['db_type']))
 
                     # add in the request name which is also the data directory name for the init scripts
                     secret_envs.append(client.V1EnvVar(name='REQUEST_GROUP', value=run['request_group']))
@@ -671,13 +673,19 @@ class JobCreate:
         # return the final status of the job
         return ret_val
 
-    def clean_up_jobs_and_svcs(self, run: dict):
+    def clean_up_jobs_and_svcs(self, run: dict) -> str:
         """
         iterates through the run steps to find/remove any lingering jobs/services
 
         :param run:
         """
+        # init the return value
+        ret_val: str = ''
+
         try:
+            # create a list for the services cleaned up
+            status_prov: list = []
+
             # loop through all the workflow steps
             for item in run:
                 # determine if this is a service based on the existence of a port definition
@@ -685,9 +693,18 @@ class JobCreate:
                     # set the run type
                     run['job-type'] = item
 
+                    status_prov.extend([f"Removing the {run[run['job-type']]['run-config']['job_name']} service"])
+
                     # delete the k8s job if it exists
                     self.delete_job(run, True)
+
+            # join all the statuses that were removed
+            ret_val = ', '.join(status_prov)
+
         except Exception:
             self.logger.exception('Exception: Error during cleanup of jobs/services for Run ID: %s.', run['id'])
 
         self.logger.info("The Jobs/services cleanup is complete for Run ID: %s.", run['id'])
+
+        # return to the caller
+        return ret_val
