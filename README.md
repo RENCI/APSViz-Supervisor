@@ -8,7 +8,7 @@ SPDX-License-Identifier: LicenseRef-RENCI
 SPDX-License-Identifier: MIT
 -->
 
-![image not found](renci-logo.png "RENCI")
+[![iRODS](iRODS-Logo.png)](https://docs.irods.org)
 
 # iRODS-K8s Supervisor
 A Workflow manager that creates and monitors K8s jobs for each data processing component.
@@ -18,9 +18,9 @@ A Workflow manager that creates and monitors K8s jobs for each data processing c
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
 [![RENCI License](https://img.shields.io/badge/License-RENCI-blue.svg)](https://www.renci.org/)
 #### Components and versions...
-[![Python](https://img.shields.io/badge/Python-3.11.7-orange)](https://github.com/python/cpython)
-[![Linting Pylint](https://img.shields.io/badge/Pylint-%203.0.3-yellow)](https://github.com/PyCQA/pylint)
-[![Pytest](https://img.shields.io/badge/Pytest-%207.4.4-blue)](https://github.com/pytest-dev/pytest)
+[![Python](https://img.shields.io/badge/Python-3.12.2-orange)](https://github.com/python/cpython)
+[![Linting Pylint](https://img.shields.io/badge/Pylint-%203.1.0-yellow)](https://github.com/PyCQA/pylint)
+[![Pytest](https://img.shields.io/badge/Pytest-%208.0.2-blue)](https://github.com/pytest-dev/pytest)
 #### Build status...
 [![PyLint the codebase](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/pylint.yml/badge.svg)](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/pylint.yml)
 [![Build and push the Docker image](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/image-push.yml/badge.svg)](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/image-push.yml)
