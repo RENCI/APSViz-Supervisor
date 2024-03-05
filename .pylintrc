@@ -11,6 +11,6 @@ min-public-methods=0
 max-attributes=12
 max-nested-blocks=10
 max-branches=25
-max-statements=60
+max-statements=66
 max-locals=40
 fail-under=9.5

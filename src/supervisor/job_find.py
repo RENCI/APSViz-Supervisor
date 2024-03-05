@@ -10,7 +10,7 @@
 
 from kubernetes import client, config
 from src.common.logger import LoggingUtil
-from src.common.job_enums import JobType
+from src.common.job_enums import JobType, JobStatus
 
 
 class JobFind:
@@ -109,37 +109,38 @@ class JobFind:
         # return the job controller uid, job status and pod status
         return job_found, job_status, pod_status
 
-    def check_jobs(self, run):
+    def find_failed_jobs(self, run):
         """
-        Check if jobs are running and if they arent set an error
+        Check if jobs are running and if they aren't set an error
 
         :param run:
         :return:
         """
+        # init the return value
+        ret_val: str = ''
+
         # get the list of jobs running
         try:
-            # create a list for the services cleaned up
-            status_prov: list = []
-
             # loop through all the workflow steps
             for item in run:
-                # determine if this is a service based on the existence of a port definition
+                # determine if this is a service based on the existence of the port definition
                 if isinstance(item, JobType) and run[item]['job-config']['service'] is not None:
-                    # set the run type
-                    run['job-type'] = item
-
                     # find the job
-                    job_found, job_status, pod_status = self.find_job_info(run, run['job-type'])
+                    job_found, job_status, _ = self.find_job_info(run, item)
 
                     # was the job found?
-                    if job_found and job_status == 'Failed':
-                        # set the job status for this run
-                        pass
+                    if job_found and job_status == 'Failed' and run['job-type'] != JobType.FINAL_STAGING:
+                        # set the status of that step to failure
+                        run['status'] = JobStatus.ERROR
+
+                        # return an error message
+                        ret_val = f", {run[item]['run-config']['job_name']} Job failed"
+
+                        # no need to continue
+                        break
 
         except Exception:
             self.logger.exception('Exception: Error during cleanup of jobs/services for Run ID: %s.', run['id'])
 
-        self.logger.info("The Jobs/services cleanup is complete for Run ID: %s.", run['id'])
-
         # return to the caller
-        return
+        return ret_val

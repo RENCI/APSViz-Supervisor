@@ -261,18 +261,14 @@ class JobSupervisor:
         :return:
         """
         # clean up any jobs/services that may be lingering
-        status_prov: str = self.util_objs['create'].clean_up_jobs_and_svcs(run)
-
-        # add the status to the provenance if there were any services removed
-        if status_prov != '':
-            # save anything that was cleaned up
-            run['status_prov'] += f', {status_prov}'
+        run['status_prov'] += self.util_objs['create'].clean_up_jobs_and_svcs(run)
 
         # get the run duration
         duration = Utils.get_run_time_delta(run)
 
         # update the run provenance in the DB
         run['status_prov'] += f', run complete {duration}'
+
         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
         # send something to the log to indicate complete
@@ -400,6 +396,9 @@ class JobSupervisor:
                 # if the next job is complete, there is no reason to keep adding more jobs
                 if job_configs[job_type.value]['NEXT_JOB_TYPE'] == JobType.COMPLETE.value:
                     break
+
+        # check to see if there are any failed jobs
+        run['status_prov'] += self.util_objs['k8s_find'].find_failed_jobs(run)
 
         # if the job is running, check the status
         if run['status'] == JobStatus.RUNNING and run['status'] != JobStatus.ERROR:

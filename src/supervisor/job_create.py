@@ -137,7 +137,7 @@ class JobCreate:
         self.declare_ephemeral_volumes(run, run_config, volume_mounts, volumes)
 
         # mount the NFS volume if this is an irods server
-        security_context = self.declare_nfs_volume(job_type, volume_mounts, volumes)
+        self.declare_nfs_volume(job_type, volume_mounts, volumes)
 
         # get the service configuration
         ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
@@ -659,8 +659,8 @@ class JobCreate:
 
         # trap any k8s call errors
         except Exception:
-            ret_val = "Job delete error, job may not exist."
-            self.logger.error("%s", ret_val)
+            ret_val = f"Job delete error, job {run['job-type']} may not exist."
+            self.logger.debug("%s", ret_val)
 
         # return the final status of the job
         return ret_val
@@ -672,31 +672,25 @@ class JobCreate:
         :param run:
         """
         # init the return value
-        ret_val: str = ''
+        ret_val: str = ', removing any stray jobs'
 
         try:
-            # create a list for the services cleaned up
-            status_prov: list = []
-
             # loop through all the workflow steps
             for item in run:
                 # determine if this is a service based on the existence of a port definition
-                if isinstance(item, JobType) and run[item]['job-config']['service'] is not None:
+                if isinstance(item, JobType): # and run[item]['job-config']['service'] is not None
                     # set the run type
                     run['job-type'] = item
 
-                    status_prov.extend([f"Removing the {run[run['job-type']]['run-config']['job_name']} service"])
+                    self.logger.debug('Removing job %s for Run ID: %s.', item, run['id'])
 
                     # delete the k8s job if it exists
                     self.delete_job(run, True)
 
-            # join all the statuses that were removed
-            ret_val = ', '.join(status_prov)
-
         except Exception:
             self.logger.exception('Exception: Error during cleanup of jobs/services for Run ID: %s.', run['id'])
 
-        self.logger.info("The Jobs/services cleanup is complete for Run ID: %s.", run['id'])
+        self.logger.info("Stray job cleanup is complete for Run ID: %s.", run['id'])
 
         # return to the caller
         return ret_val
