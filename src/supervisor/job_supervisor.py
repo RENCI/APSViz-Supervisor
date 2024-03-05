@@ -579,7 +579,7 @@ class JobSupervisor:
         else:
             request_group = ''
 
-        # get the name:version for the test image
+        # get the package directory for the test. if none is specified, the startup scripts will choose to install "irods-server"
         if 'package-dir' in run_info['request_data']:
             package_dir = run_info['request_data']['package-dir']
         # if there is no test image specified, then default to empty
