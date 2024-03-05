@@ -1,10 +1,6 @@
-# SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
-# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
-# SPDX-FileCopyrightText: 2024 Renaissance Computing Institute. All rights reserved.
+# BSD 3-Clause All rights reserved.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-License-Identifier: LicenseRef-RENCI
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD 3-Clause
 
 """
     Contains methods to find and interrogate a k8s job
@@ -14,6 +10,7 @@
 
 from kubernetes import client, config
 from src.common.logger import LoggingUtil
+from src.common.job_enums import JobType
 
 
 class JobFind:
@@ -31,16 +28,21 @@ class JobFind:
         # create a logger
         self.logger = LoggingUtil.init_logging("iRODS.Supervisor.JobFind", level=log_level, line_format='medium', log_file_path=log_path)
 
-    def find_job_info(self, run: dict) -> (bool, str, str):
+    def find_job_info(self, run: dict, job_type: JobType = None) -> (bool, str, str):
         """
         method to gather the k8s job information
 
         :param run:
+        :param job_type:
         :return:
         """
+        # set the default job type f not passed in
+        if job_type is None:
+            job_type = run['job-type']
+
         # load the job name and baseline cluster params
-        sv_config = run[run['job-type']]['job-config']['sv-config']
-        job_name = run[run['job-type']]['run-config']['JOB_NAME']
+        sv_config = run[job_type]['job-config']['sv-config']
+        job_name = run[job_type]['run-config']['JOB_NAME']
 
         # if this is not a fake job
         if not run['fake-jobs']:
@@ -106,3 +108,38 @@ class JobFind:
 
         # return the job controller uid, job status and pod status
         return job_found, job_status, pod_status
+
+    def check_jobs(self, run):
+        """
+        Check if jobs are running and if they arent set an error
+
+        :param run:
+        :return:
+        """
+        # get the list of jobs running
+        try:
+            # create a list for the services cleaned up
+            status_prov: list = []
+
+            # loop through all the workflow steps
+            for item in run:
+                # determine if this is a service based on the existence of a port definition
+                if isinstance(item, JobType) and run[item]['job-config']['service'] is not None:
+                    # set the run type
+                    run['job-type'] = item
+
+                    # find the job
+                    job_found, job_status, pod_status = self.find_job_info(run, run['job-type'])
+
+                    # was the job found?
+                    if job_found and job_status == 'Failed':
+                        # set the job status for this run
+                        pass
+
+        except Exception:
+            self.logger.exception('Exception: Error during cleanup of jobs/services for Run ID: %s.', run['id'])
+
+        self.logger.info("The Jobs/services cleanup is complete for Run ID: %s.", run['id'])
+
+        # return to the caller
+        return

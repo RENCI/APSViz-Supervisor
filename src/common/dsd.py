@@ -1,6 +1,6 @@
-# BSD 3-Clause License All rights reserved.
+# BSD 3-Clause All rights reserved.
 #
-# SPDX-License-Identifier: BSD 3-Clause License
+# SPDX-License-Identifier: BSD 3-Clause
 
 """
     Directory Size Diff (dsd.py) - program to check file system for dir/file size
