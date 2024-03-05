@@ -465,8 +465,8 @@ class JobCreate:
                 cfg_map_info = [['irods-provider-install', 'irodsProviderInstall.sh', '/irods/irodsProviderInstall.sh'],
                                 ['irods-provider-core-install', 'irodsProviderCoreInstall.sh', '/irods/irodsProviderCoreInstall.sh'],
                                 ['provider-init', 'providerInit.json', '/irods/providerInit.json'],
-                                ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
-                                ['irods', 'irods', '/etc/logrotate.d/irods']]
+                                ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'], ['irods', 'irods', '/etc/logrotate.d/irods'],
+                                ['rsyslog', 'rsyslog.conf', '/etc/rsyslog.conf'], ['50-default', '50-default.conf', '/etc/rsyslog.d/50-default.conf']]
 
                 # get the database service name. it is the same as the job name
                 if JobType.DATABASE in run:
@@ -503,8 +503,8 @@ class JobCreate:
                                 ['irods-consumer-secondary-install', 'irodsConsumerSecondaryInstall.sh', '/irods/irodsConsumerSecondaryInstall.sh'],
                                 ['irods-consumer-tertiary-install', 'irodsConsumerTertiaryInstall.sh', '/irods/irodsConsumerTertiaryInstall.sh'],
                                 ['consumer-init', 'consumerInit.json', '/irods/consumerInit.json'],
-                                ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'],
-                                ['irods', 'irods', '/etc/logrotate.d/irods']]
+                                ['00-irods', '00-irods.conf', '/etc/rsyslog.d/00-irods.conf'], ['irods', 'irods', '/etc/logrotate.d/irods'],
+                                ['rsyslog', 'rsyslog.conf', '/etc/rsyslog.conf'], ['50-default', '50-default.conf', '/etc/rsyslog.d/50-default.conf']]
 
                 # get the provider name. it is the same as the job name for the env param lookup
                 if JobType.PROVIDER in run:
