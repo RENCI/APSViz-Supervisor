@@ -285,7 +285,7 @@ class JobCreate:
 
             # build the volume claim spec
             pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
-                                                     resources=client.V1ResourceRequirements(requests={'storage': '5Gi'}))
+                                                     resources=client.V1ResourceRequirements(requests={'storage': '2Gi'}))
 
             # build the ephemeral name source
             ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
@@ -672,7 +672,7 @@ class JobCreate:
         :param run:
         """
         # init the return value
-        ret_val: str = ', removing any stray jobs'
+        ret_val: str = ', removing any remaining services'
 
         try:
             # loop through all the workflow steps
