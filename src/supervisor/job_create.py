@@ -590,6 +590,7 @@ class JobCreate:
                     self.logger.debug("Found new job: %s, controller-uid: %s, status: %s", run_config['JOB_NAME'],
                                       job.metadata.labels['controller-uid'], job.status.active)
 
+                    # save the job id
                     job_id = str(job.metadata.labels["controller-uid"])
 
                     # no need to continue looking
@@ -678,7 +679,7 @@ class JobCreate:
             # loop through all the workflow steps
             for item in run:
                 # determine if this is a service based on the existence of a port definition
-                if isinstance(item, JobType): # and run[item]['job-config']['service'] is not None
+                if isinstance(item, JobType):  # and run[item]['job-config']['service'] is not None
                     # set the run type
                     run['job-type'] = item
 

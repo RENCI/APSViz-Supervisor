@@ -422,7 +422,7 @@ class JobSupervisor:
             # if the job was found
             if job_found:
                 # if this is a server process job set it to complete, so it moves to the next step
-                if self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
+                if run['job-type'] != JobType.PROVIDER and self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
                     job_status = 'Complete'
 
                 # did the job timeout (presumably waiting for resources) or failed
