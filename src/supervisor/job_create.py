@@ -101,7 +101,7 @@ class JobCreate:
         run_config = job_details['run-config']
 
         # if this is a server process, mark it for cleanup at the end of the workflow
-        if self.is_server_process(run_config):
+        if self.is_server_process(job_type):
             job_config['server-process'] = True
 
         # return to the caller
@@ -300,29 +300,20 @@ class JobCreate:
 
     def declare_nfs_volume(self, job_type, volume_mounts, volumes):
         """
-        Creates an ephemeral volume
+        Creates an nfs volume
 
         :param job_type:
         :param volume_mounts:
         :param volumes:
         :return:
         """
-        # init the return value
-        security_context = None
-
-        # create the mount and security context if this is an irods server
+        # create the nfs volume/mount for irods services only
         if self.is_irods_server_process(job_type):
             # add in the shared memory volume for /dev/shm
             volumes.append(client.V1Volume(name='nfs-vol', nfs={'server': self.sv_config['NFS_SERVER'], 'path': self.sv_config['NFS_PATH']}))
 
             # declare the NFS volume mount
             volume_mounts.append(client.V1VolumeMount(name='nfs-vol', mount_path=self.sv_config['NFS_MOUNT']))
-
-            # # set the security context for the pod
-            security_context = client.V1PodSecurityContext(run_as_user=30000, supplemental_groups=[])
-
-        # return the security context
-        return security_context
 
     def declare_shared_volume(self, run_id: int, run_config: dict) -> (list, list):
         """
@@ -371,22 +362,41 @@ class JobCreate:
             # use th OS image in the request if assigned
             if run['os_image']:
                 # assign the OS image
-                ret_val = f'containers.renci.org/irods/irods-{run["os_image"]}'
+                ret_val = f'containers.renci.org/irods/{run["os_image"]}'
 
         # return the image name
         return ret_val
 
     @staticmethod
-    def is_server_process(run_config: dict) -> bool:
+    def is_server_process(job_type: JobType) -> bool:
         """
         determines if the run is a server process using the existence of a port definition
 
+        :param job_type:
         :return:
         """
         ret_val: bool = False
 
         # is this a server process?
-        if run_config['PORT_RANGE']:
+        if job_type in [JobType.DATABASE, JobType.PROVIDER, JobType.PROVIDERSECONDARY, JobType.CONSUMER, JobType.CONSUMERSECONDARY,
+                        JobType.CONSUMERTERTIARY]:
+            ret_val = True
+
+        # return to the caller
+        return ret_val
+
+    @staticmethod
+    def is_db_server_process(job_type: JobType) -> bool:
+        """
+        determines if the run is for an irods server process
+
+        :param job_type:
+        :return:
+        """
+        ret_val: bool = False
+
+        # is this a server process?
+        if job_type in [JobType.DATABASE]:
             ret_val = True
 
         # return to the caller
@@ -397,12 +407,13 @@ class JobCreate:
         """
         determines if the run is for an irods server process
 
+        :param job_type:
         :return:
         """
         ret_val: bool = False
 
         # is this a server process?
-        if job_type in [JobType.PROVIDER, JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
+        if job_type in [JobType.PROVIDER, JobType.PROVIDERSECONDARY, JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
             ret_val = True
 
         # return to the caller
@@ -429,7 +440,7 @@ class JobCreate:
         cfg_map_info = []
 
         # if this is a deployment that requires network service, triggerd by a port declaration in the run config
-        if self.is_server_process(run_config):
+        if self.is_server_process(job_type):
             # init the intermediate port details
             ports_config: list = []
             port_list: list = []
@@ -570,7 +581,7 @@ class JobCreate:
                 job_api.create_namespaced_job(body=job_config['job'], namespace=self.sv_config['NAMESPACE'])
 
                 # create the service
-                if self.is_server_process(run_config):
+                if self.is_server_process(job_type):
                     service_api.create_namespaced_service(body=job_config['service'], namespace=self.sv_config['NAMESPACE'])
 
             except client.ApiException:
@@ -632,17 +643,18 @@ class JobCreate:
             # note: a duplicate name collision on the next run could occur if the jobs are not removed
             # before the same run is restarted.
             if not run['debug'] and run['status'] != JobStatus.ERROR:
-                job_details = run[run['job-type']]
+                job_type = run['job-type']
+                job_details = run[job_type]
                 run_config = job_details['run-config']
 
                 # create the API hooks
                 job_api = client.BatchV1Api()
                 service_api = client.CoreV1Api()
 
-                # remove the job if it is not a server process. this could be forced if it is a run cleanup operation
-                if not self.is_server_process(run_config) or force:
+                # remove the job if it is not a db server process. a db service removal will be forced in a run cleanup operation
+                if not self.is_db_server_process(job_type) or force:
                     # if this is a server process, kill the service first
-                    if self.is_server_process(run_config):
+                    if self.is_server_process(job_type):
                         # remove the service
                         service_api.delete_namespaced_service(run_config['JOB_NAME'], namespace=self.sv_config['NAMESPACE'],
                                                               body=client.V1DeleteOptions(propagation_policy='Foreground', grace_period_seconds=1))

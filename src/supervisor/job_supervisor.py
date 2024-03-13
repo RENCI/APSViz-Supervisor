@@ -421,8 +421,8 @@ class JobSupervisor:
 
             # if the job was found
             if job_found:
-                # if this is a server process job set it to complete, so it moves to the next step
-                if run['job-type'] != JobType.PROVIDER and self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
+                # if this is a non-irods server process job set it to complete, so it moves to the next step
+                if self.util_objs['create'].is_db_server_process(run['job-type']):
                     job_status = 'Complete'
 
                 # did the job timeout (presumably waiting for resources) or failed
@@ -445,7 +445,7 @@ class JobSupervisor:
                         # set error conditions
                         run['status'] = JobStatus.ERROR
                     else:
-                        if self.util_objs['create'].is_server_process(run[run['job-type']]['run-config']):
+                        if self.util_objs['create'].is_server_process(run['job-type']):
                             status_msg = 'configuring'
                         else:
                             status_msg = 'complete'
@@ -455,7 +455,7 @@ class JobSupervisor:
                         self.util_objs['pg_db'].update_job_status(run['id'], run['status_prov'])
 
                         # prepare for the next stage
-                        run['job-type'] = JobType(run[run['job-type'].value]['run-config']['NEXT_JOB_TYPE'])
+                        run['job-type'] = JobType(run[run['job-type']]['run-config']['NEXT_JOB_TYPE'])
 
                         # if the job type is not in the run then declare it new
                         if run['job-type'] not in run:
@@ -582,8 +582,9 @@ class JobSupervisor:
             package_dir = ''
 
         # loop through the params and return the ones that are missing
-        return (f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode,
-                workflow_type, db_image, db_type, os_image, test_image, request_group, package_dir)
+        return (
+        f"{', '.join([run_param for run_param in self.required_run_params if run_param not in run_info['request_data']])}", debug_mode, workflow_type,
+        db_image, db_type, os_image, test_image, request_group, package_dir)
 
     def check_for_duplicate_run(self, new_run_id: str) -> bool:
         """
