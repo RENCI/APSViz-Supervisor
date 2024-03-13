@@ -16,7 +16,7 @@ A Workflow manager that creates and monitors K8s jobs for each data processing c
 #### Components and versions...
 [![Python](https://img.shields.io/badge/Python-3.12.2-orange)](https://github.com/python/cpython)
 [![Linting Pylint](https://img.shields.io/badge/Pylint-%203.1.0-yellow)](https://github.com/PyCQA/pylint)
-[![Pytest](https://img.shields.io/badge/Pytest-%208.0.2-blue)](https://github.com/pytest-dev/pytest)
+[![Pytest](https://img.shields.io/badge/Pytest-%208.1.1-blue)](https://github.com/pytest-dev/pytest)
 #### Build status...
 [![PyLint the codebase](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/pylint.yml/badge.svg)](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/pylint.yml)
 [![Build and push the Docker image](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/image-push.yml/badge.svg)](https://github.com/irods-contrib/iRODS-K8s-Supervisor/actions/workflows/image-push.yml)
