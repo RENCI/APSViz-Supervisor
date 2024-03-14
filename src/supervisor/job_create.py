@@ -92,13 +92,12 @@ class JobCreate:
         # create the job object
         self.create_job_object(run, job_type)
 
-        # create and launch the job
+        # create and create the job
         job_id, svc_id = self.create_job(run, job_type)
 
         # save these params onto the run info
         job_details['job-config']['job_id'] = job_id
         job_details['job-config']['svc_id'] = svc_id
-        run_config = job_details['run-config']
 
         # if this is a server process, mark it for cleanup at the end of the workflow
         if self.is_server_process(job_type):
@@ -134,7 +133,7 @@ class JobCreate:
         volumes, volume_mounts = self.declare_shared_volume(run['id'], run_config)
 
         # if there is an ephemeral volume name specified, mount it
-        self.declare_ephemeral_volumes(run, run_config, volume_mounts, volumes)
+        self.declare_ephemeral_volumes(run['id'], run_config, volume_mounts, volumes, self.get_volume_size(job_type))
 
         # mount the NFS volume if this is an irods server
         self.declare_nfs_volume(job_type, volume_mounts, volumes)
@@ -268,14 +267,15 @@ class JobCreate:
         return ret_val
 
     @staticmethod
-    def declare_ephemeral_volumes(run, run_config, volume_mounts, volumes):
+    def declare_ephemeral_volumes(run_id: int, run_config: dict, volume_mounts: list, volumes: list, amount: str):
         """
         Creates an ephemeral volume
 
-        :param run:
+        :param run_id:
         :param run_config:
         :param volume_mounts:
         :param volumes:
+        :param amount:
         :return:
         """
         # if there is a file server mount specified in the job type
@@ -285,7 +285,7 @@ class JobCreate:
 
             # build the volume claim spec
             pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
-                                                     resources=client.V1ResourceRequirements(requests={'storage': '2Gi'}))
+                                                     resources=client.V1ResourceRequirements(requests={'storage': amount}))
 
             # build the ephemeral name source
             ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
@@ -293,14 +293,14 @@ class JobCreate:
             # create volumes and mounts
             for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
                 # build the volume definition
-                volumes.append(client.V1Volume(name=f"{name}-{run['id']}", ephemeral=ephemeral_source))
+                volumes.append(client.V1Volume(name=f"{name}-{run_id}", ephemeral=ephemeral_source))
 
                 # and the volume mounts
-                volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run['id']}", mount_path=mount_paths[index]))
+                volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run_id}", mount_path=mount_paths[index]))
 
-    def declare_nfs_volume(self, job_type, volume_mounts, volumes):
+    def declare_nfs_volume(self, job_type: JobType, volume_mounts: list, volumes: list):
         """
-        Creates an nfs volume
+        Creates a nfs volume mount
 
         :param job_type:
         :param volume_mounts:
@@ -340,7 +340,7 @@ class JobCreate:
         return volumes, volume_mounts
 
     @staticmethod
-    def get_image_name(run, job_type):
+    def get_image_name(run: dict, job_type: JobType) -> str:
         """
         Gets the image name for certain job types
 
@@ -463,7 +463,7 @@ class JobCreate:
                     secret_envs.append(client.V1EnvVar(name='MYSQL_PASSWORD', value='testpassword'))
 
                     # set the config map script name and mount
-                    # TODO: verify this is the correct location for a MySQL DB?
+                    # TODO: verify this is the correct location for a MySQL DB
                     cfg_map_info = [['init-irods-mysql-db', 'init-irods-mysql-db.sh', '/docker-entrypoint-initdb.d/001-init-irods-db.sh']]
 
             # set the env params and a file system mount for an iRODS provider
@@ -704,6 +704,24 @@ class JobCreate:
             self.logger.exception('Exception: Error during cleanup of jobs/services for Run ID: %s.', run['id'])
 
         self.logger.info("Stray job cleanup is complete for Run ID: %s.", run['id'])
+
+        # return to the caller
+        return ret_val
+
+    def get_volume_size(self, job_type: JobType):
+        """
+        gets the volume size based on the job type
+
+        :param job_type:
+        :return:
+        """
+        # set the default size
+        ret_val: str = '128Mi'
+
+        # set the size based on the job type
+        if self.is_irods_server_process(job_type):
+            # set the amount
+            ret_val = '2500Mi'
 
         # return to the caller
         return ret_val
