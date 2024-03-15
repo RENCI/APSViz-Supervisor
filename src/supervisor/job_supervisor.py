@@ -422,7 +422,8 @@ class JobSupervisor:
             # if the job was found
             if job_found:
                 # if this is a non-irods server process job set it to complete, so it moves to the next step
-                if self.util_objs['create'].is_db_server_process(run['job-type']):
+                if (self.util_objs['create'].is_db_server_process(run['job-type']) or
+                        self.util_objs['create'].is_irods_consumer_process(run['job-type'])):
                     job_status = 'Complete'
 
                 # did the job timeout (presumably waiting for resources) or failed
