@@ -308,7 +308,7 @@ class JobCreate:
         :return:
         """
         # create the nfs volume/mount for irods services only
-        if self.is_irods_server_process(job_type):
+        if self.is_irods_provider_process(job_type):
             # add in the shared memory volume for /dev/shm
             volumes.append(client.V1Volume(name='nfs-vol', nfs={'server': self.sv_config['NFS_SERVER'], 'path': self.sv_config['NFS_PATH']}))
 
@@ -403,17 +403,34 @@ class JobCreate:
         return ret_val
 
     @staticmethod
-    def is_irods_server_process(job_type: JobType) -> bool:
+    def is_irods_provider_process(job_type: JobType) -> bool:
         """
-        determines if the run is for an irods server process
+        determines if the run is for an irods provider process
 
         :param job_type:
         :return:
         """
         ret_val: bool = False
 
-        # is this a server process?
-        if job_type in [JobType.PROVIDER, JobType.PROVIDERSECONDARY, JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
+        # is this a provider process?
+        if job_type in [JobType.PROVIDER, JobType.PROVIDERSECONDARY]:
+            ret_val = True
+
+        # return to the caller
+        return ret_val
+
+    @staticmethod
+    def is_irods_consumer_process(job_type: JobType) -> bool:
+        """
+        determines if the run is for an irods consumer process
+
+        :param job_type:
+        :return:
+        """
+        ret_val: bool = False
+
+        # is this a consumer process?
+        if job_type in [JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
             ret_val = True
 
         # return to the caller
@@ -651,8 +668,8 @@ class JobCreate:
                 job_api = client.BatchV1Api()
                 service_api = client.CoreV1Api()
 
-                # remove the job if it is not a db server process. a db service removal will be forced in a run cleanup operation
-                if not self.is_db_server_process(job_type) or force:
+                # remove the job if it is not a db or consumer server process. a service removal will be forced in the run cleanup operation
+                if (not self.is_db_server_process(job_type) and not self.is_irods_consumer_process(job_type)) or force:
                     # if this is a server process, kill the service first
                     if self.is_server_process(job_type):
                         # remove the service
@@ -719,7 +736,7 @@ class JobCreate:
         ret_val: str = '128Mi'
 
         # set the size based on the job type
-        if self.is_irods_server_process(job_type):
+        if self.is_irods_provider_process(job_type) or self.is_irods_consumer_process(job_type):
             # set the amount
             ret_val = '2500Mi'
 
