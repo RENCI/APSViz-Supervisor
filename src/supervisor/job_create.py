@@ -53,6 +53,9 @@ class JobCreate:
         # get the flag that indicates if there are cpu resource limits
         self.cpu_limits: bool = self.sv_config.get("CPU_LIMITS")
 
+        # get the ephemeral volume size
+        self.ephemeral_vol_size = self.sv_config.get("MAX_EPHEMERAL_VOL_SIZE")
+
         # declare the secret environment variables
         self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
                                         {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'},
@@ -142,10 +145,10 @@ class JobCreate:
         ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
 
         # get the ephemeral limit for the container
-        if run_config['EPHEMERAL'] is not None:
-            ephemeral_limit = run_config['EPHEMERAL']
+        if run_config['POD_EPHEMERAL_LIMIT'] is not None:
+            pod_ephemeral_limit = run_config['POD_EPHEMERAL_LIMIT']
         else:
-            ephemeral_limit = '128Mi'
+            pod_ephemeral_limit = '128Mi'
 
         # init the restart policy for the job
         restart_policy: str = 'Never'
@@ -175,7 +178,7 @@ class JobCreate:
             restart_policy: str = run_config['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources: dict = {'limits': {'memory': memory_limit, 'ephemeral-storage': ephemeral_limit},
+            resources: dict = {'limits': {'memory': memory_limit, 'ephemeral-storage': pod_ephemeral_limit},
                                'requests': {'cpu': cpus, 'memory': run_config['MEMORY'], 'ephemeral-storage': '64Mi'}}
 
             # if there is a cpu limit restriction, add it to the resource spec
