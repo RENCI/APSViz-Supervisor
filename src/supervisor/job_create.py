@@ -672,7 +672,7 @@ class JobCreate:
                 service_api = client.CoreV1Api()
 
                 # remove the job if it is not a db or consumer server process. a service removal will be forced in the run cleanup operation
-                if (not self.is_db_server_process(job_type) and not self.is_irods_consumer_process(job_type)) or force:
+                if not self.is_server_process(job_type) or force:  # not self.is_db_server_process(job_type) and not self.is_irods_consumer_process(job_type)) or force:
                     # if this is a server process, kill the service first
                     if self.is_server_process(job_type):
                         # remove the service
