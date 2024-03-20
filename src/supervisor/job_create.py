@@ -136,7 +136,7 @@ class JobCreate:
         volumes, volume_mounts = self.declare_shared_volume(run['id'], run_config)
 
         # if there is an ephemeral volume name specified, mount it
-        self.declare_ephemeral_volumes(run['id'], run_config, job_type, volume_mounts, volumes)
+        self.declare_ephemeral_volumes(run['id'], run_config, volume_mounts, volumes)
 
         # mount the NFS volume if this is an irods server
         self.declare_nfs_volume(job_type, volume_mounts, volumes)
@@ -269,13 +269,12 @@ class JobCreate:
         # return the params
         return ret_val
 
-    def declare_ephemeral_volumes(self, run_id: int, run_config: dict, job_type: JobType, volume_mounts: list, volumes: list):
+    def declare_ephemeral_volumes(self, run_id: int, run_config: dict, volume_mounts: list, volumes: list):
         """
         Creates an ephemeral volume
 
         :param run_id:
         :param run_config:
-        :param job_type:
         :param volume_mounts:
         :param volumes:
         :return:
@@ -284,14 +283,13 @@ class JobCreate:
         if run_config['FILESVR_VOLUME_NAME']:
             # get all the volume mount paths
             mount_paths: list = run_config['FILESVR_MOUNT_PATH'].split(',')
+            vol_sizes: list = run_config['FILESVR_VOLUME_SIZE'].split(',')
 
             # create volumes and mounts
             for index, name in enumerate(run_config['FILESVR_VOLUME_NAME'].split(',')):
-                amount: str = self.get_volume_size(job_type, name)
-
                 # build the volume claim spec
                 pvc = client.V1PersistentVolumeClaimSpec(access_modes=['ReadWriteOnce'],
-                                                         resources=client.V1ResourceRequirements(requests={'storage': amount}))
+                                                         resources=client.V1ResourceRequirements(requests={'storage': vol_sizes[index]}))
 
                 # build the ephemeral name source
                 ephemeral_source = client.V1EphemeralVolumeSource(volume_claim_template=client.V1PersistentVolumeClaimTemplate(spec=pvc))
@@ -741,7 +739,7 @@ class JobCreate:
         ret_val: str = '128Mi'
 
         # set the size based on the job type
-        if self.is_irods_provider_process(job_type) or self.is_irods_consumer_process(job_type):
+        if self.is_server_process(job_type):
             # check for a specific PVC name to right-size the amount
             if vol_name.startswith('var-lib-pvc'):
                 # set the amount
