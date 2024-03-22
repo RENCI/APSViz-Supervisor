@@ -332,10 +332,6 @@ class JobSupervisor:
             command_line_params = ['--run_id', str(run['id']), '--run_dir',
                                    job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['request_group']), '--step_type', 'final']
 
-        # is this a tester job?
-        elif job_type == JobType.TESTER:
-            command_line_params = ''
-
         # unknown job type
         else:
             self.logger.error('Error: Unrecognized job type %s.', job_type)

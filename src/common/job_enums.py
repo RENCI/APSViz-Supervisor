@@ -50,7 +50,6 @@ class JobType(str, Enum):
     CONSUMER = 'consumer'
     CONSUMERSECONDARY = 'consumersecondary'
     CONSUMERTERTIARY = 'consumertertiary'
-    TESTER = 'tester'
     FORENSICS = 'forensics'
     FINAL_STAGING = 'final-staging'
 
