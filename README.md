@@ -36,4 +36,9 @@ There are GitHub actions to maintain code quality in this repo:
  - Pylint (minimum score of 10/10 to pass),
  - Build/publish a Docker image.
 
+### How to build the Docker image for this product
+
+ - docker build --build-arg APP_VERSION=Test -f Dockerfile -t irods-k8s-supervisor:latest .
+ - This image must be placed in a container image registry and referenced in this component's Helm scripts.
+
 Helm/k8s charts for this product are available at: [iRODS K8s Helm](https://github.com/irods/irods_k8s/tree/main/helm/irods-supervisor).
