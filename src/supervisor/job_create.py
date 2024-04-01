@@ -57,13 +57,17 @@ class JobCreate:
         self.ephemeral_vol_size = self.sv_config.get("MAX_EPHEMERAL_VOL_SIZE")
 
         # declare the secret environment variables
-        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
+        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
+                                        {'name': 'LOG_PATH', 'key': 'log-path'},
                                         {'name': 'IRODS_SV_DB_DATABASE', 'key': 'irods-sv-database'},
-                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'}, {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
+                                        {'name': 'IRODS_SV_DB_HOST', 'key': 'irods-sv-host'},
+                                        {'name': 'IRODS_SV_DB_PORT', 'key': 'irods-sv-port'},
                                         {'name': 'IRODS_SV_DB_USERNAME', 'key': 'irods-sv-username'},
-                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'}, {'name': 'SYSTEM', 'key': 'system'},
+                                        {'name': 'IRODS_SV_DB_PASSWORD', 'key': 'irods-sv-password'},
+                                        {'name': 'SYSTEM', 'key': 'system'},
                                         {'name': 'FORENSICS_MAX_WAIT', 'key': 'forensics-max-wait'},
-                                        {'name': 'FORENSICS_CHECK_INTERVAL', 'key': 'forensics-check-interval'}]
+                                        {'name': 'FORENSICS_CHECK_INTERVAL', 'key': 'forensics-check-interval'},
+                                        {'name': 'DEFAULT_PKG_DIR', 'key': 'default-pkg-dir'}]
 
     def execute(self, run: dict, job_type: JobType):
         """
@@ -178,8 +182,8 @@ class JobCreate:
             restart_policy: str = run_config['RESTART_POLICY']
 
             # get the baseline set of container resources
-            resources: dict = {'limits': {'memory': memory_limit, 'ephemeral-storage': pod_ephemeral_limit},
-                               'requests': {'cpu': cpus, 'memory': run_config['MEMORY'], 'ephemeral-storage': '64Mi'}}
+            resources: dict = {'requests': {'cpu': cpus, 'memory': run_config['MEMORY'], 'ephemeral-storage': '64Mi'},
+                               'limits': {'memory': memory_limit, 'ephemeral-storage': pod_ephemeral_limit}}
 
             # if there is a cpu limit restriction, add it to the resource spec
             if self.cpu_limits:
@@ -269,7 +273,8 @@ class JobCreate:
         # return the params
         return ret_val
 
-    def declare_ephemeral_volumes(self, run_id: int, run_config: dict, volume_mounts: list, volumes: list):
+    @staticmethod
+    def declare_ephemeral_volumes(run_id: int, run_config: dict, volume_mounts: list, volumes: list):
         """
         Creates an ephemeral volume
 
@@ -311,7 +316,7 @@ class JobCreate:
         """
         # create the nfs volume/mount for irods services only
         if self.is_irods_provider_process(job_type):
-            # add in the shared memory volume for /dev/shm
+            # add in the NFS volume
             volumes.append(client.V1Volume(name='nfs-vol', nfs={'server': self.sv_config['NFS_SERVER'], 'path': self.sv_config['NFS_PATH']}))
 
             # declare the NFS volume mount
@@ -397,7 +402,7 @@ class JobCreate:
         """
         ret_val: bool = False
 
-        # is this a server process?
+        # is this a DB server process?
         if job_type in [JobType.DATABASE]:
             ret_val = True
 
@@ -416,6 +421,23 @@ class JobCreate:
 
         # is this a provider process?
         if job_type in [JobType.PROVIDER, JobType.PROVIDERSECONDARY]:
+            ret_val = True
+
+        # return to the caller
+        return ret_val
+
+    @staticmethod
+    def is_irods_server_process(job_type: JobType) -> bool:
+        """
+        determines if the run is for an irods server process
+
+        :param job_type:
+        :return:
+        """
+        ret_val: bool = False
+
+        # is this an irods server process?
+        if job_type in [JobType.PROVIDER, JobType.PROVIDERSECONDARY, JobType.CONSUMER, JobType.CONSUMERSECONDARY, JobType.CONSUMERTERTIARY]:
             ret_val = True
 
         # return to the caller
@@ -670,8 +692,8 @@ class JobCreate:
                 job_api = client.BatchV1Api()
                 service_api = client.CoreV1Api()
 
-                # remove the job if it is not a db or consumer server process. a service removal will be forced in the run cleanup operation
-                if not self.is_server_process(job_type) or force:  # not self.is_db_server_process(job_type) and not self.is_irods_consumer_process(job_type)) or force:
+                # remove the job if it is not a db or irods server process. a service removal will be forced in the run cleanup operation
+                if not self.is_server_process(job_type) or force:
                     # if this is a server process, kill the service first
                     if self.is_server_process(job_type):
                         # remove the service

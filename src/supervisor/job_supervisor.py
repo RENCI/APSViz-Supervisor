@@ -294,6 +294,7 @@ class JobSupervisor:
 
         # is this a staging job?
         if job_type == JobType.STAGING:
+            # generate the command line
             command_line_params = ['--run_id', str(run['id']), '--run_dir',
                                    job_configs[job_type]['DATA_MOUNT_PATH'] + '/' + str(run['request_group']), '--step_type', 'initial',
                                    '--workflow_type', run['workflow_type']]
