@@ -25,7 +25,7 @@ ARG APP_VERSION=$(APP_VERSION)
 ENV APP_VERSION=$APP_VERSION
 
 # create a new non-root user and switch to it
-RUN useradd --create-home -u 999 nru
+RUN useradd --create-home -u 1000 nru
 USER nru
 
 # Create the directory for the code and cd to it
