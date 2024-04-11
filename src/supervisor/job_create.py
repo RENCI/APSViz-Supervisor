@@ -143,7 +143,7 @@ class JobCreate:
         self.declare_ephemeral_volumes(run['id'], run_config, volume_mounts, volumes)
 
         # mount the NFS volume if this is an irods server
-        self.declare_nfs_volume(job_type, volume_mounts, volumes)
+        security_context: client.V1PodSecurityContext = self.declare_nfs_volume(job_type, volume_mounts, volumes)
 
         # get the service configuration
         ports, service = self.create_svc_objects(run, job_type, run_config, secret_envs, volume_mounts, volumes)
@@ -233,7 +233,8 @@ class JobCreate:
         # create and configure a spec section for the container
         pod_template: client.models.v1_pod_template_spec.V1PodTemplateSpec = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(labels={"app": run_config['JOB_NAME']}),
-            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector))
+            spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes, node_selector=node_selector,
+                                  security_context=security_context))
 
         # create the specification of job deployment, active_deadline_seconds=30
         job_spec: client.models.v1_job_spec.V1JobSpec = client.V1JobSpec(template=pod_template, backoff_limit=self.back_off_limit,
@@ -305,22 +306,33 @@ class JobCreate:
                 # and the volume mounts
                 volume_mounts.append(client.V1VolumeMount(name=f"{name}-{run_id}", mount_path=mount_paths[index]))
 
-    def declare_nfs_volume(self, job_type: JobType, volume_mounts: list, volumes: list):
+    def declare_nfs_volume(self, job_type: JobType, volume_mounts: list, volumes: list) -> client.V1PodSecurityContext:
         """
         Creates a nfs volume mount
 
+        :rtype: object
         :param job_type:
         :param volume_mounts:
         :param volumes:
         :return:
         """
-        # create the nfs volume/mount for irods services only
-        if self.is_irods_provider_process(job_type):
+        ret_val: client.V1PodSecurityContext = client.V1PodSecurityContext(None)
+
+        # do not create the nfs volume/mount for DB services
+        if not self.is_irods_provider_process(job_type):
             # add in the NFS volume
             volumes.append(client.V1Volume(name='nfs-vol', nfs={'server': self.sv_config['NFS_SERVER'], 'path': self.sv_config['NFS_PATH']}))
 
             # declare the NFS volume mount
             volume_mounts.append(client.V1VolumeMount(name='nfs-vol', mount_path=self.sv_config['NFS_MOUNT']))
+
+            # if this is not a server process with specific reason for not changing the security context
+            if not self.is_server_process(job_type):
+                # create a pod security context for the final staging
+                ret_val: client.V1PodSecurityContext = client.V1PodSecurityContext(run_as_group=999, run_as_user=999, fs_group=1049)
+
+        # return to the caller
+        return ret_val
 
     def declare_shared_volume(self, run_id: int, run_config: dict) -> (list, list):
         """
