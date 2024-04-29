@@ -4,7 +4,7 @@
 
 # This Dockerfile is used to build the iRODS-K8s-Supervisor image
 
-FROM python:3.12.2-slim
+FROM python:3.12.3-slim
 
 # update the image base
 RUN apt-get update && apt-get -y upgrade
