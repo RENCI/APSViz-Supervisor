@@ -52,16 +52,12 @@ class JobCreate:
         self.cpu_limits: bool = self.k8s_base_config.get("CPU_LIMITS")
 
         # declare the secret environment variables
-        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'},
-                                        {'name': 'LOG_PATH', 'key': 'log-path'},
-                                        {'name': 'ASGS_DB_HOST', 'key': 'apsviz-host'},
-                                        {'name': 'ASGS_DB_PORT', 'key': 'apsviz-port'},
+        self.secret_env_params: list = [{'name': 'LOG_LEVEL', 'key': 'log-level'}, {'name': 'LOG_PATH', 'key': 'log-path'},
+                                        {'name': 'ASGS_DB_HOST', 'key': 'apsviz-host'}, {'name': 'ASGS_DB_PORT', 'key': 'apsviz-port'},
                                         {'name': 'ASGS_DB_USERNAME', 'key': 'apsviz-username'},
                                         {'name': 'ASGS_DB_PASSWORD', 'key': 'apsviz-password'},
-                                        {'name': 'ASGS_DB_DATABASE', 'key': 'apsviz-database'},
-                                        {'name': 'APSVIZ_DB_HOST', 'key': 'apsviz-host'},
-                                        {'name': 'APSVIZ_DB_PORT', 'key': 'apsviz-port'},
-                                        {'name': 'APSVIZ_DB_USERNAME', 'key': 'apsviz-username'},
+                                        {'name': 'ASGS_DB_DATABASE', 'key': 'apsviz-database'}, {'name': 'APSVIZ_DB_HOST', 'key': 'apsviz-host'},
+                                        {'name': 'APSVIZ_DB_PORT', 'key': 'apsviz-port'}, {'name': 'APSVIZ_DB_USERNAME', 'key': 'apsviz-username'},
                                         {'name': 'APSVIZ_DB_PASSWORD', 'key': 'apsviz-password'},
                                         {'name': 'APSVIZ_DB_DATABASE', 'key': 'apsviz-database'},
                                         {'name': 'ADCIRC_OBS_DB_HOST', 'key': 'adcirc-obs-host'},
@@ -75,12 +71,9 @@ class JobCreate:
                                         {'name': 'APSVIZ_GAUGES_DB_USERNAME', 'key': 'apsviz-gauges-username'},
                                         {'name': 'APSVIZ_GAUGES_DB_PASSWORD', 'key': 'apsviz-gauges-password'},
                                         {'name': 'APSVIZ_GAUGES_DB_ENGINE', 'key': 'apsviz-gauges-engine'},
-                                        {'name': 'GEOSERVER_USER', 'key': 'geo-username'},
-                                        {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'},
-                                        {'name': 'GEOSERVER_URL', 'key': 'geo-url'},
-                                        {'name': 'GEOSERVER_URL_EXT', 'key': 'geo-url-ext'},
-                                        {'name': 'GEOSERVER_HOST', 'key': 'geo-host'},
-                                        {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
+                                        {'name': 'GEOSERVER_USER', 'key': 'geo-username'}, {'name': 'GEOSERVER_PASSWORD', 'key': 'geo-password'},
+                                        {'name': 'GEOSERVER_URL', 'key': 'geo-url'}, {'name': 'GEOSERVER_URL_EXT', 'key': 'geo-url-ext'},
+                                        {'name': 'GEOSERVER_HOST', 'key': 'geo-host'}, {'name': 'GEOSERVER_PROJ_PATH', 'key': 'geo-proj-path'},
                                         {'name': 'GEOSERVER_WORKSPACE', 'key': 'geo-workspace'},
                                         {'name': 'AWS_ACCESS_KEY_ID', 'key': 'aws-access-key-id'},
                                         {'name': 'AWS_SECRET_ACCESS_KEY', 'key': 'aws-secret-access-key'},
@@ -88,19 +81,15 @@ class JobCreate:
                                         {'name': 'FILESERVER_OBS_PATH', 'key': 'file-server-obs-path'},
                                         {'name': 'FILESERVER_CAT_PATH', 'key': 'file-server-cat-path'},
                                         {'name': 'CONTRAILS_KEY', 'key': 'contrails-key'}, {'name': 'NO_PROXY', 'key': 'no-proxy-hosts'},
-                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'},
-                                        {'name': 'COG_MOSAIC_HOST', 'key': 'cog-mosaic-host'},
+                                        {'name': 'no_proxy', 'key': 'no-proxy-hosts'}, {'name': 'COG_MOSAIC_HOST', 'key': 'cog-mosaic-host'},
                                         {'name': 'COG_MOSAIC_PORT', 'key': 'cog-mosaic-port'},
                                         {'name': 'COG_MOSAIC_DATABASE', 'key': 'cog-mosaic-database'},
                                         {'name': 'COG_MOSAIC_USERNAME', 'key': 'cog-mosaic-username'},
                                         {'name': 'COG_MOSAIC_PASSWORD', 'key': 'cog-mosaic-password'},
-                                        {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'},
-                                        {'name': 'PSC_SYNC_URL', 'key': 'psc_sync_url'},
+                                        {'name': 'COG_MOSAIC_PATH', 'key': 'cog-mosaic-path'}, {'name': 'PSC_SYNC_URL', 'key': 'psc_sync_url'},
                                         {'name': 'PSC_SYNC_TOKEN', 'key': 'psc_sync_token'},
-                                        {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'},
-                                        {'name': 'UI_DATA_URL', 'key': 'ui-data-url'},
-                                        {'name': 'AST_IO_RETRY_PAUSE', 'key': 'ast-io-retry-pause'},
-                                        {'name': 'SYSTEM', 'key': 'system'}]
+                                        {'name': 'PSC_SYNC_PROJECTS', 'key': 'psc_sync_projects'}, {'name': 'UI_DATA_URL', 'key': 'ui-data-url'},
+                                        {'name': 'AST_IO_RETRY_PAUSE', 'key': 'ast-io-retry-pause'}, {'name': 'SYSTEM', 'key': 'system'}]
 
     def create_job_object(self, run: dict, job_type: JobType, job_details: dict):
         """
@@ -218,20 +207,30 @@ class JobCreate:
         # save the number of containers in this job/pod for status checking later
         run_job['total_containers'] = len(containers)
 
-        # if there was a node selector found use it
+        # init the pod node and affinity selectors
+        pod_node_selector = None
+        pod_affinity_selector = None
+
+        # if there was a node selector found use it (AWS runs)
         if run_job['run-config']['NODE_TYPE']:
             # separate the tag and type
             params = run_job['run-config']['NODE_TYPE'].split(':')
 
-            # set the node selector
-            node_selector = {params[0]: params[1]}
+            # set the pod node selector
+            pod_node_selector = {params[0]: params[1]}
+
+        # else a run in the on-prem cluster
         else:
-            node_selector = None
+            # TODO: remove when mode is repaired
+            # create a node affinity to avoid using the on-prem k8s-node10 node.
+            pod_affinity_selector = client.V1Affinity(node_affinity=client.V1NodeAffinity(
+                required_during_scheduling_ignored_during_execution=client.V1NodeSelector(node_selector_terms=[client.V1NodeSelectorTerm(
+                    match_expressions=[client.V1NodeSelectorRequirement(key="kubernetes.io/hostname", operator="NotIn", values=["k8s-node10"])])])))
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(metadata=client.V1ObjectMeta(labels={"app": run_job['run-config']['JOB_NAME']}),
                                             spec=client.V1PodSpec(restart_policy=restart_policy, containers=containers, volumes=volumes,
-                                                                  node_selector=node_selector))
+                                                                  node_selector=pod_node_selector, affinity=pod_affinity_selector))
 
         # create the specification of job deployment
         job_spec = client.V1JobSpec(template=template, backoff_limit=self.back_off_limit, ttl_seconds_after_finished=self.job_timeout)
