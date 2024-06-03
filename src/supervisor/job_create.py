@@ -220,13 +220,12 @@ class JobCreate:
             pod_node_selector = {params[0]: params[1]}
 
         # else a run in the on-prem cluster
-        else:
-            # TODO: remove when mode is repaired
-            # create a node affinity to avoid using the on-prem k8s-node10 node.
-            pod_affinity_selector = client.V1Affinity(node_affinity=client.V1NodeAffinity(
-                required_during_scheduling_ignored_during_execution=client.V1NodeSelector(node_selector_terms=[client.V1NodeSelectorTerm(
-                    match_expressions=[client.V1NodeSelectorRequirement(key="kubernetes.io/hostname", operator="NotIn", values=["k8s-node02",
-                                                                                                                                "k8s-node10"])])])))
+        # else:
+        #     # create a node affinity to avoid using the on-prem k8s-node10 node.
+        #     pod_affinity_selector = client.V1Affinity(node_affinity=client.V1NodeAffinity(
+        #         required_during_scheduling_ignored_during_execution=client.V1NodeSelector(node_selector_terms=[client.V1NodeSelectorTerm(
+        #             match_expressions=[client.V1NodeSelectorRequirement(key="kubernetes.io/hostname", operator="NotIn", values=["k8s-node02",
+        #                                                                                                                         "k8s-node10"])])])))
 
         # create and configure a spec section for the container
         template = client.V1PodTemplateSpec(metadata=client.V1ObjectMeta(labels={"app": run_job['run-config']['JOB_NAME']}),
