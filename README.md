@@ -13,9 +13,9 @@ A Workflow manager that creates and monitors K8s jobs for each iRODS Test Reques
 [![BSD License](https://img.shields.io/badge/License-BSD-orange.svg)](https://github.com/irods-contrib/iRODS-K8s-Supervisor/blob/master/LICENSE)
 
 #### Components and versions.
-[![Python](https://img.shields.io/badge/Python-3.12.3-orange)](https://github.com/python/cpython)
-[![Linting Pylint](https://img.shields.io/badge/Pylint-%203.1.0-yellow)](https://github.com/PyCQA/pylint)
-[![Pytest](https://img.shields.io/badge/Pytest-%208.2.0-blue)](https://github.com/pytest-dev/pytest)
+[![Python](https://img.shields.io/badge/Python-3.12.5-orange)](https://github.com/python/cpython)
+[![Linting Pylint](https://img.shields.io/badge/Pylint-%203.2.6-yellow)](https://github.com/PyCQA/pylint)
+[![Pytest](https://img.shields.io/badge/Pytest-%208.3.2-blue)](https://github.com/pytest-dev/pytest)
 [![Kubernetes API](https://img.shields.io/badge/Kubernetes%20API-%20v28.1.0-red)](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)
 
 #### Build status.
