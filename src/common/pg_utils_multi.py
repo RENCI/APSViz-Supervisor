@@ -25,8 +25,8 @@ class PGUtilsMultiConnect:
     """
         Base class for database functionalities.
 
-        This class supports setting up connections to multiple databases. To do that
-        the class relies on environment parameter names that adhere to a specific
+        This class supports setting up connections to multiple databases.
+        To do that, the class relies on environment parameter names that adhere to a specific
         naming convention. e.g. <DB name>_DB_<parameter name>. Note that the
         final environment parameter should be all uppercase.
 
@@ -39,7 +39,7 @@ class PGUtilsMultiConnect:
 
         :param db_names:
         """
-        # if a reference to a logger passed in use it
+        # if a reference to a logger is passed in use it
         if _logger is not None:
             # get a handle to a logger
             self.logger = _logger
@@ -172,12 +172,12 @@ class PGUtilsMultiConnect:
                 self.logger.exception('Error getting connection %s.', db_info.name)
                 good_conn = False
 
-            # are we still looking for a connection
+            # if we are still looking for a connection
             if good_conn is False:
                 self.logger.error('DB Connection failed to %s. Retrying...', db_info.name)
                 time.sleep(5)
 
-        # return pass/fail flag
+        # return a pass/fail flag
         return good_conn
 
     def check_db_connection(self, db_info: namedtuple) -> bool:
@@ -194,7 +194,7 @@ class PGUtilsMultiConnect:
         cursor = None
 
         try:
-            # is there an existing connection
+            # if there is an existing connection
             if not db_info.conn:
                 self.logger.debug('Existing DB connection not found for %s', db_info.name)
 
@@ -251,7 +251,7 @@ class PGUtilsMultiConnect:
         # insure we have a valid DB connection
         success = self.get_db_connection(db_info)
 
-        # did we get a connection
+        # if we got a connection
         if success:
             # init the cursor
             cursor = None
@@ -263,7 +263,7 @@ class PGUtilsMultiConnect:
                 # get a cursor
                 cursor = db_info.conn.cursor()
 
-                # execute the sql
+                # execute the SQL
                 cursor.execute(sql_stmt)
 
                 # get the returned value
@@ -274,7 +274,7 @@ class PGUtilsMultiConnect:
                     # specify a return code on an empty result
                     ret_val = -1
                 else:
-                    # get the one and only record of json
+                    # get the one and only record of JSON
                     ret_val = ret_val[0]
 
             except Exception:
