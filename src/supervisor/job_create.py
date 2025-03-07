@@ -273,6 +273,11 @@ class JobCreate:
             node_selector: dict = {params[0]: params[1]}
         else:
             node_selector: dict = {}
+            # create a node affinity to avoid using a list of on-prem k8s nodes.
+            # pod_affinity_selector = client.V1Affinity(node_affinity=client.V1NodeAffinity(
+            #     required_during_scheduling_ignored_during_execution=client.V1NodeSelector(node_selector_terms=[client.V1NodeSelectorTerm(
+            #         match_expressions=[client.V1NodeSelectorRequirement(key="kubernetes.io/hostname", operator="NotIn",
+            #         values=["k8s-node02", "k8s-node10"])])])))
 
         # create and configure a spec section for the container
         pod_template: client.models.v1_pod_template_spec.V1PodTemplateSpec = client.V1PodTemplateSpec(
