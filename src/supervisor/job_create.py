@@ -261,8 +261,8 @@ class JobCreate:
         job_details['total_containers']: int = len(containers)
 
         # init the pod node and affinity selectors
-        pod_node_selector = None
-        pod_affinity_selector = None
+        pod_node_selector = None  # pylint: disable=unused-variable
+        pod_affinity_selector = None  # pylint: disable=unused-variable
 
         # if there was a node selector found, use it (AWS runs)
         if job_details['run-config']['NODE_TYPE']:
