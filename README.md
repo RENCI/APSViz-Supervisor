@@ -19,8 +19,8 @@ A Workflow manager that creates and monitors K8s jobs for each data processing c
 [![RENCI License](https://img.shields.io/badge/License-RENCI-blue.svg)](https://www.renci.org/)
 #### Components and versions...
 [![Python](https://img.shields.io/badge/Python-3.13.2-orange)](https://github.com/python/cpython)
-[![Linting Pylint](https://img.shields.io/badge/Pylint-3.3.4-yellow)](https://github.com/PyCQA/pylint)
-[![Pytest](https://img.shields.io/badge/Pytest-8.3.4-blue)](https://github.com/pytest-dev/pytest)
+[![Linting Pylint](https://img.shields.io/badge/Pylint-3.3.5-yellow)](https://github.com/PyCQA/pylint)
+[![Pytest](https://img.shields.io/badge/Pytest-8.3.5-blue)](https://github.com/pytest-dev/pytest)
 #### Build status...
 [![PyLint the codebase](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/pylint.yml/badge.svg)](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/pylint.yml)
 [![Build and push the Docker image](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/image-push.yml/badge.svg)](https://github.com/RENCI/APSVIZ-Supervisor/actions/workflows/image-push.yml)
