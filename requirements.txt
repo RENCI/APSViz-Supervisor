@@ -7,7 +7,7 @@
 # SPDX-License-Identifier: MIT
 
 kubernetes==28.1.0
-pylint==3.5.5
+pylint==3.3.6
 pytest==8.3.5
 slack-sdk==3.35.0
 psycopg2-binary==2.9.10
